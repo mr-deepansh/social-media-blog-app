@@ -9,5 +9,10 @@ app.use(
     credentials: true,
   })
 );
+
+app.use(express.json({ limit: "20kb" }));
+app.use(express.urlencoded({ extended: true, limit: "20kb" }));
+app.use(express.static("Public"));
+
 export { app };
 // Path: src/db/index.js
