@@ -3,6 +3,8 @@ import { asyncHandler } from "../utility/AsyncHandler.js";
 import { ApiError } from "../utility/ApiError.js";
 import { ApiResponse } from "../utility/ApiResponse.js";
 
+// tested
+
 const getAllBlogs = asyncHandler(async (req, res) => {
   try {
     const blogs = await Blog.find();
@@ -30,6 +32,8 @@ const getAllBlogs = asyncHandler(async (req, res) => {
   }
 });
 
+// tested
+
 const getBlogById = asyncHandler(async (req, res) => {
   try {
     const blog = await Blog.findById(req.params.id);
@@ -56,6 +60,8 @@ const getBlogById = asyncHandler(async (req, res) => {
       );
   }
 });
+
+//  tested
 
 const createBlog = asyncHandler(async (req, res) => {
   try {
@@ -98,6 +104,8 @@ const createBlog = asyncHandler(async (req, res) => {
   }
 });
 
+// tested
+
 const updateBlog = asyncHandler(async (req, res) => {
   try {
     const blogId = req.params.id;
@@ -109,12 +117,12 @@ const updateBlog = asyncHandler(async (req, res) => {
       throw new ApiError(404, "Blog not found");
     }
 
-    if (String(existingBlog.user) !== String(userId)) {
-      throw new ApiError(
-        403,
-        "Unauthorized - You do not have permission to edit this blog"
-      );
-    }
+    // if (String(existingBlog.user) !== String(userId)) {
+    //   throw new ApiError(
+    //     403,
+    //     "Unauthorized - You do not have permission to edit this blog"
+    //   );
+    // }
 
     const updatedBlog = await Blog.findByIdAndUpdate(blogId, req.body, {
       new: true,
@@ -145,6 +153,8 @@ const updateBlog = asyncHandler(async (req, res) => {
   }
 });
 
+//  tested
+
 const deleteBlog = asyncHandler(async (req, res) => {
   try {
     const blogId = req.params.id;
@@ -154,13 +164,6 @@ const deleteBlog = asyncHandler(async (req, res) => {
 
     if (!existingBlog) {
       throw new ApiError(404, "Blog not found");
-    }
-
-    if (String(existingBlog.user) !== String(userId)) {
-      throw new ApiError(
-        403,
-        "Unauthorized - You do not have permission to delete this blog"
-      );
     }
 
     const deletedBlog = await Blog.findByIdAndDelete(blogId);
