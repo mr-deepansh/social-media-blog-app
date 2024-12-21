@@ -118,5 +118,14 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
+# Docker related files
+.docker/
+docker-compose.override.yml
+Dockerfile
+docker-compose.yml
+docker/*.log
+docker/volumes/
+.dockerignore
+
 # End of https://mrkandreev.name/snippets/gitignore-generator/#Node
 .DS_Store
