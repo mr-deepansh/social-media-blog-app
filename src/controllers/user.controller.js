@@ -5,17 +5,34 @@ import { ApiResponse } from "../utility/ApiResponse.js";
 
 const generateAccessAndRefreshToken = async (userId) => {
   try {
+    // Fetch user from the database
     const user = await User.findById(userId);
+
+    // Check if user exists
+    if (!user) {
+      throw new ApiError(404, "User not found");
+    }
+
+    // Generate tokens
     const accessToken = user.generateAccessToken();
     const refreshToken = user.generateRefreshToken();
+
+    // Save the refresh token to the user record
     user.refreshToken = refreshToken;
     await user.save({ validateBeforeSave: false });
+
+    // Return the generated tokens
     return { accessToken, refreshToken };
   } catch (error) {
-    throw new ApiError(
-      500,
-      "Something went wrong while generating refresh and access token "
-    );
+    // Re-throw custom errors or wrap unexpected ones
+    if (error instanceof ApiError) {
+      throw error;
+    } else {
+      throw new ApiError(
+        500,
+        "Something went wrong while generating access and refresh tokens"
+      );
+    }
   }
 };
 
