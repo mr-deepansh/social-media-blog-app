@@ -44,7 +44,6 @@ const getAllUsers = asyncHandler(async (req, res) => {
       throw new ApiError(404, "Users not found");
     }
 
-    res.status(200);
     res
       .status(200)
       .json(new ApiResponse(200, { users }, "Users retrieved successfully"));
