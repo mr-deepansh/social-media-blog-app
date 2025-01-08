@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { User } from "../models/user.model.js";
+=======
+import { User } from "../models/user.models.js";
+>>>>>>> b8abeda72761f46764038761221c3c28e6d7683e
 import { asyncHandler } from "../utility/AsyncHandler.js";
 import { ApiError } from "../utility/ApiError.js";
 import { ApiResponse } from "../utility/ApiResponse.js";
