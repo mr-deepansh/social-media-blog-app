@@ -1,4 +1,4 @@
-import { User } from "../models/User.models.js";
+import { User } from "../models/user.model.js";
 import { asyncHandler } from "../utility/AsyncHandler.js";
 import { ApiError } from "../utility/ApiError.js";
 import { ApiResponse } from "../utility/ApiResponse.js";
@@ -44,7 +44,6 @@ const getAllUsers = asyncHandler(async (req, res) => {
       throw new ApiError(404, "Users not found");
     }
 
-    res.status(200);
     res
       .status(200)
       .json(new ApiResponse(200, { users }, "Users retrieved successfully"));
