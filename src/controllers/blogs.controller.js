@@ -4,15 +4,12 @@ import { ApiError } from "../utility/ApiError.js";
 import { ApiResponse } from "../utility/ApiResponse.js";
 
 // tested
-
 const getAllBlogs = asyncHandler(async (req, res) => {
   try {
     const blogs = await Blog.find();
-
     if (!blogs || blogs.length === 0) {
       throw new ApiError(404, "Blogs not found");
     }
-
     res
       .status(200)
       .json(
@@ -33,15 +30,12 @@ const getAllBlogs = asyncHandler(async (req, res) => {
 });
 
 // tested
-
 const getBlogById = asyncHandler(async (req, res) => {
   try {
     const blog = await Blog.findById(req.params.id);
-
     if (!blog) {
       throw new ApiError(404, "Blog not found");
     }
-
     res
       .status(200)
       .json(
@@ -62,16 +56,13 @@ const getBlogById = asyncHandler(async (req, res) => {
 });
 
 //  tested
-
 const createBlog = asyncHandler(async (req, res) => {
   try {
     const { title, content, isPublic, image } = req.body;
     const userId = req.user._id;
-
     if (![title, content].every((field) => field?.trim())) {
       throw new ApiError(400, "Title and content are required");
     }
-
     const newBlog = await Blog.create({
       title,
       content,
@@ -79,7 +70,6 @@ const createBlog = asyncHandler(async (req, res) => {
       image,
       user: userId,
     });
-
     res
       .status(201)
       .json(
@@ -105,29 +95,23 @@ const createBlog = asyncHandler(async (req, res) => {
 });
 
 // tested
-
 const updateBlog = asyncHandler(async (req, res) => {
   try {
     const blogId = req.params.id;
     const userId = req.user._id;
-
     const existingBlog = await Blog.findById(blogId);
-
     if (!existingBlog) {
       throw new ApiError(404, "Blog not found");
     }
-
     // if (String(existingBlog.user) !== String(userId)) {
     //   throw new ApiError(
     //     403,
     //     "Unauthorized - You do not have permission to edit this blog"
     //   );
     // }
-
     const updatedBlog = await Blog.findByIdAndUpdate(blogId, req.body, {
       new: true,
     });
-
     res
       .status(200)
       .json(
@@ -154,24 +138,18 @@ const updateBlog = asyncHandler(async (req, res) => {
 });
 
 //  tested
-
 const deleteBlog = asyncHandler(async (req, res) => {
   try {
     const blogId = req.params.id;
     const userId = req.user._id;
-
     const existingBlog = await Blog.findById(blogId);
-
     if (!existingBlog) {
       throw new ApiError(404, "Blog not found");
     }
-
     const deletedBlog = await Blog.findByIdAndDelete(blogId);
-
     if (!deletedBlog) {
       throw new ApiError(404, "Blog not found");
     }
-
     res
       .status(200)
       .json(new ApiResponse(200, {}, "Blog deleted successfully", true));
