@@ -12,7 +12,6 @@ const generateAccessAndRefreshToken = async (userId) => {
 		if (!user) {
 			throw new ApiError(404, 'User not found');
 		}
-
 		// Generate tokens
 		const accessToken = user.generateAccessToken();
 		const refreshToken = user.generateRefreshToken();
@@ -20,7 +19,6 @@ const generateAccessAndRefreshToken = async (userId) => {
 		// Save the refresh token to the user record
 		user.refreshToken = refreshToken;
 		await user.save({ validateBeforeSave: false });
-
 		// Return the generated tokens
 		return { accessToken, refreshToken };
 	} catch (error) {
@@ -43,13 +41,11 @@ const getAllUsers = asyncHandler(async (req, res) => {
 		if (!users || users.length === 0) {
 			throw new ApiError(404, 'Users not found');
 		}
-
 		res
 			.status(200)
 			.json(new ApiResponse(200, { users }, 'Users retrieved successfully'));
 	} catch (error) {
 		console.error(error);
-
 		if (error instanceof ApiError) {
 			return res
 				.status(error.statusCode)
@@ -65,32 +61,25 @@ const getAllUsers = asyncHandler(async (req, res) => {
 const signup = asyncHandler(async (req, res) => {
 	try {
 		const { username, email, name, password } = req.body;
-
 		if ([name, password, username, email].some((field) => !field?.trim())) {
 			throw new ApiError(400, 'All fields are required');
 		}
-
 		const existedUser = await User.findOne({ $or: [{ username }, { email }] });
-
 		if (existedUser) {
 			throw new ApiError(400, 'User already exists');
 		}
-
 		const user = await User.create({
 			name,
 			email,
 			password,
 			username: username.toLowerCase(),
 		});
-
 		const registeredUser = await User.findById(user._id).select(
 			'-password -refreshToken',
 		);
-
 		if (!registeredUser) {
 			throw new ApiError(500, 'User not created');
 		}
-
 		const response = new ApiResponse(
 			201,
 			{ user: registeredUser },
@@ -115,36 +104,28 @@ const signup = asyncHandler(async (req, res) => {
 const login = asyncHandler(async (req, res) => {
 	try {
 		const { email, username, password } = req.body;
-
 		if (!username && !email) {
 			throw new ApiError(400, 'Username or email is required');
 		}
-
 		const user = await User.findOne({ $or: [{ username }, { email }] });
-
 		if (!user) {
 			throw new ApiError(404, 'User not found');
 		}
-
 		const isPassValid = await user.isPasswordCorrect(password);
 
 		if (!isPassValid) {
 			throw new ApiError(400, 'Incorrect Password');
 		}
-
 		const { refreshToken, accessToken } = await generateAccessAndRefreshToken(
 			user._id,
 		);
-
 		const loggedInUser = await User.findById(user._id).select(
 			'-password -refreshToken',
 		);
-
 		const options = {
 			httpOnly: true,
 			secure: true,
 		};
-
 		return res
 			.status(200)
 			.cookie('accessToken', accessToken, options)
@@ -158,7 +139,6 @@ const login = asyncHandler(async (req, res) => {
 			);
 	} catch (error) {
 		// console.error(error);
-
 		if (error instanceof ApiError) {
 			return res
 				.status(error.statusCode)
@@ -184,12 +164,10 @@ const logout = asyncHandler(async (req, res) => {
 				new: true,
 			},
 		);
-
 		const options = {
 			httpOnly: true,
 			secure: true,
 		};
-
 		return res
 			.status(200)
 			.clearCookie('refreshToken', options)

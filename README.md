@@ -1,69 +1,60 @@
-# Social Media Blog App
+# **Social Media Blog App**
 
-## Overview
+## **Overview**
 
-This is a full-stack social media blog application where users can create and share blog posts. The application is built using MongoDB, Express, Node.js, and JavaScript. User authentication is implemented with JWT (JSON Web Tokens) for secure access, and Bcrypt is used to encrypt user passwords. The application also utilizes cookies for managing user sessions.
+This is a **full-stack social media blog application** where users can create and share blog posts. The application is built using **MongoDB, Express, Node.js, and JavaScript**. User authentication is implemented with **JWT (JSON Web Tokens)** for secure access, and **Bcrypt** is used to encrypt user passwords. The application also utilizes **cookies** for managing user sessions.
 
-## Features
+## **Features**
 
-- **User Authentication:**
+### **1. User Authentication**
 
-  - Secure user registration and login.
-  - Passwords are encrypted using Bcrypt for enhanced security.
-  - JWT tokens for user authentication and authorization.
+- Secure **user registration and login**.
+- Passwords are **encrypted using Bcrypt** for enhanced security.
+- **JWT tokens** for user authentication and authorization.
+- **Session management** using cookies.
 
-- **Blog Creation and Sharing:**
+### **2. Blog Creation and Sharing**
 
-  - Users can create, edit, and delete their blog posts.
-  - Share blog posts with other users.
-  - View and comment on blog posts from other users.
+- Users can **create, edit, and delete** their blog posts.
+- **Share blog posts** with other users.
+- View and **comment** on blog posts from other users.
 
-- **User Profiles:**
-  - Personalized user profiles with user information.
-  - Display user's created blog posts on their profile.
+### **3. User Profiles**
 
-## Technologies Used
+- **Personalized user profiles** with user information.
+- Display **user's created blog posts** on their profile.
+- Profile picture upload and update functionality.
 
-- MongoDB: Database for storing user information, blog posts, and comments.
-- Express.js: Web application framework for Node.js.
-- Node.js: JavaScript runtime for server-side development.
-- JavaScript: Programming language for both front-end and back-end logic.
-- JWT (JSON Web Tokens): For secure user authentication.
-- Bcrypt: Password hashing for enhanced security.
-- Cookies: Used for managing user sessions.
+### **4. Enhanced Security Features**
 
-## Setup Instructions
+- **Rate limiting** to prevent brute-force attacks.
+- **Helmet.js** for securing HTTP headers.
+- **CORS** configuration for secure API access.
 
-1. **Clone the Repository:**
-   ```bash
-   git clone https://github.com/your-username/social-media-blog-app.git
-   cd social-media-blog-app
-   ```
+### **5. Additional Functionalities Added**
 
-## Prerequisites
+- **Like & Dislike System:** Users can like or dislike blog posts.
+- **Post Categories & Tags:** Blogs can be categorized for better navigation.
+- **Search Functionality:** Users can search blog posts by keywords, categories, or authors.
+- **Email Verification:** Users receive an email verification link upon signup.
+- **Dark Mode Support:** Toggle between light and dark themes.
 
-Before you begin, ensure you have the following installed:
+## **Technologies Used**
 
-- [Node.js](https://nodejs.org/)
-- [npm](https://www.npmjs.com/)
-- [MongoDB](https://www.mongodb.com/)
+- **MongoDB:** Database for storing user information, blog posts, and comments.
+- **Express.js:** Web application framework for Node.js.
+- **Node.js:** JavaScript runtime for server-side development.
+- **JavaScript:** Programming language for both front-end and back-end logic.
+- **JWT (JSON Web Tokens):** For secure user authentication.
+- **Bcrypt:** Password hashing for enhanced security.
+- **Cookies:** Used for managing user sessions.
+- **Helmet.js & CORS:** Security enhancements.
 
-- Set Environment Variables:
-  Create a .env file in the root directory.
-  Add the following environment variables to the .env file:
+## **Setup & Quick Start**
 
-MONGODB_URI=your_mongodb_connection_string
-ACCESS_TOKEN_SECRET=your_jwt_secret_key
+### **1. Clone the Repository**
 
-## Run the Application:
-
-npm start
-Quick Start Commands:
-If you're in a hurry, you can use the following commands:
-
-- bash
-- git clone https://github.com/your-coder-deep1/social-media-blog-app.git
-- cd social-media-blog-app
-- npm install
-- MONGODB_URI=your_mongodb_connection_string
-- ACCESS_TOKEN_SECRET=your_jwt_secret_key
+```bash
+git clone https://github.com/your-coder-deep1/social-media-blog-app.git
+cd social-media-blog-app
+```
