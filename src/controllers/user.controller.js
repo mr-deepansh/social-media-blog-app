@@ -1,7 +1,7 @@
-import { User } from '../models/user.model.js';
-import { asyncHandler } from '../utility/AsyncHandler.js';
-import { ApiError } from '../utility/ApiError.js';
-import { ApiResponse } from '../utility/ApiResponse.js';
+import { User } from "../models/user.model.js";
+import { asyncHandler } from "../utility/AsyncHandler.js";
+import { ApiError } from "../utility/ApiError.js";
+import { ApiResponse } from "../utility/ApiResponse.js";
 
 const generateAccessAndRefreshToken = async (userId) => {
 	try {
@@ -10,7 +10,7 @@ const generateAccessAndRefreshToken = async (userId) => {
 
 		// Check if user exists
 		if (!user) {
-			throw new ApiError(404, 'User not found');
+			throw new ApiError(404, "User not found");
 		}
 		// Generate tokens
 		const accessToken = user.generateAccessToken();
@@ -28,7 +28,7 @@ const generateAccessAndRefreshToken = async (userId) => {
 		} else {
 			throw new ApiError(
 				500,
-				'Something went wrong while generating access and refresh tokens',
+				"Something went wrong while generating access and refresh tokens",
 			);
 		}
 	}
@@ -39,11 +39,11 @@ const getAllUsers = asyncHandler(async (req, res) => {
 		const users = await User.find();
 
 		if (!users || users.length === 0) {
-			throw new ApiError(404, 'Users not found');
+			throw new ApiError(404, "Users not found");
 		}
 		res
 			.status(200)
-			.json(new ApiResponse(200, { users }, 'Users retrieved successfully'));
+			.json(new ApiResponse(200, { users }, "Users retrieved successfully"));
 	} catch (error) {
 		console.error(error);
 		if (error instanceof ApiError) {
@@ -53,7 +53,7 @@ const getAllUsers = asyncHandler(async (req, res) => {
 		} else {
 			return res
 				.status(500)
-				.json(new ApiResponse(500, null, 'Internal Server Error', false));
+				.json(new ApiResponse(500, null, "Internal Server Error", false));
 		}
 	}
 });
@@ -62,11 +62,11 @@ const signup = asyncHandler(async (req, res) => {
 	try {
 		const { username, email, name, password } = req.body;
 		if ([name, password, username, email].some((field) => !field?.trim())) {
-			throw new ApiError(400, 'All fields are required');
+			throw new ApiError(400, "All fields are required");
 		}
 		const existedUser = await User.findOne({ $or: [{ username }, { email }] });
 		if (existedUser) {
-			throw new ApiError(400, 'User already exists');
+			throw new ApiError(400, "User already exists");
 		}
 		const user = await User.create({
 			name,
@@ -75,20 +75,20 @@ const signup = asyncHandler(async (req, res) => {
 			username: username.toLowerCase(),
 		});
 		const registeredUser = await User.findById(user._id).select(
-			'-password -refreshToken',
+			"-password -refreshToken",
 		);
 		if (!registeredUser) {
-			throw new ApiError(500, 'User not created');
+			throw new ApiError(500, "User not created");
 		}
 		const response = new ApiResponse(
 			201,
 			{ user: registeredUser },
-			'User registered successfully',
+			"User registered successfully",
 			true,
 		);
 		res.status(201).json(response);
 	} catch (error) {
-		console.error('Error in signup:', error.message);
+		console.error("Error in signup:", error.message);
 		if (error instanceof ApiError) {
 			res
 				.status(error.statusCode)
@@ -96,7 +96,7 @@ const signup = asyncHandler(async (req, res) => {
 		} else {
 			res
 				.status(500)
-				.json(new ApiResponse(500, null, 'Internal Server Error', false));
+				.json(new ApiResponse(500, null, "Internal Server Error", false));
 		}
 	}
 });
@@ -105,22 +105,22 @@ const login = asyncHandler(async (req, res) => {
 	try {
 		const { email, username, password } = req.body;
 		if (!username && !email) {
-			throw new ApiError(400, 'Username or email is required');
+			throw new ApiError(400, "Username or email is required");
 		}
 		const user = await User.findOne({ $or: [{ username }, { email }] });
 		if (!user) {
-			throw new ApiError(404, 'User not found');
+			throw new ApiError(404, "User not found");
 		}
 		const isPassValid = await user.isPasswordCorrect(password);
 
 		if (!isPassValid) {
-			throw new ApiError(400, 'Incorrect Password');
+			throw new ApiError(400, "Incorrect Password");
 		}
 		const { refreshToken, accessToken } = await generateAccessAndRefreshToken(
 			user._id,
 		);
 		const loggedInUser = await User.findById(user._id).select(
-			'-password -refreshToken',
+			"-password -refreshToken",
 		);
 		const options = {
 			httpOnly: true,
@@ -128,13 +128,13 @@ const login = asyncHandler(async (req, res) => {
 		};
 		return res
 			.status(200)
-			.cookie('accessToken', accessToken, options)
-			.cookie('refreshToken', refreshToken, options)
+			.cookie("accessToken", accessToken, options)
+			.cookie("refreshToken", refreshToken, options)
 			.json(
 				new ApiResponse(
 					200,
 					{ user: loggedInUser, accessToken, refreshToken },
-					'Login successfully',
+					"Login successfully",
 				),
 			);
 	} catch (error) {
@@ -146,7 +146,7 @@ const login = asyncHandler(async (req, res) => {
 		} else {
 			return res
 				.status(500)
-				.json(new ApiResponse(500, null, 'Internal Server Error', false));
+				.json(new ApiResponse(500, null, "Internal Server Error", false));
 		}
 	}
 });
@@ -170,9 +170,9 @@ const logout = asyncHandler(async (req, res) => {
 		};
 		return res
 			.status(200)
-			.clearCookie('refreshToken', options)
-			.clearCookie('accessToken', options)
-			.json(new ApiResponse(200, {}, 'User logged out successfully'));
+			.clearCookie("refreshToken", options)
+			.clearCookie("accessToken", options)
+			.json(new ApiResponse(200, {}, "User logged out successfully"));
 	} catch (error) {
 		if (error instanceof ApiError) {
 			return res
@@ -181,7 +181,7 @@ const logout = asyncHandler(async (req, res) => {
 		} else {
 			return res
 				.status(500)
-				.json(new ApiResponse(500, null, 'Internal Server Error', false));
+				.json(new ApiResponse(500, null, "Internal Server Error", false));
 		}
 	}
 });

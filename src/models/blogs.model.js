@@ -1,4 +1,4 @@
-import mongoose, { Schema } from 'mongoose';
+import mongoose, { Schema } from "mongoose";
 
 const blogSchema = new Schema(
 	{
@@ -22,7 +22,7 @@ const blogSchema = new Schema(
 		},
 		owner: {
 			type: mongoose.Schema.Types.ObjectId,
-			ref: 'User',
+			ref: "User",
 		},
 	},
 	{
@@ -30,4 +30,4 @@ const blogSchema = new Schema(
 	},
 );
 
-export const Blog = mongoose.model('Blog', blogSchema);
+export const Blog = mongoose.model("Blog", blogSchema);
