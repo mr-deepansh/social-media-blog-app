@@ -1,3 +1,4 @@
+// user.controller.js
 import { User } from "../models/user.model.js";
 import { asyncHandler } from "../utility/AsyncHandler.js";
 import { ApiError } from "../utility/ApiError.js";

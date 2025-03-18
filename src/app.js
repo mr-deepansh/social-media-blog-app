@@ -31,10 +31,14 @@ app.get("/", (req, res) => {
 // Import Routes
 import userRoutes from "./routes/user.routes.js";
 import blogRoutes from "./routes/blogs.routes.js";
+import forgetPasswordRoutes from "./routes/forget.pass.routes.js";
+import resetPasswordRoutes from "./routes/reset.pass.routes.js";
 
 // route declaration
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/blogs", blogRoutes);
+app.use("/api/v1/forget-password", forgetPasswordRoutes);
+app.use("/api/v1/reset-password", resetPasswordRoutes);
 
 // ❌ 404 Not Found Handler
 app.use((req, res) => {
