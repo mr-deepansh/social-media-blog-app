@@ -4,6 +4,9 @@ import { ApiError } from "../utility/ApiError.js";
 import { ApiResponse } from "../utility/ApiResponse.js";
 import crypto from "crypto";
 import { sendEmail } from "../utility/sendEmail.js";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const forgetPassword = asyncHandler(async (req, res) => {
 	console.log("Forget password route hit!");
@@ -23,7 +26,9 @@ const forgetPassword = asyncHandler(async (req, res) => {
 		.digest("hex");
 	user.forgotPasswordExpiry = Date.now() + 10 * 60 * 1000;
 	await user.save({ validateBeforeSave: false });
-	const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+	const frontendUrl = process.env.FRONTEND_URL;
+	console.log("Loaded FRONTEND_URL:", process.env.FRONTEND_URL);
+	const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
 	const subject = "Password Reset Request";
 	const message = `
 		You requested a password reset for your account.

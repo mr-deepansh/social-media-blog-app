@@ -25,7 +25,7 @@ const startServer = async () => {
 			console.log(`🔹 Local:   http://localhost:${PORT}`);
 			console.log(`🔹 Network: http://${LOCAL_IP}:${PORT}`);
 			// console.log(`⚙️  Server is running at:`);
-			// console.log(`🔹 Local:   http://localhost:${PORT}/api/v1`);
+			console.log(`🔹 Local:   http://localhost:${PORT}/api/v1`);
 			// console.log(`🔹 Network: http://${LOCAL_IP}:${PORT}/api/v1`);
 		});
 	} catch (err) {
