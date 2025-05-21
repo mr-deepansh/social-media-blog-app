@@ -27,6 +27,21 @@ app.get("/", (req, res) => {
 		timestamp: new Date().toISOString(),
 	});
 });
+app.get("/api/v1", (req, res) => {
+	res.status(200).json({
+		success: true,
+		message: "API version 1.0.0 is Running Successfully",
+		timestamp: new Date().toISOString(),
+	});
+});
+
+// ❌ 404 Not Found Handler
+app.use((req, res) => {
+	res.status(404).json({
+		success: false,
+		message: "Route Not Found",
+	});
+});
 
 // Import Routes
 import userRoutes from "./routes/user.routes.js";
@@ -39,13 +54,5 @@ app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/blogs", blogRoutes);
 app.use("/api/v1/forget-password", forgetPasswordRoutes);
 app.use("/api/v1/reset-password", resetPasswordRoutes);
-
-// ❌ 404 Not Found Handler
-app.use((req, res) => {
-	res.status(404).json({
-		success: false,
-		message: "Route Not Found",
-	});
-});
 
 export { app };

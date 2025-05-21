@@ -28,7 +28,6 @@ const resetPassword = asyncHandler(async (req, res) => {
 			forgotPasswordToken: hashedToken,
 			forgotPasswordExpiry: { $gt: Date.now() },
 		});
-
 		if (!user) {
 			console.log("User not found or token expired."); // TODO - Remove this line
 			throw new ApiError(400, "Invalid or expired token");

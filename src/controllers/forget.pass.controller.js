@@ -4,9 +4,9 @@ import { ApiError } from "../utility/ApiError.js";
 import { ApiResponse } from "../utility/ApiResponse.js";
 import crypto from "crypto";
 import { sendEmail } from "../utility/sendEmail.js";
-import dotenv from "dotenv";
+// import dotenv from "dotenv";
 
-dotenv.config();
+// dotenv.config();
 
 const forgetPassword = asyncHandler(async (req, res) => {
 	console.log("Forget password route hit!");
@@ -34,12 +34,10 @@ const forgetPassword = asyncHandler(async (req, res) => {
 		You requested a password reset for your account.
 		Click the link below to reset your password:
 		${resetUrl}
-
 		This link expires in 10 minutes.
 
 		If you did not request this, please ignore this email.
 	`;
-
 	try {
 		await sendEmail({
 			email: user.email,
