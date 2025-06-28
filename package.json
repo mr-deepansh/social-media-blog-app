@@ -1,40 +1,106 @@
 {
-	"name": "social-media-app",
+	"name": "social-media-blog-app",
 	"version": "1.0.0",
-	"description": "Build a social media backend app and REST api",
-	"main": "server.js",
+	"description": "Professional social media blog application with user authentication, password reset, and email notifications",
+	"main": "src/server.js",
 	"type": "module",
 	"scripts": {
 		"dev": "nodemon -r dotenv/config src/server.js",
 		"start": "node -r dotenv/config src/server.js",
+		"build": "echo 'No build step required for Node.js app'",
 		"format": "prettier --write .",
-		"lint": "eslint . --fix"
+		"lint": "eslint . --fix",
+		"lint:check": "eslint .",
+		"test": "node test-api.js && node test-endpoints.js && node test-password-reset.js",
+		"test:api": "node test-api.js",
+		"test:endpoints": "node test-endpoints.js",
+		"test:password-reset": "node test-password-reset.js",
+		"test:email": "node -e \"console.log('Email test: Configure your .env file and test manually')\"",
+		"clean": "rm -rf node_modules package-lock.json && npm install",
+		"docker:build": "docker build -t social-media-blog .",
+		"docker:run": "docker run -p 5000:5000 --env-file .env social-media-blog",
+		"docker:compose": "docker-compose up -d",
+		"docker:compose:dev": "docker-compose -f docker-compose.yml up -d",
+		"docker:compose:prod": "docker-compose -f docker-compose.yml --profile production up -d",
+		"docker:compose:monitoring": "docker-compose --profile monitoring up -d",
+		"docker:stop": "docker-compose down",
+		"docker:logs": "docker-compose logs -f",
+		"docker:clean": "docker-compose down -v --remove-orphans",
+		"security:audit": "npm audit",
+		"security:fix": "npm audit fix",
+		"security:fix:force": "npm audit fix --force",
+		"deps:check": "npm outdated",
+		"deps:update": "npm update",
+		"deps:update:major": "npx npm-check-updates -u && npm install",
+		"logs:view": "tail -f logs/app.log",
+		"logs:clear": "echo '' > logs/app.log",
+		"db:backup": "echo 'Database backup: Use MongoDB tools or cloud backup'",
+		"db:restore": "echo 'Database restore: Use MongoDB tools or cloud restore'",
+		"health:check": "curl -f http://localhost:5000/api/v1 || echo 'Server not running'",
+		"setup:dev": "cp .env.example .env && echo 'Please configure your .env file'",
+		"setup:prod": "echo 'Production setup: Configure environment variables and deploy'",
+		"docs:generate": "echo 'Documentation generation: Update README and guides'",
+		"release:patch": "npm version patch && git push && git push --tags",
+		"release:minor": "npm version minor && git push && git push --tags",
+		"release:major": "npm version major && git push && git push --tags"
 	},
 	"keywords": [
-		"Instagram",
-		"X",
-		"Threads",
-		"Facebook",
-		"Twitter",
-		"Linkedin",
-		"Snapchat",
-		"Social Media"
+		"social-media",
+		"blog",
+		"api",
+		"rest",
+		"nodejs",
+		"express",
+		"mongodb",
+		"authentication",
+		"password-reset",
+		"email",
+		"jwt",
+		"backend",
+		"fullstack"
 	],
-	"author": "Deepansh-Gangwar",
-	"license": "ISC",
+	"author": {
+		"name": "Deepansh Gangwar",
+		"email": "deepanshgangwar7037@outlook.com",
+		"url": "https://github.com/mr-deepansh"
+	},
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/mr-deepansh/social-media-blog-app.git"
+	},
+	"bugs": {
+		"url": "https://github.com/mr-deepansh/social-media-blog-app/issues"
+	},
+	"homepage": "https://github.com/mr-deepansh/social-media-blog-app#readme",
+	"engines": {
+		"node": ">=16.0.0",
+		"npm": ">=8.0.0"
+	},
+	"os": [
+		"linux",
+		"darwin",
+		"win32"
+	],
+	"cpu": [
+		"x64",
+		"arm64"
+	],
 	"dependencies": {
 		"bcrypt": "^5.1.1",
 		"cookie-parser": "^1.4.6",
 		"cors": "^2.8.5",
 		"crypto": "^1.0.1",
 		"dotenv": "^16.4.1",
+		"ejs": "^3.1.10",
 		"express": "^4.18.2",
 		"helmet": "^8.0.0",
 		"jsonwebtoken": "^9.0.2",
 		"mongoose": "^8.1.1",
 		"morgan": "^1.10.0",
 		"multer": "^1.4.5-lts.1",
-		"nodemailer": "^6.10.0"
+		"nodemailer": "^6.10.0",
+		"zod": "^3.25.67"
 	},
 	"devDependencies": {
 		"eslint": "^9.21.0",
@@ -42,5 +108,24 @@
 		"eslint-plugin-prettier": "^5.2.3",
 		"nodemon": "^3.0.3",
 		"prettier": "^3.5.3"
-	}
+	},
+	"optionalDependencies": {
+		"compression": "^1.7.4",
+		"express-rate-limit": "^7.1.0",
+		"express-validator": "^7.0.1",
+		"redis": "^4.6.0",
+		"winston": "^3.11.0",
+		"winston-daily-rotate-file": "^4.7.1"
+	},
+	"bundledDependencies": [],
+	"config": {
+		"port": 5000,
+		"host": "localhost"
+	},
+	"preferGlobal": false,
+	"private": false,
+	"publishConfig": {
+		"access": "public"
+	},
+	"bundleDependencies": []
 }

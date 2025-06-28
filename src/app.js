@@ -1,58 +1,121 @@
+// Core imports
 import express from "express";
 import cors from "cors";
-import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import morgan from "morgan";
+import cookieParser from "cookie-parser";
+import path from "path";
+import { fileURLToPath } from "url";
 
+// Custom middlewares
+import { apiRateLimiter } from "./shared/middleware/rateLimit.middleware.js";
+
+// Configurations
+import { serverConfig, securityConfig } from "./config/index.js";
+
+// Shared utilities
+import { ApiError } from "./shared/index.js";
+
+// Route imports
+import forgotPasswordRoutes from "./modules/auth/routes/forgotPassword.routes.js";
+import resetPasswordRoutes from "./modules/auth/routes/resetPassword.routes.js";
+import userRoutes from "./modules/users/routes/user.routes.js";
+import blogRoutes from "./modules/blogs/routes/blog.routes.js";
+
+// Initialize Express app
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const app = express();
-// 🌐 CORS Configuration
+
+// Apply security headers
 app.use(
-	cors({
-		origin: process.env.CORS_ORIGIN || "*",
-		credentials: true,
+	helmet({
+		contentSecurityPolicy: {
+			directives: {
+				defaultSrc: ["'self'"],
+				styleSrc: ["'self'", "'unsafe-inline'"],
+				scriptSrc: ["'self'"],
+				imgSrc: ["'self'", "data:", "https:"],
+			},
+		},
+		crossOriginEmbedderPolicy: false,
 	}),
 );
-app.use(helmet());
-app.use(morgan("dev"));
-app.use(express.json({ limit: "50kb" }));
-app.use(express.urlencoded({ extended: true, limit: "50kb" }));
+
+// Apply global rate limiter
+app.use(apiRateLimiter);
+
+// Global middlewares
+app.use(cors(securityConfig.cors));
+app.use(express.json({ limit: "16kb" }));
+app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 app.use(cookieParser());
-app.use(express.static("public"));
+app.use(morgan("combined"));
 
-// Health Check Route
-app.get("/", (req, res) => {
+// Static files
+app.use("/Public", express.static(path.join(__dirname, "../Public")));
+app.use(
+	"/favicon.ico",
+	express.static(path.join(__dirname, "../Public/favicon.ico")),
+);
+
+// Health check route
+app.get(`/api/${serverConfig.apiVersion}`, (req, res) => {
 	res.status(200).json({
 		success: true,
-		message: "API is Running Successfully",
+		message: `API version ${serverConfig.apiVersion} is Running Successfully`,
 		timestamp: new Date().toISOString(),
 	});
 });
-app.get("/api/v1", (req, res) => {
-	res.status(200).json({
-		success: true,
-		message: "API version 1.0.0 is Running Successfully",
-		timestamp: new Date().toISOString(),
-	});
-});
 
-// ❌ 404 Not Found Handler
-app.use((req, res) => {
+// API Routes
+const apiRouter = express.Router();
+
+apiRouter.use("/auth", forgotPasswordRoutes);
+apiRouter.use("/auth", resetPasswordRoutes);
+apiRouter.use("/users", userRoutes);
+apiRouter.use("/blogs", blogRoutes);
+
+app.use(`/api/${serverConfig.apiVersion}`, apiRouter);
+
+// 404 handler
+app.use("*", (req, res) => {
 	res.status(404).json({
 		success: false,
 		message: "Route Not Found",
+		path: req.originalUrl,
+		method: req.method,
+		timestamp: new Date().toISOString(),
 	});
 });
 
-// Import Routes
-import userRoutes from "./routes/user.routes.js";
-import blogRoutes from "./routes/blogs.routes.js";
-import forgetPasswordRoutes from "./routes/forget.pass.routes.js";
-import resetPasswordRoutes from "./routes/reset.pass.routes.js";
+// Global error handler
+app.use((err, req, res, next) => {
+	console.error("🚨 Error:", err);
+	const statusCode = err.statusCode || 500;
+	const message = err.message || "Internal Server Error";
 
-// route declaration
-app.use("/api/v1/users", userRoutes);
-app.use("/api/v1/blogs", blogRoutes);
-app.use("/api/v1/forget-password", forgetPasswordRoutes);
-app.use("/api/v1/reset-password", resetPasswordRoutes);
+	res.status(statusCode).json({
+		success: false,
+		message,
+		...(process.env.NODE_ENV === "development" && { stack: err.stack }),
+	});
+});
 
-export { app };
+// Graceful shutdown handlers
+process.on("SIGTERM", () => {
+	console.log("SIGTERM received. Shutting down gracefully...");
+	process.exit(0);
+});
+
+process.on("SIGINT", () => {
+	console.log("SIGINT received. Shutting down gracefully...");
+	process.exit(0);
+});
+
+process.on("unhandledRejection", (err) => {
+	console.error("Unhandled Rejection:", err);
+	process.exit(1);
+});
+
+export default app;

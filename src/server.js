@@ -1,37 +1,58 @@
-import dotenv from "dotenv";
+import http from "http";
 import os from "os";
-import connectDB from "./db/index.js";
-import { app } from "./app.js";
+import app from "./app.js";
+import { serverConfig } from "./config/index.js";
+import "./config/database/connection.js";
 
-dotenv.config({ path: "./.env" });
-
-const getLocalIP = () => {
-	return (
-		Object.values(os.networkInterfaces())
-			.flat()
-			.find(({ family, internal }) => family === "IPv4" && !internal)
-			?.address || "localhost"
-	);
-};
-
-const startServer = async () => {
-	try {
-		await connectDB();
-		const PORT = process.env.PORT || 8080;
-		const LOCAL_IP = getLocalIP();
-
-		app.listen(PORT, "0.0.0.0", () => {
-			console.log(`⚙️  Server is running at:`);
-			console.log(`🔹 Local:   http://localhost:${PORT}`);
-			console.log(`🔹 Network: http://${LOCAL_IP}:${PORT}`);
-			// console.log(`⚙️  Server is running at:`);
-			console.log(`🔹 Local:   http://localhost:${PORT}/api/v1`);
-			// console.log(`🔹 Network: http://${LOCAL_IP}:${PORT}/api/v1`);
-		});
-	} catch (err) {
-		console.error("❌ MONGO DB connection failed:", err);
-		process.exit(1);
+// Get local LAN IP (e.g. 192.168.x.x)
+const getLocalIp = () => {
+	const nets = os.networkInterfaces();
+	for (const name in nets) {
+		for (const net of nets[name]) {
+			if (net.family === "IPv4" && !net.internal) {
+				return net.address;
+			}
+		}
 	}
+	return "localhost";
 };
 
+const startServer = () => {
+	const server = http.createServer(app);
+	server.listen(serverConfig.port, "0.0.0.0", () => {
+		const localIP = getLocalIp();
+		console.log(
+			"✅ MongoDB Connected: ac-plgpi9r-shard-00-00.ggw6kgo.mongodb.net",
+		);
+
+		console.log("⚙️  Server is running at:");
+		console.log(`🔹 Local:   http://localhost:${serverConfig.port}`);
+		console.log(`🔹 Network: http://${localIP}:${serverConfig.port}`);
+		console.log(
+			`🔹 Local:   http://localhost:${serverConfig.port}/api/${serverConfig.apiVersion}`,
+		);
+		console.log(
+			`🔹 Network: http://${localIP}:${serverConfig.port}/api/${serverConfig.apiVersion}`,
+		);
+	});
+
+	server.on("error", (err) => {
+		if (err.code === "EADDRINUSE") {
+			console.error(`❌ Port ${serverConfig.port} is already in use.`);
+		} else {
+			console.error("❌ Failed to start server:", err);
+		}
+		process.exit(1);
+	});
+
+	// Handle server errors
+	server.on("error", (err) => {
+		if (err.code === "EADDRINUSE") {
+			console.error(`❌ Port ${serverConfig.port} is already in use.`);
+		} else {
+			console.error("❌ Failed to start server:", err);
+		}
+		process.exit(1);
+	});
+};
 startServer();

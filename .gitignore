@@ -74,6 +74,9 @@ web_modules/
 .env
 .env.test
 .env.production
+.env.local
+.env.development
+.env.staging
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache
@@ -129,3 +132,235 @@ docker/volumes/
 
 # End of https://mrkandreev.name/snippets/gitignore-generator/#Node
 .DS_Store
+
+# ========================================
+# ADDITIONAL PROFESSIONAL EXCLUSIONS
+# ========================================
+
+# ========================================
+# SECURITY & SENSITIVE FILES
+# ========================================
+# API Keys and Secrets
+*.key
+*.pem
+*.p12
+*.pfx
+secrets.json
+secrets.yaml
+secrets.yml
+
+# SSL Certificates
+*.crt
+*.cert
+*.pem
+ssl/
+
+# Database dumps and backups
+*.sql
+*.sqlite
+*.db
+backups/
+dumps/
+
+# ========================================
+# DEVELOPMENT & IDE FILES
+# ========================================
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# ========================================
+# TESTING & QUALITY ASSURANCE
+# ========================================
+# Test reports and coverage
+test-results/
+coverage/
+.nyc_output/
+junit.xml
+test-report.xml
+coverage.xml
+
+# Performance testing
+lighthouse-results/
+webpagetest-results/
+
+# ========================================
+# BUILD & DEPLOYMENT
+# ========================================
+# Build outputs
+build/
+dist/
+out/
+.next/
+.nuxt/
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+.temp/
+
+# ========================================
+# UPLOADS & USER CONTENT
+# ========================================
+# User uploaded files
+uploads/
+public/uploads/
+user-uploads/
+media/
+
+# Generated content
+generated/
+cache/
+
+# ========================================
+# LOGS & MONITORING
+# ========================================
+# Application logs
+logs/
+*.log
+error.log
+access.log
+combined.log
+
+# Monitoring and analytics
+analytics/
+metrics/
+monitoring/
+
+# ========================================
+# PACKAGE MANAGERS
+# ========================================
+# npm
+package-lock.json
+.npm
+
+# yarn
+yarn.lock
+.yarn/
+
+# pnpm
+pnpm-lock.yaml
+.pnpm-store/
+
+# ========================================
+# CLOUD & DEPLOYMENT
+# ========================================
+# AWS
+.aws/
+aws-credentials.json
+
+# Google Cloud
+.gcloud/
+service-account-key.json
+
+# Azure
+.azure/
+azure-credentials.json
+
+# Heroku
+.heroku/
+
+# Vercel
+.vercel/
+
+# Netlify
+.netlify/
+
+# ========================================
+# DATABASE & STORAGE
+# ========================================
+# Local databases
+*.sqlite
+*.db
+*.sqlite3
+
+# Redis dumps
+dump.rdb
+
+# MongoDB dumps
+*.bson
+*.json
+
+# ========================================
+# EMAIL & NOTIFICATIONS
+# ========================================
+# Email templates cache
+email-cache/
+template-cache/
+
+# Notification logs
+notification-logs/
+
+# ========================================
+# CUSTOM PROJECT FILES
+# ========================================
+# Project specific exclusions
+config/local.js
+config/production.js
+config/staging.js
+
+# Local development files
+local/
+dev/
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# ========================================
+# PERFORMANCE & OPTIMIZATION
+# ========================================
+# Bundle analyzer
+bundle-analyzer-report.html
+
+# Performance profiles
+*.cpuprofile
+*.heapprofile
+
+# ========================================
+# DOCUMENTATION & ASSETS
+# ========================================
+# Generated documentation
+docs/build/
+docs/dist/
+
+# Asset optimization
+optimized-assets/
+compressed/
+
+# ========================================
+# MISC
+# ========================================
+# Temporary files
+*.tmp
+*.temp
+
+# Lock files (keep package-lock.json but ignore others)
+*.lock
+!package-lock.json
+
+# Archive files
+*.zip
+*.tar.gz
+*.rar
+
+# ========================================
+# END OF GITIGNORE
+# ========================================
