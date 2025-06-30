@@ -1,3 +1,4 @@
+// user.routes.js
 import express from "express";
 const router = express.Router();
 
@@ -19,9 +20,15 @@ router.get(
 router.get("/:id", verifyJWT, asyncHandler(userController.getUserById));
 
 router.post(
-	"/",
+	"/register",
 	validateRequest(userValidation.createUser),
-	asyncHandler(userController.createUser),
+	asyncHandler(userController.registerUser),
+);
+
+router.post(
+	"/login",
+	validateRequest(userValidation.loginUser),
+	asyncHandler(userController.loginUser),
 );
 
 router.put(

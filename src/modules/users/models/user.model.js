@@ -20,20 +20,33 @@ const userSchema = new Schema(
 			required: true,
 			lowercase: true,
 		},
-		fullName: {
+		firstName: {
 			type: String,
 			trim: true,
-			index: true,
-			required: true,
+		},
+		lastName: {
+			type: String,
+			trim: true,
+		},
+		bio: {
+			type: String,
+			default: "",
 		},
 		password: {
 			type: String,
 			minlength: 8,
-			required: [true, "Password is Required"],
+			required: [true, "Password is required"],
 		},
-		refreshToken: {
+		role: {
 			type: String,
+			enum: ["user", "admin"],
+			default: "user",
 		},
+		isActive: {
+			type: Boolean,
+			default: true,
+		},
+		refreshToken: String,
 		forgotPasswordToken: String,
 		forgotPasswordExpiry: Date,
 		avatar: {
@@ -51,9 +64,7 @@ const userSchema = new Schema(
 			},
 		],
 	},
-	{
-		timestamps: true,
-	},
+	{ timestamps: true },
 );
 
 userSchema.pre("save", async function (next) {
@@ -72,7 +83,12 @@ userSchema.methods.generateAccessToken = function () {
 			_id: this._id,
 			email: this.email,
 			username: this.username,
-			fullName: this.fullName,
+			firstName: this.firstName,
+			lastName: this.lastName,
+			bio: this.bio,
+			avatar: this.avatar,
+			role: this.role,
+			isActive: this.isActive,
 		},
 		process.env.ACCESS_TOKEN_SECRET,
 		{

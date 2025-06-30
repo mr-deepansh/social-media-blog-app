@@ -1,8 +1,6 @@
+// user.validator.js
 import { z } from "zod";
 
-/**
- * User validation schemas using Zod
- */
 export const userValidation = {
 	// Schema for user registration
 	createUser: z
@@ -39,6 +37,12 @@ export const userValidation = {
 			message: "Passwords don't match",
 			path: ["confirmPassword"],
 		}),
+
+	// Schema for user login
+	loginUser: z.object({
+		email: z.string().email("Please provide a valid email address"),
+		password: z.string().min(1, "Password is required"),
+	}),
 
 	// Schema for user profile updates
 	updateUser: z.object({

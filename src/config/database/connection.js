@@ -1,3 +1,4 @@
+// connection.js
 import mongoose from "mongoose";
 import { DB_NAME } from "../../shared/constants/app.constants.js";
 

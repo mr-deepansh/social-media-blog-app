@@ -1,8 +1,9 @@
+// server.js
 import http from "http";
 import os from "os";
 import app from "./app.js";
 import { serverConfig } from "./config/index.js";
-import "./config/database/connection.js";
+import connectDB from "./config/database/connection.js";
 
 // Get local LAN IP (e.g. 192.168.x.x)
 const getLocalIp = () => {
@@ -17,7 +18,8 @@ const getLocalIp = () => {
 	return "localhost";
 };
 
-const startServer = () => {
+const startServer = async () => {
+	await connectDB();
 	const server = http.createServer(app);
 	server.listen(serverConfig.port, "0.0.0.0", () => {
 		const localIP = getLocalIp();
@@ -36,16 +38,6 @@ const startServer = () => {
 		);
 	});
 
-	server.on("error", (err) => {
-		if (err.code === "EADDRINUSE") {
-			console.error(`❌ Port ${serverConfig.port} is already in use.`);
-		} else {
-			console.error("❌ Failed to start server:", err);
-		}
-		process.exit(1);
-	});
-
-	// Handle server errors
 	server.on("error", (err) => {
 		if (err.code === "EADDRINUSE") {
 			console.error(`❌ Port ${serverConfig.port} is already in use.`);
