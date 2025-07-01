@@ -11,14 +11,7 @@ import { userValidation } from "../../../shared/validators/user.validator.js";
 import * as userController from "../controllers/user.controller.js";
 import { asyncHandler } from "../../../shared/utils/AsyncHandler.js";
 
-router.get(
-	"/",
-	verifyJWT,
-	validateQuery(userValidation.getUsers),
-	asyncHandler(userController.getAllUsers),
-);
-router.get("/:id", verifyJWT, asyncHandler(userController.getUserById));
-
+// Register and Login
 router.post(
 	"/register",
 	validateRequest(userValidation.createUser),
@@ -31,15 +24,10 @@ router.post(
 	asyncHandler(userController.loginUser),
 );
 
-router.put(
-	"/:id",
-	verifyJWT,
-	validateRequest(userValidation.updateUser),
-	asyncHandler(userController.updateUser),
-);
+// ✅ Logout route BEFORE dynamic `/:id`
+router.post("/logout", verifyJWT, asyncHandler(userController.logoutUser));
 
-router.delete("/:id", verifyJWT, asyncHandler(userController.deleteUser));
-
+// Current user routes
 router.get(
 	"/profile/me",
 	verifyJWT,
@@ -65,5 +53,25 @@ router.post(
 	verifyJWT,
 	asyncHandler(userController.uploadAvatar),
 );
+
+// Get all users (admin or verified users)
+router.get(
+	"/",
+	verifyJWT,
+	validateQuery(userValidation.getUsers),
+	asyncHandler(userController.getAllUsers),
+);
+
+// 🚫 Dynamic routes come after static ones like /logout
+router.get("/:id", verifyJWT, asyncHandler(userController.getUserById));
+
+router.put(
+	"/:id",
+	verifyJWT,
+	validateRequest(userValidation.updateUser),
+	asyncHandler(userController.updateUser),
+);
+
+router.delete("/:id", verifyJWT, asyncHandler(userController.deleteUser));
 
 export default router;

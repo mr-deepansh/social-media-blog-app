@@ -370,28 +370,28 @@ const loginUser = asyncHandler(async (req, res) => {
 });
 
 const logoutUser = asyncHandler(async (req, res) => {
+	const userId = req.user?._id;
+
+	// Step 1: Clear refreshToken in DB
 	await User.findByIdAndUpdate(
-		req.user._id,
-		{
-			$unset: {
-				refreshToken: 1,
-			},
-		},
-		{
-			new: true,
-		},
+		userId,
+		{ $unset: { refreshToken: 1 } },
+		{ new: true },
 	);
 
-	const options = {
+	// Step 2: Clear cookies
+	const cookieOptions = {
 		httpOnly: true,
-		secure: process.env.NODE_ENV === "production",
+		secure: process.env.NODE_ENV === "production", // true in production only
+		sameSite: "Strict",
 	};
 
+	// Step 3: Send response
 	return res
 		.status(200)
-		.clearCookie("accessToken", options)
-		.clearCookie("refreshToken", options)
-		.json(new ApiResponse(200, {}, "User logged Out"));
+		.clearCookie("accessToken", cookieOptions)
+		.clearCookie("refreshToken", cookieOptions)
+		.json(new ApiResponse(200, null, "User logged out successfully"));
 });
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
@@ -443,10 +443,10 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 });
 
 const changeCurrentPassword = asyncHandler(async (req, res) => {
-	const { oldPassword, newPassword } = req.body;
+	const { currentPassword, newPassword } = req.body;
 
 	const user = await User.findById(req.user?._id);
-	const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
+	const isPasswordCorrect = await user.isPasswordCorrect(currentPassword);
 
 	if (!isPasswordCorrect) {
 		throw new ApiError(400, "Invalid old password");

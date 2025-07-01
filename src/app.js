@@ -18,6 +18,7 @@ import { serverConfig, securityConfig } from "./config/index.js";
 import { ApiError } from "./shared/index.js";
 
 // Route imports
+import adminRoutes from "./modules/admin/routes/admin.routes.js";
 import forgotPasswordRoutes from "./modules/auth/routes/forgotPassword.routes.js";
 import resetPasswordRoutes from "./modules/auth/routes/resetPassword.routes.js";
 import userRoutes from "./modules/users/routes/user.routes.js";
@@ -72,6 +73,7 @@ app.get(`/api/${serverConfig.apiVersion}`, (req, res) => {
 // API Routes
 const apiRouter = express.Router();
 
+app.use("/api/v1/admin", adminRoutes);
 apiRouter.use("/auth", forgotPasswordRoutes);
 apiRouter.use("/auth", resetPasswordRoutes);
 apiRouter.use("/users", userRoutes);
