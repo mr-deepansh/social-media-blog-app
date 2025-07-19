@@ -1,181 +1,147 @@
-// user.validator.js
 import { z } from "zod";
 
+const passwordRegex =
+	/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+
 export const userValidation = {
-	// Schema for user registration
+	// Register/Create user
 	createUser: z
 		.object({
 			username: z
 				.string()
-				.min(3, "Username must be at least 3 characters long")
+				.min(3, "Username must be at least 3 characters")
 				.max(30, "Username cannot exceed 30 characters")
 				.regex(
 					/^[a-zA-Z0-9_]+$/,
-					"Username must contain only alphanumeric characters and underscores",
-				),
-			email: z.string().email("Please provide a valid email address"),
+					"Only alphanumeric characters and underscores",
+				)
+				.trim(),
+			email: z.string().email("Enter a valid email").trim().toLowerCase(),
 			password: z
 				.string()
-				.min(8, "Password must be at least 8 characters long")
+				.min(8, "Password must be at least 8 characters")
 				.regex(
-					/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
-					"Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character",
+					passwordRegex,
+					"Password must contain uppercase, lowercase, number, and special character",
 				),
 			confirmPassword: z.string(),
-			firstName: z
-				.string()
-				.min(2, "First name must be at least 2 characters long")
-				.max(50, "First name cannot exceed 50 characters"),
-			lastName: z
-				.string()
-				.min(2, "Last name must be at least 2 characters long")
-				.max(50, "Last name cannot exceed 50 characters"),
-			bio: z.string().max(500, "Bio cannot exceed 500 characters").optional(),
+			firstName: z.string().min(2).max(50).trim(),
+			lastName: z.string().min(2).max(50).trim(),
+			bio: z.string().max(500).optional(),
 			avatar: z.string().url("Avatar must be a valid URL").optional(),
 		})
 		.refine((data) => data.password === data.confirmPassword, {
 			message: "Passwords don't match",
 			path: ["confirmPassword"],
-		}),
+		})
+		.refine((data) => data.username !== data.password, {
+			message: "Username and password cannot be the same",
+			path: ["password"],
+		})
+		.strict(),
 
-	// Schema for user login
-	loginUser: z.object({
-		email: z.string().email("Please provide a valid email address"),
-		password: z.string().min(1, "Password is required"),
-	}),
+	// Login
+	loginUser: z
+		.object({
+			email: z.string().email().trim().toLowerCase(),
+			password: z.string().min(1, "Password is required"),
+		})
+		.strict(),
 
-	// Schema for user profile updates
-	updateUser: z.object({
-		username: z
-			.string()
-			.min(3, "Username must be at least 3 characters long")
-			.max(30, "Username cannot exceed 30 characters")
-			.regex(
-				/^[a-zA-Z0-9_]+$/,
-				"Username must contain only alphanumeric characters and underscores",
-			)
-			.optional(),
-		email: z.string().email("Please provide a valid email address").optional(),
-		firstName: z
-			.string()
-			.min(2, "First name must be at least 2 characters long")
-			.max(50, "First name cannot exceed 50 characters")
-			.optional(),
-		lastName: z
-			.string()
-			.min(2, "Last name must be at least 2 characters long")
-			.max(50, "Last name cannot exceed 50 characters")
-			.optional(),
-		bio: z.string().max(500, "Bio cannot exceed 500 characters").optional(),
-		avatar: z.string().url("Avatar must be a valid URL").optional(),
-		isActive: z.boolean().optional(),
-		role: z
-			.enum(["user", "admin", "moderator"], {
-				errorMap: () => ({
-					message: "Role must be one of: user, admin, moderator",
-				}),
-			})
-			.optional(),
-	}),
+	// Update user
+	updateUser: z
+		.object({
+			username: z
+				.string()
+				.min(3)
+				.max(30)
+				.regex(/^[a-zA-Z0-9_]+$/)
+				.trim()
+				.optional(),
+			email: z.string().email().trim().toLowerCase().optional(),
+			firstName: z.string().min(2).max(50).trim().optional(),
+			lastName: z.string().min(2).max(50).trim().optional(),
+			bio: z.string().max(500).optional(),
+			avatar: z.string().url().optional(),
+			isActive: z.boolean().optional(),
+			role: z
+				.enum(["user", "admin", "moderator"], {
+					errorMap: () => ({
+						message: "Role must be one of: user, admin, moderator",
+					}),
+				})
+				.optional(),
+		})
+		.strict(),
 
-	// Schema for profile updates (current user)
-	updateProfile: z.object({
-		username: z
-			.string()
-			.min(3, "Username must be at least 3 characters long")
-			.max(30, "Username cannot exceed 30 characters")
-			.regex(
-				/^[a-zA-Z0-9_]+$/,
-				"Username must contain only alphanumeric characters and underscores",
-			)
-			.optional(),
-		firstName: z
-			.string()
-			.min(2, "First name must be at least 2 characters long")
-			.max(50, "First name cannot exceed 50 characters")
-			.optional(),
-		lastName: z
-			.string()
-			.min(2, "Last name must be at least 2 characters long")
-			.max(50, "Last name cannot exceed 50 characters")
-			.optional(),
-		bio: z.string().max(500, "Bio cannot exceed 500 characters").optional(),
-		avatar: z.string().url("Avatar must be a valid URL").optional(),
-	}),
+	// Update own profile
+	updateProfile: z
+		.object({
+			username: z
+				.string()
+				.min(3)
+				.max(30)
+				.regex(/^[a-zA-Z0-9_]+$/)
+				.trim()
+				.optional(),
+			firstName: z.string().min(2).max(50).trim().optional(),
+			lastName: z.string().min(2).max(50).trim().optional(),
+			bio: z.string().max(500).optional(),
+			avatar: z.string().url().optional(),
+		})
+		.strict(),
 
-	// Schema for password change
+	// Change password
 	changePassword: z
 		.object({
 			currentPassword: z.string().min(1, "Current password is required"),
 			newPassword: z
 				.string()
-				.min(8, "New password must be at least 8 characters long")
+				.min(8)
 				.regex(
-					/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
-					"New password must contain at least one uppercase letter, one lowercase letter, one number, and one special character",
+					passwordRegex,
+					"New password must contain uppercase, lowercase, number, and special character",
 				),
 			confirmNewPassword: z.string(),
 		})
 		.refine((data) => data.newPassword === data.confirmNewPassword, {
 			message: "New passwords don't match",
 			path: ["confirmNewPassword"],
-		}),
+		})
+		.refine((data) => data.currentPassword !== data.newPassword, {
+			message: "New password must be different from current password",
+			path: ["newPassword"],
+		})
+		.strict(),
 
-	// Schema for user ID parameter
-	userId: z.object({
-		id: z
-			.string()
-			.regex(/^[0-9a-fA-F]{24}$/, "User ID must be a valid MongoDB ObjectId"),
-	}),
+	// User ID param
+	userId: z
+		.object({
+			id: z
+				.string()
+				.regex(/^[0-9a-fA-F]{24}$/, "Must be a valid MongoDB ObjectId"),
+		})
+		.strict(),
 
-	// Schema for pagination and filtering
-	getUsers: z.object({
-		page: z.coerce
-			.number()
-			.int("Page must be an integer")
-			.min(1, "Page must be at least 1")
-			.default(1),
-		limit: z.coerce
-			.number()
-			.int("Limit must be an integer")
-			.min(1, "Limit must be at least 1")
-			.max(100, "Limit cannot exceed 100")
-			.default(10),
-		search: z
-			.string()
-			.min(2, "Search term must be at least 2 characters long")
-			.max(50, "Search term cannot exceed 50 characters")
-			.optional(),
-		role: z
-			.enum(["user", "admin", "moderator"], {
-				errorMap: () => ({
-					message: "Role must be one of: user, admin, moderator",
-				}),
-			})
-			.optional(),
-		isActive: z.coerce.boolean().optional(),
-		sortBy: z
-			.enum(
-				[
+	// Get users with filters
+	getUsers: z
+		.object({
+			page: z.coerce.number().int().min(1).default(1),
+			limit: z.coerce.number().int().min(1).max(100).default(10),
+			search: z.string().min(2).max(50).optional(),
+			role: z.enum(["user", "admin", "moderator"]).optional(),
+			isActive: z.coerce.boolean().optional(),
+			sortBy: z
+				.enum([
 					"username",
 					"email",
 					"firstName",
 					"lastName",
 					"createdAt",
 					"updatedAt",
-				],
-				{
-					errorMap: () => ({
-						message:
-							"Sort by must be one of: username, email, firstName, lastName, createdAt, updatedAt",
-					}),
-				},
-			)
-			.default("createdAt"),
-		sortOrder: z
-			.enum(["asc", "desc"], {
-				errorMap: () => ({ message: "Sort order must be either asc or desc" }),
-			})
-			.default("desc"),
-	}),
+				])
+				.default("createdAt"),
+			sortOrder: z.enum(["asc", "desc"]).default("desc"),
+		})
+		.strict(),
 };

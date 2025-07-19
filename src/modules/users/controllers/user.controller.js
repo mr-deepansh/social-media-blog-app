@@ -108,25 +108,30 @@ const getUserById = asyncHandler(async (req, res) => {
 		.json(new ApiResponse(200, user, "User fetched successfully"));
 });
 
-// Create new user (registration)
-const createUser = asyncHandler(async (req, res) => {
+// Create new user
+import bcrypt from "bcryptjs";
+import asyncHandler from "../utils/asyncHandler.js";
+import User from "../models/user.model.js";
+import ApiError from "../utils/ApiError.js";
+import ApiResponse from "../utils/ApiResponse.js";
+
+export const createUser = asyncHandler(async (req, res) => {
 	const { username, email, password, firstName, lastName, bio, avatar } =
 		req.body;
 
-	// Check if user already exists
 	const existingUser = await User.findOne({
-		$or: [{ username }, { email }],
+		$or: [{ username: username.toLowerCase() }, { email: email.toLowerCase() }],
 	});
-
 	if (existingUser) {
-		throw new ApiError(409, "User with this username or email already exists");
+		throw new ApiError(409, "Username or email already exists");
 	}
 
-	// Create new user
+	const hashedPassword = await bcrypt.hash(password, 10);
+
 	const user = await User.create({
 		username: username.toLowerCase(),
 		email: email.toLowerCase(),
-		password,
+		password: hashedPassword,
 		firstName,
 		lastName,
 		bio,

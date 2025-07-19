@@ -1,4 +1,4 @@
-// app.js
+// src/app.js
 // Core imports
 import express from "express";
 import cors from "cors";

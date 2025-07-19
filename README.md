@@ -1031,8 +1031,8 @@ Copyright (c) 2024 Deepansh Gangwar
 
 ### Getting Help
 
-- 📧 **Email**: deepansh.gangwar@example.com
-- 🐛 **Issues**: [GitHub Issues](https://github.com/Deepansh-Gangwar/social-media-blog-app/issues)
+- 📧 **Email**: deepanshgangwar7037@ogmail.com
+- 🐛 **Issues**: [GitHub Issues](https://github.com/mr-deepansh/social-media-blog-app/issues)
 - 📖 **Documentation**: This README and project wiki
 - 💬 **Discussions**: [GitHub Discussions](https://github.com/Deepansh-Gangwar/social-media-blog-app/discussions)
 
@@ -1047,9 +1047,9 @@ Copyright (c) 2024 Deepansh Gangwar
 
 <div align="center">
 
-**Made with ❤️ by [Deepansh Gangwar](https://github.com/Deepansh-Gangwar)**
+**Made with ❤️ by [Deepansh Gangwar](https://github.com/mr-deepansh)**
 
-[![GitHub](https://img.shields.io/badge/GitHub-Profile-blue?style=for-the-badge&logo=github)](https://github.com/Deepansh-Gangwar)
+[![GitHub](https://img.shields.io/badge/GitHub-Profile-blue?style=for-the-badge&logo=github)](https://github.com/mr-deepansh)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-blue?style=for-the-badge&logo=linkedin)](https://linkedin.com/in/deepansh-gangwar)
 
 **Star this repository if it helped you! ⭐**

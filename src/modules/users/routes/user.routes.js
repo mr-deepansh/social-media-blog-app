@@ -1,4 +1,4 @@
-// user.routes.js
+// src/modules/users/routes/user.routes.js
 import express from "express";
 const router = express.Router();
 
