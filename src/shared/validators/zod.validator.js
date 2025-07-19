@@ -3,7 +3,7 @@ import { z } from "zod";
 const passwordRegex =
 	/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
-export const userValidation = {
+export const zodValidation = {
 	// Register/Create user
 	createUser: z
 		.object({
@@ -29,7 +29,9 @@ export const userValidation = {
 			lastName: z.string().min(2).max(50).trim(),
 			bio: z.string().max(500).optional(),
 			avatar: z.string().url("Avatar must be a valid URL").optional(),
+			role: z.enum(["user", "admin", "moderator"]).optional(),
 		})
+		.strict()
 		.refine((data) => data.password === data.confirmPassword, {
 			message: "Passwords don't match",
 			path: ["confirmPassword"],
@@ -37,8 +39,7 @@ export const userValidation = {
 		.refine((data) => data.username !== data.password, {
 			message: "Username and password cannot be the same",
 			path: ["password"],
-		})
-		.strict(),
+		}),
 
 	// Login
 	loginUser: z
@@ -73,6 +74,16 @@ export const userValidation = {
 				.optional(),
 		})
 		.strict(),
+	// Search users
+	searchUser: z
+		.object({
+			search: z.string().min(2).max(50).optional(),
+			sortBy: z
+				.enum(["username", "followers", "createdAt", "updatedAt"])
+				.optional(),
+			includePrivate: z.coerce.boolean().optional(),
+		})
+		.strict(),
 
 	// Update own profile
 	updateProfile: z
@@ -104,6 +115,7 @@ export const userValidation = {
 				),
 			confirmNewPassword: z.string(),
 		})
+		.strict()
 		.refine((data) => data.newPassword === data.confirmNewPassword, {
 			message: "New passwords don't match",
 			path: ["confirmNewPassword"],
@@ -111,8 +123,7 @@ export const userValidation = {
 		.refine((data) => data.currentPassword !== data.newPassword, {
 			message: "New password must be different from current password",
 			path: ["newPassword"],
-		})
-		.strict(),
+		}),
 
 	// User ID param
 	userId: z

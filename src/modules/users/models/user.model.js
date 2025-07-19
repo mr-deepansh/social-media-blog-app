@@ -57,16 +57,65 @@ const userSchema = new Schema(
 			type: String,
 			default: "",
 		},
+		followers: [
+			{
+				type: Schema.Types.ObjectId,
+				ref: "User",
+				default: [],
+			},
+		],
+		following: [
+			{
+				type: Schema.Types.ObjectId,
+				ref: "User",
+				default: [],
+			},
+		],
 		watchHistory: [
 			{
 				type: Schema.Types.ObjectId,
 				ref: "Video",
 			},
 		],
+		preferences: {
+			theme: {
+				type: String,
+				enum: ["light", "dark"],
+				default: "light",
+			},
+			emailNotifications: {
+				type: Boolean,
+				default: true,
+			},
+			pushNotifications: {
+				type: Boolean,
+				default: true,
+			},
+		},
 	},
 	{ timestamps: true },
 );
 
+userSchema.index({ username: 1 });
+userSchema.index({ email: 1 });
+userSchema.index({ followers: 1 });
+userSchema.index({ following: 1 });
+userSchema.index({ createdAt: -1 });
+
+// Virtual for full name
+userSchema.virtual("fullName").get(function () {
+	return `${this.firstName} ${this.lastName}`;
+});
+
+// Virtual for followers count
+userSchema.virtual("followersCount").get(function () {
+	return this.followers?.length || 0;
+});
+
+// Virtual for following count
+userSchema.virtual("followingCount").get(function () {
+	return this.following?.length || 0;
+});
 userSchema.pre("save", async function (next) {
 	if (!this.isModified("password")) return next();
 	this.password = await bcrypt.hash(this.password, 10);

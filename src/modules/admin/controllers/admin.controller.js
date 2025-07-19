@@ -1,3 +1,4 @@
+// src/modules/admin/controllers/admin.controller.js
 import { User } from "../../users/models/user.model.js";
 import { ApiError } from "../../../shared/utils/ApiError.js";
 import { ApiResponse } from "../../../shared/utils/ApiResponse.js";

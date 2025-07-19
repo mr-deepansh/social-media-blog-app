@@ -1,5 +1,6 @@
 # Social Media Blog Application
-*Created by: Deepansh Gangwar*
+
+_Created by: Deepansh Gangwar_
 
 ## 📁 Project Structure
 

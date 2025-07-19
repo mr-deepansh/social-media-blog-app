@@ -1,4 +1,4 @@
-// user.controller.js
+// src/modules/users/controllers/user.controller.js
 import { User } from "../models/user.model.js";
 import { asyncHandler } from "../../../shared/utils/AsyncHandler.js";
 import { ApiError } from "../../../shared/utils/ApiError.js";
@@ -108,14 +108,7 @@ const getUserById = asyncHandler(async (req, res) => {
 		.json(new ApiResponse(200, user, "User fetched successfully"));
 });
 
-// Create new user
-import bcrypt from "bcryptjs";
-import asyncHandler from "../utils/asyncHandler.js";
-import User from "../models/user.model.js";
-import ApiError from "../utils/ApiError.js";
-import ApiResponse from "../utils/ApiResponse.js";
-
-export const createUser = asyncHandler(async (req, res) => {
+const createUser = asyncHandler(async (req, res) => {
 	const { username, email, password, firstName, lastName, bio, avatar } =
 		req.body;
 
@@ -525,11 +518,9 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
 		},
 		{
 			$addFields: {
-				subscribersCount: {
-					$size: "$subscribers",
-				},
+				subscribersCount: { $size: { $ifNull: ["$subscribers", []] } },
 				channelsSubscribedToCount: {
-					$size: "$subscribedTo",
+					$size: { $ifNull: ["$subscribedTo", []] },
 				},
 				isSubscribed: {
 					$cond: {
@@ -619,24 +610,775 @@ const getWatchHistory = asyncHandler(async (req, res) => {
 		);
 });
 
+// Get user feed - personalized content after login
+const getUserFeed = asyncHandler(async (req, res) => {
+	const {
+		page = 1,
+		limit = 20,
+		sortBy = "createdAt",
+		sortOrder = "desc",
+	} = req.query;
+
+	const userId = req.user._id;
+	const skip = (page - 1) * limit;
+
+	// Get users that current user follows
+	const following = await User.findById(userId).select("following");
+	const followingIds = following?.following || [];
+
+	// Create aggregation pipeline for feed
+	const feedPipeline = [
+		{
+			$match: {
+				$or: [
+					{ owner: { $in: followingIds } }, // Posts from followed users
+					{ owner: userId }, // User's own posts
+				],
+			},
+		},
+		{
+			$lookup: {
+				from: "users",
+				localField: "owner",
+				foreignField: "_id",
+				as: "author",
+				pipeline: [
+					{
+						$project: {
+							_id: 1,
+							username: 1,
+							firstName: 1,
+							lastName: 1,
+							avatar: 1,
+						},
+					},
+				],
+			},
+		},
+		{
+			$addFields: {
+				author: { $first: "$author" },
+			},
+		},
+		{
+			$sort: { [sortBy]: sortOrder === "desc" ? -1 : 1 },
+		},
+		{
+			$skip: skip,
+		},
+		{
+			$limit: parseInt(limit),
+		},
+	];
+
+	// Note: You'll need to replace 'posts' with your actual post collection name
+	// This is just an example assuming you have a posts collection
+	const feed = await mongoose.connection.db
+		.collection("posts")
+		.aggregate(feedPipeline)
+		.toArray();
+
+	// Get total count for pagination
+	const totalPosts = await mongoose.connection.db
+		.collection("posts")
+		.countDocuments({
+			$or: [{ owner: { $in: followingIds } }, { owner: userId }],
+		});
+
+	return res.status(200).json(
+		new ApiResponse(
+			200,
+			{
+				feed,
+				pagination: {
+					currentPage: parseInt(page),
+					totalPages: Math.ceil(totalPosts / limit),
+					totalPosts,
+					hasNextPage: page * limit < totalPosts,
+					hasPrevPage: page > 1,
+				},
+			},
+			"Feed fetched successfully",
+		),
+	);
+});
+
+// Get user profile by username with followers/following details
+const getUserProfileByUsername = asyncHandler(async (req, res) => {
+	const { username } = req.params;
+	const currentUserId = req.user._id;
+
+	if (!username?.trim()) {
+		throw new ApiError(400, "Username is required");
+	}
+
+	const userProfile = await User.aggregate([
+		{
+			$match: {
+				username: username.toLowerCase(),
+			},
+		},
+		{
+			$lookup: {
+				from: "users",
+				localField: "followers",
+				foreignField: "_id",
+				as: "followersDetails",
+				pipeline: [
+					{
+						$project: {
+							_id: 1,
+							username: 1,
+							firstName: 1,
+							lastName: 1,
+							avatar: 1,
+						},
+					},
+				],
+			},
+		},
+		{
+			$lookup: {
+				from: "users",
+				localField: "following",
+				foreignField: "_id",
+				as: "followingDetails",
+				pipeline: [
+					{
+						$project: {
+							_id: 1,
+							username: 1,
+							firstName: 1,
+							lastName: 1,
+							avatar: 1,
+						},
+					},
+				],
+			},
+		},
+		{
+			$addFields: {
+				followersCount: { $size: { $ifNull: ["$followers", []] } },
+				followingCount: { $size: { $ifNull: ["$following", []] } },
+				isFollowing: {
+					$cond: {
+						if: { $in: [currentUserId, "$followers"] },
+						then: true,
+						else: false,
+					},
+				},
+				isOwnProfile: {
+					$cond: {
+						if: { $eq: ["$_id", currentUserId] },
+						then: true,
+						else: false,
+					},
+				},
+			},
+		},
+		{
+			$project: {
+				_id: 1,
+				username: 1,
+				email: 1,
+				firstName: 1,
+				lastName: 1,
+				bio: 1,
+				avatar: 1,
+				coverImage: 1,
+				isActive: 1,
+				createdAt: 1,
+				followersCount: 1,
+				followingCount: 1,
+				followersDetails: { $slice: ["$followersDetails", 10] }, // Show only first 10
+				followingDetails: { $slice: ["$followingDetails", 10] }, // Show only first 10
+				isFollowing: 1,
+				isOwnProfile: 1,
+			},
+		},
+	]);
+
+	if (!userProfile || userProfile.length === 0) {
+		throw new ApiError(404, "User not found");
+	}
+
+	return res
+		.status(200)
+		.json(
+			new ApiResponse(200, userProfile[0], "User profile fetched successfully"),
+		);
+});
+
+// Follow a user
+const followUser = asyncHandler(async (req, res) => {
+	const { userId } = req.params;
+	const currentUserId = req.user._id;
+
+	if (userId === currentUserId.toString()) {
+		throw new ApiError(400, "You cannot follow yourself");
+	}
+
+	const userToFollow = await User.findById(userId);
+	if (!userToFollow) {
+		throw new ApiError(404, "User not found");
+	}
+
+	const currentUser = await User.findById(currentUserId);
+
+	// Check if already following
+	if (currentUser.following.includes(userId)) {
+		throw new ApiError(400, "You are already following this user");
+	}
+
+	// Add to following list of current user
+	await User.findByIdAndUpdate(currentUserId, {
+		$push: { following: userId },
+	});
+
+	// Add to followers list of target user
+	await User.findByIdAndUpdate(userId, {
+		$push: { followers: currentUserId },
+	});
+
+	return res
+		.status(200)
+		.json(new ApiResponse(200, {}, "User followed successfully"));
+});
+
+// Unfollow a user
+const unfollowUser = asyncHandler(async (req, res) => {
+	const { userId } = req.params;
+	const currentUserId = req.user._id;
+
+	if (userId === currentUserId.toString()) {
+		throw new ApiError(400, "You cannot unfollow yourself");
+	}
+
+	const userToUnfollow = await User.findById(userId);
+	if (!userToUnfollow) {
+		throw new ApiError(404, "User not found");
+	}
+
+	const currentUser = await User.findById(currentUserId);
+
+	// Check if not following
+	if (!currentUser.following.includes(userId)) {
+		throw new ApiError(400, "You are not following this user");
+	}
+
+	// Remove from following list of current user
+	await User.findByIdAndUpdate(currentUserId, {
+		$pull: { following: userId },
+	});
+
+	// Remove from followers list of target user
+	await User.findByIdAndUpdate(userId, {
+		$pull: { followers: currentUserId },
+	});
+
+	return res
+		.status(200)
+		.json(new ApiResponse(200, {}, "User unfollowed successfully"));
+});
+
+// Get user's followers
+const getUserFollowers = asyncHandler(async (req, res) => {
+	const { userId } = req.params;
+	const { page = 1, limit = 20, search } = req.query;
+	const skip = (page - 1) * limit;
+
+	const user = await User.findById(userId);
+	if (!user) {
+		throw new ApiError(404, "User not found");
+	}
+
+	const matchStage = {
+		_id: { $in: user.followers },
+	};
+
+	// Add search filter if provided
+	if (search) {
+		matchStage.$or = [
+			{ username: { $regex: search, $options: "i" } },
+			{ firstName: { $regex: search, $options: "i" } },
+			{ lastName: { $regex: search, $options: "i" } },
+		];
+	}
+
+	const followers = await User.find(matchStage)
+		.select("_id username firstName lastName avatar bio")
+		.skip(skip)
+		.limit(parseInt(limit))
+		.sort({ createdAt: -1 });
+
+	const totalFollowers = await User.countDocuments(matchStage);
+
+	return res.status(200).json(
+		new ApiResponse(
+			200,
+			{
+				followers,
+				pagination: {
+					currentPage: parseInt(page),
+					totalPages: Math.ceil(totalFollowers / limit),
+					totalFollowers,
+					hasNextPage: page * limit < totalFollowers,
+					hasPrevPage: page > 1,
+				},
+			},
+			"Followers fetched successfully",
+		),
+	);
+});
+
+// Get user's following list
+const getUserFollowing = asyncHandler(async (req, res) => {
+	const { userId } = req.params;
+	const { page = 1, limit = 20, search } = req.query;
+	const skip = (page - 1) * limit;
+
+	const user = await User.findById(userId);
+	if (!user) {
+		throw new ApiError(404, "User not found");
+	}
+
+	const matchStage = {
+		_id: { $in: user.following },
+	};
+
+	// Add search filter if provided
+	if (search) {
+		matchStage.$or = [
+			{ username: { $regex: search, $options: "i" } },
+			{ firstName: { $regex: search, $options: "i" } },
+			{ lastName: { $regex: search, $options: "i" } },
+		];
+	}
+
+	const following = await User.find(matchStage)
+		.select("_id username firstName lastName avatar bio")
+		.skip(skip)
+		.limit(parseInt(limit))
+		.sort({ createdAt: -1 });
+
+	const totalFollowing = await User.countDocuments(matchStage);
+
+	return res.status(200).json(
+		new ApiResponse(
+			200,
+			{
+				following,
+				pagination: {
+					currentPage: parseInt(page),
+					totalPages: Math.ceil(totalFollowing / limit),
+					totalFollowing,
+					hasNextPage: page * limit < totalFollowing,
+					hasPrevPage: page > 1,
+				},
+			},
+			"Following list fetched successfully",
+		),
+	);
+});
+
+// Search users by username or name
+const searchUsers = asyncHandler(async (req, res) => {
+	console.log("searchUsers");
+
+	const {
+		search,
+		page = 1,
+		limit = 10,
+		sortBy = "relevance",
+		includePrivate = false,
+	} = req.query;
+	console.log(req.query);
+
+	// Validate inputs
+	if (!search || search.trim().length === 0) {
+		throw new ApiError(400, "Search query is required");
+	}
+
+	if (search.trim().length < 2) {
+		throw new ApiError(400, "Search query must be at least 2 characters long");
+	}
+
+	const pageNum = Math.max(1, parseInt(page, 10) || 1);
+	const limitNum = Math.min(50, Math.max(1, parseInt(limit, 10) || 10));
+	const currentUserId = req.user?._id;
+	const skip = (pageNum - 1) * limitNum;
+	const startTime = Date.now();
+
+	try {
+		// Sanitize and create search regex
+		const sanitizedSearch = search
+			.trim()
+			.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+		const searchRegex = new RegExp(sanitizedSearch, "i");
+
+		// Build match conditions
+		const matchConditions = {
+			$and: [
+				{
+					$or: [
+						{ username: { $regex: searchRegex } },
+						{ firstName: { $regex: searchRegex } },
+						{ lastName: { $regex: searchRegex } },
+						{
+							$expr: {
+								$regexMatch: {
+									input: {
+										$concat: [
+											{ $ifNull: ["$firstName", ""] },
+											" ",
+											{ $ifNull: ["$lastName", ""] },
+										],
+									},
+									regex: sanitizedSearch,
+									options: "i",
+								},
+							},
+						},
+					],
+				},
+				{ isActive: { $eq: true } },
+				{ isDeleted: { $ne: true } },
+			],
+		};
+
+		// Add private profile filter if not admin
+		if (!includePrivate && req.user?.role !== "admin") {
+			matchConditions.$and.push({
+				$or: [{ isPrivate: { $ne: true } }, { isPrivate: { $exists: false } }],
+			});
+		}
+
+		// Define sorting options
+		let sortStage = {};
+		switch (sortBy) {
+			case "followers":
+				sortStage = { followersCount: -1, username: 1 };
+				break;
+			case "newest":
+				sortStage = { createdAt: -1, username: 1 };
+				break;
+			case "username":
+				sortStage = { username: 1 };
+				break;
+			default: // relevance
+				sortStage = { relevanceScore: -1, followersCount: -1, username: 1 };
+		}
+
+		// Aggregation pipeline for search
+		const pipeline = [
+			{ $match: matchConditions },
+			{
+				$addFields: {
+					// Calculate relevance score
+					relevanceScore: {
+						$sum: [
+							// Exact username match gets highest score
+							{
+								$cond: [
+									{
+										$eq: [
+											{ $toLower: "$username" },
+											sanitizedSearch.toLowerCase(),
+										],
+									},
+									100,
+									0,
+								],
+							},
+							// Username contains search term
+							{
+								$cond: [
+									{ $regexMatch: { input: "$username", regex: searchRegex } },
+									50,
+									0,
+								],
+							},
+							// First name match
+							{
+								$cond: [
+									{
+										$regexMatch: {
+											input: { $ifNull: ["$firstName", ""] },
+											regex: searchRegex,
+										},
+									},
+									30,
+									0,
+								],
+							},
+							// Last name match
+							{
+								$cond: [
+									{
+										$regexMatch: {
+											input: { $ifNull: ["$lastName", ""] },
+											regex: searchRegex,
+										},
+									},
+									30,
+									0,
+								],
+							},
+							// Full name match
+							{
+								$cond: [
+									{
+										$regexMatch: {
+											input: {
+												$concat: [
+													{ $ifNull: ["$firstName", ""] },
+													" ",
+													{ $ifNull: ["$lastName", ""] },
+												],
+											},
+											regex: searchRegex,
+										},
+									},
+									25,
+									0,
+								],
+							},
+						],
+					},
+					// Check if current user follows this user
+					isFollowing: currentUserId
+						? {
+								$in: [
+									{ $toObjectId: currentUserId },
+									{ $ifNull: ["$followers", []] },
+								],
+							}
+						: false,
+					// Full name for display
+					fullName: {
+						$trim: {
+							input: {
+								$concat: [
+									{ $ifNull: ["$firstName", ""] },
+									" ",
+									{ $ifNull: ["$lastName", ""] },
+								],
+							},
+						},
+					},
+					// Calculate followers count
+					followersCount: { $size: { $ifNull: ["$followers", []] } },
+					followingCount: { $size: { $ifNull: ["$following", []] } },
+				},
+			},
+			{ $sort: sortStage },
+			{ $skip: skip },
+			{ $limit: limitNum },
+			{
+				$project: {
+					_id: 1,
+					username: 1,
+					firstName: 1,
+					lastName: 1,
+					fullName: 1,
+					avatar: 1,
+					bio: { $substr: [{ $ifNull: ["$bio", ""] }, 0, 150] },
+					followersCount: 1,
+					followingCount: 1,
+					isVerified: { $ifNull: ["$isVerified", false] },
+					isPrivate: { $ifNull: ["$isPrivate", false] },
+					isFollowing: 1,
+					relevanceScore: 1,
+					createdAt: 1,
+				},
+			},
+		];
+
+		// Execute search with timeout and get total count
+		const [users, totalCount] = await Promise.all([
+			User.aggregate(pipeline).maxTimeMS(5000).exec(),
+			User.aggregate([{ $match: matchConditions }, { $count: "total" }])
+				.maxTimeMS(2000)
+				.exec(),
+		]);
+
+		const total = totalCount.length > 0 ? totalCount[0].total : 0;
+
+		// Format response
+		const formattedUsers = users.map((user) => ({
+			...user,
+			avatar: user.avatar || "/assets/default-avatar.png",
+			fullName:
+				user.fullName ||
+				`${user.firstName || ""} ${user.lastName || ""}`.trim() ||
+				user.username,
+			bio: user.bio || "",
+		}));
+
+		const totalPages = Math.ceil(total / limitNum);
+		const hasMore = pageNum < totalPages;
+
+		return res.status(200).json(
+			new ApiResponse(
+				200,
+				{
+					users: formattedUsers,
+					pagination: {
+						currentPage: pageNum,
+						totalPages,
+						totalResults: total,
+						hasMore,
+						limit: limitNum,
+						hasNext: hasMore,
+						hasPrevious: pageNum > 1,
+					},
+					meta: {
+						searchTerm: search.trim(),
+						resultsCount: formattedUsers.length,
+						searchTime: Date.now() - startTime,
+						sortBy,
+						filters: {
+							includePrivate: Boolean(includePrivate),
+						},
+					},
+				},
+				formattedUsers.length === 0
+					? "No users found matching your search criteria"
+					: `Found ${formattedUsers.length} of ${total} users`,
+			),
+		);
+	} catch (error) {
+		console.error("User search error:", error);
+
+		// Handle specific errors
+		if (error.message.includes("maxTimeMS")) {
+			throw new ApiError(
+				408,
+				"Search timeout - please try a more specific search query",
+			);
+		}
+
+		if (error.name === "MongoError" && error.code === 2) {
+			throw new ApiError(400, "Invalid search query format");
+		}
+
+		if (error.name === "CastError") {
+			throw new ApiError(400, "Invalid user ID format");
+		}
+
+		// Don't expose internal errors
+		if (error instanceof ApiError) {
+			throw error;
+		}
+
+		throw new ApiError(500, "Search operation failed. Please try again.");
+	}
+});
+
+// Get user suggestions (people you might know)
+const getUserSuggestions = asyncHandler(async (req, res) => {
+	const { limit = 10 } = req.query;
+	const currentUserId = req.user._id;
+
+	const currentUser = await User.findById(currentUserId).select(
+		"following followers",
+	);
+	const followingIds = currentUser.following || [];
+	const followerIds = currentUser.followers || [];
+
+	// Get users followed by people you follow (friends of friends)
+	const suggestions = await User.aggregate([
+		{
+			$match: {
+				_id: { $nin: [currentUserId, ...followingIds] },
+				isActive: true,
+				isDeleted: { $ne: true },
+				isPrivate: { $ne: true },
+			},
+		},
+		{
+			$addFields: {
+				// Calculate suggestion score
+				suggestionScore: {
+					$sum: [
+						// Boost users who follow you back
+						{ $cond: [{ $in: [currentUserId, "$following"] }, 50, 0] },
+						// Boost users with mutual followers
+						{ $size: { $setIntersection: ["$followers", followingIds] } },
+						// Boost users with similar interests (if you have tags/interests)
+						// { $size: { $setIntersection: ['$interests', currentUser.interests] } }
+					],
+				},
+				mutualFollowers: {
+					$size: { $setIntersection: ["$followers", followingIds] },
+				},
+				followsYou: { $in: [currentUserId, "$following"] },
+			},
+		},
+		{
+			$sort: {
+				suggestionScore: -1,
+				followersCount: -1,
+				createdAt: -1,
+			},
+		},
+		{ $limit: parseInt(limit) },
+		{
+			$project: {
+				_id: 1,
+				username: 1,
+				firstName: 1,
+				lastName: 1,
+				avatar: 1,
+				bio: { $substr: ["$bio", 0, 100] },
+				followersCount: { $size: { $ifNull: ["$followers", []] } },
+				mutualFollowers: {
+					$size: {
+						$setIntersection: [{ $ifNull: ["$followers", []] }, followingIds],
+					},
+				},
+				followsYou: 1,
+				isVerified: 1,
+			},
+		},
+	]);
+
+	return res
+		.status(200)
+		.json(
+			new ApiResponse(
+				200,
+				suggestions,
+				"User suggestions fetched successfully",
+			),
+		);
+});
+
 export {
-	registerUser,
-	loginUser,
-	logoutUser,
-	refreshAccessToken,
-	changeCurrentPassword,
-	getCurrentUser,
-	updateAccountDetails,
-	getUserChannelProfile,
-	getWatchHistory,
-	// New methods for the routes
+	registerUser, // ✅
+	loginUser, // ✅
+	logoutUser, // ✅
+	refreshAccessToken, // ✅
+	changeCurrentPassword, // ✅
+	getCurrentUser, // ✅
+	updateAccountDetails, // ✅
+	getUserChannelProfile, // ✅
+	getWatchHistory, // ✅
 	getAllUsers,
 	getUserById,
-	createUser,
-	updateUser,
-	deleteUser,
+	createUser, // ✅
+	updateUser, // ✅
+	deleteUser, // ✅
 	getCurrentUserProfile,
 	updateCurrentUserProfile,
-	changePassword,
+	changePassword, // ✅
 	uploadAvatar,
+	getUserFeed,
+	getUserProfileByUsername,
+	followUser, // ✅
+	unfollowUser, // ✅
+	getUserFollowers,
+	getUserFollowing,
+	searchUsers,
+	getUserSuggestions,
 };
