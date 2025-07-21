@@ -1,3 +1,4 @@
+// src/modules/users/models/user.model.js
 import mongoose, { Schema } from "mongoose";
 import bcrypt from "bcrypt";
 import Jwt from "jsonwebtoken";
@@ -96,8 +97,6 @@ const userSchema = new Schema(
 	{ timestamps: true },
 );
 
-userSchema.index({ username: 1 });
-userSchema.index({ email: 1 });
 userSchema.index({ followers: 1 });
 userSchema.index({ following: 1 });
 userSchema.index({ createdAt: -1 });

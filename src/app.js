@@ -43,6 +43,14 @@ app.use(
 		crossOriginEmbedderPolicy: false,
 	}),
 );
+// Debug middleware - log all requests
+app.use(express.json()); // body-parser
+app.use((req, res, next) => {
+	console.log(`\n📥 Incoming Request: ${req.method} ${req.originalUrl}`);
+	console.log(`📝 Query:`, req.query);
+	console.log(`📦 Body:`, req.body);
+	next();
+});
 
 // Apply global rate limiter
 app.use(apiRateLimiter);
@@ -63,6 +71,7 @@ app.use(
 
 // Health check route
 app.get(`/api/${serverConfig.apiVersion}`, (req, res) => {
+	// console.log("❤️ Health check hit");
 	res.status(200).json({
 		success: true,
 		message: `API version ${serverConfig.apiVersion} is Running Successfully`,
@@ -73,11 +82,24 @@ app.get(`/api/${serverConfig.apiVersion}`, (req, res) => {
 // API Routes
 const apiRouter = express.Router();
 
-app.use("/api/v1/admin", adminRoutes);
+apiRouter.use("/admin", adminRoutes);
 apiRouter.use("/auth", forgotPasswordRoutes);
 apiRouter.use("/auth", resetPasswordRoutes);
 apiRouter.use("/users", userRoutes);
 apiRouter.use("/blogs", blogRoutes);
+
+// console.log(`🔗 Routes mounted at: /api/${serverConfig.apiVersion}`);
+
+// Mount the main API router
+/* app.use(`/api/${serverConfig.apiVersion}`, apiRouter);
+app.use(
+	`/api/${serverConfig.apiVersion}/admin`,
+	(req, res, next) => {
+		console.log(`🛡️ Admin route middleware: ${req.method} ${req.originalUrl}`);
+		next();
+	},
+	adminRoutes,
+); */
 
 app.use(`/api/${serverConfig.apiVersion}`, apiRouter);
 
@@ -94,7 +116,7 @@ app.use("*", (req, res) => {
 
 // Global error handler
 app.use((err, req, res, next) => {
-	console.error("🚨 Error:", err);
+	// console.error("🚨 Error:", err);
 	const statusCode = err.statusCode || 500;
 	const message = err.message || "Internal Server Error";
 

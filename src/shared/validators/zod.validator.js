@@ -155,4 +155,28 @@ export const zodValidation = {
 			sortOrder: z.enum(["asc", "desc"]).default("desc"),
 		})
 		.strict(),
+	getFollowers: z
+		.object({
+			page: z.coerce.number().int().min(1).default(1),
+			limit: z.coerce.number().int().min(1).max(100).default(50),
+		})
+		.strict(),
+
+	getFollowing: z
+		.object({
+			page: z.coerce.number().int().min(1).default(1),
+			limit: z.coerce.number().int().min(1).max(100).default(50),
+		})
+		.strict(),
+
+	getFeed: z
+		.object({
+			page: z.coerce.number().int().min(1).default(1),
+			limit: z.coerce.number().int().min(1).max(100).default(20),
+			sort: z
+				.enum(["recent", "popular", "trending"])
+				.optional()
+				.default("recent"),
+		})
+		.strict(),
 };

@@ -301,12 +301,10 @@ MONGODB_URI=mongodb://localhost:27017/social_media_blog
 ### Email Setup (Gmail)
 
 1. **Enable 2-Factor Authentication**
-
    - Go to your Google Account settings
    - Enable 2-Step Verification
 
 2. **Generate App Password**
-
    - Go to Security settings
    - Under "2-Step Verification", click "App passwords"
    - Generate a new app password for "Mail"
@@ -905,7 +903,6 @@ We welcome contributions from the community! Please read these guidelines before
    ```
 
 3. **Make your changes**
-
    - Follow the coding standards
    - Write tests for new features
    - Update documentation
