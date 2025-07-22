@@ -969,6 +969,7 @@ const getUserFollowing = asyncHandler(async (req, res) => {
 });
 
 // searchUsers function
+// Fixed searchUsers controller with debugging
 const searchUsers = asyncHandler(async (req, res) => {
 	const {
 		search,
@@ -981,301 +982,152 @@ const searchUsers = asyncHandler(async (req, res) => {
 		includePrivate = false,
 	} = req.query;
 
-	// Validate search parameters
+	// Input validation
 	if (!search && !username && !firstName && !lastName) {
+		console.log("❌ No search parameters provided");
 		throw new ApiError(
 			400,
 			"At least one search parameter is required (search, username, firstName, or lastName)",
 		);
 	}
-	// Validate search length if provided
+
 	if (search && search.trim().length < 2) {
+		console.log("❌ Search query too short:", search);
 		throw new ApiError(400, "Search query must be at least 2 characters long");
 	}
+
 	const pageNum = Math.max(1, parseInt(page, 10) || 1);
 	const limitNum = Math.min(50, Math.max(1, parseInt(limit, 10) || 10));
 	const currentUserId = req.user?._id;
 	const skip = (pageNum - 1) * limitNum;
 	const startTime = Date.now();
+
+	console.log("📊 Search params:", {
+		search,
+		username,
+		firstName,
+		lastName,
+		pageNum,
+		limitNum,
+	});
+
 	try {
-		// Helper function to sanitize search terms
-		const sanitizeSearchTerm = (term) => {
-			if (!term) return null;
-			return term.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-		};
-		// Sanitize search terms
-		const sanitizedSearch = sanitizeSearchTerm(search);
-		const sanitizedUsername = sanitizeSearchTerm(username);
-		const sanitizedFirstName = sanitizeSearchTerm(firstName);
-		const sanitizedLastName = sanitizeSearchTerm(lastName);
-		// Build search conditions
+		// Simplified search approach using MongoDB find() instead of aggregation
 		const searchConditions = [];
-		// General search across multiple fields
-		if (sanitizedSearch) {
-			const searchRegex = new RegExp(sanitizedSearch, "i");
-			searchConditions.push({
-				$or: [
-					{ username: { $regex: searchRegex } },
-					{ firstName: { $regex: searchRegex } },
-					{ lastName: { $regex: searchRegex } },
-					{
-						$expr: {
-							$regexMatch: {
-								input: {
-									$concat: [
-										{ $ifNull: ["$firstName", ""] },
-										" ",
-										{ $ifNull: ["$lastName", ""] },
-									],
-								},
-								regex: sanitizedSearch,
-								options: "i",
-							},
-						},
-					},
-				],
-			});
-		}
-		// Specific username search
-		if (sanitizedUsername) {
-			const usernameRegex = new RegExp(sanitizedUsername, "i");
-			searchConditions.push({
-				username: { $regex: usernameRegex },
-			});
-		}
-		// Specific first name search
-		if (sanitizedFirstName) {
-			const firstNameRegex = new RegExp(sanitizedFirstName, "i");
-			searchConditions.push({
-				firstName: { $regex: firstNameRegex },
-			});
-		}
-		// Specific last name search
-		if (sanitizedLastName) {
-			const lastNameRegex = new RegExp(sanitizedLastName, "i");
-			searchConditions.push({
-				lastName: { $regex: lastNameRegex },
-			});
-		}
-		// Build match conditions
-		const matchConditions = {
-			$and: [
-				// Combine all search conditions with AND logic
-				...(searchConditions.length > 0 ? [{ $and: searchConditions }] : []),
-				{ isActive: { $eq: true } },
-				{ $expr: { $ne: [{ $ifNull: ["$isDeleted", false] }, true] } },
-			],
+		// Helper function to create case-insensitive regex
+		const createRegex = (term) => {
+			const escapedTerm = term.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+			return new RegExp(escapedTerm, "i");
 		};
-		// Add private profile filter if not admin
-		if (!includePrivate && req.user?.role !== "admin") {
-			matchConditions.$and.push({
-				$expr: { $ne: [{ $ifNull: ["$isPrivate", false] }, true] },
-			});
+		// Build search conditions with OR logic
+		if (search && search.trim()) {
+			const searchRegex = createRegex(search);
+			searchConditions.push(
+				{ username: { $regex: searchRegex } },
+				{ firstName: { $regex: searchRegex } },
+				{ lastName: { $regex: searchRegex } },
+			);
 		}
-		// Define sorting options
-		let sortStage = {};
+		if (username && username.trim()) {
+			searchConditions.push({ username: { $regex: createRegex(username) } });
+		}
+		if (firstName && firstName.trim()) {
+			searchConditions.push({ firstName: { $regex: createRegex(firstName) } });
+		}
+		if (lastName && lastName.trim()) {
+			searchConditions.push({ lastName: { $regex: createRegex(lastName) } });
+		}
+		// Base query conditions
+		const baseQuery = {
+			isActive: { $ne: false },
+			isDeleted: { $ne: true },
+		};
+		// Add privacy filter
+		if (!includePrivate && req.user?.role !== "admin") {
+			baseQuery.isPrivate = { $ne: true };
+		}
+		// Combine search conditions with base query
+		const finalQuery =
+			searchConditions.length > 0
+				? { ...baseQuery, $or: searchConditions }
+				: baseQuery;
+		// Sorting logic
+		let sortOptions = {};
 		switch (sortBy) {
-			case "followers":
-				sortStage = { followersCount: -1, username: 1 };
+			case "username":
+				sortOptions = { username: 1 };
 				break;
 			case "newest":
-				sortStage = { createdAt: -1, username: 1 };
+				sortOptions = { createdAt: -1 };
 				break;
-			case "username":
-				sortStage = { username: 1 };
+			case "followers":
+				// For followers sort, we'll use a simple approach
+				sortOptions = { createdAt: -1 }; // Fallback to newest
 				break;
-			default: // relevance
-				sortStage = { relevanceScore: -1, followersCount: -1, username: 1 };
+			default: // relevance - use creation date as proxy
+				sortOptions = { createdAt: -1 };
 		}
-		// Enhanced relevance scoring
-		const calculateRelevanceScore = () => {
-			const conditions = [];
-			// If general search is provided
-			if (sanitizedSearch) {
-				const searchRegex = new RegExp(sanitizedSearch, "i");
-				conditions.push(
-					// Exact username match gets highest score
-					{
-						$cond: [
-							{
-								$eq: [{ $toLower: "$username" }, sanitizedSearch.toLowerCase()],
-							},
-							100,
-							0,
-						],
-					},
-					// Username starts with search term
-					{
-						$cond: [
-							{
-								$eq: [
-									{
-										$indexOfCP: [
-											{ $toLower: "$username" },
-											sanitizedSearch.toLowerCase(),
-										],
-									},
-									0,
-								],
-							},
-							75,
-							0,
-						],
-					},
-					// Username contains search term
-					{
-						$cond: [
-							{ $regexMatch: { input: "$username", regex: searchRegex } },
-							50,
-							0,
-						],
-					},
-					// First name match
-					{
-						$cond: [
-							{
-								$regexMatch: {
-									input: { $ifNull: ["$firstName", ""] },
-									regex: searchRegex,
-								},
-							},
-							30,
-							0,
-						],
-					},
-					// Last name match
-					{
-						$cond: [
-							{
-								$regexMatch: {
-									input: { $ifNull: ["$lastName", ""] },
-									regex: searchRegex,
-								},
-							},
-							30,
-							0,
-						],
-					},
-				);
-			}
-			// Specific field matches get higher scores
-			if (sanitizedUsername) {
-				const usernameRegex = new RegExp(sanitizedUsername, "i");
-				conditions.push({
-					$cond: [
-						{ $regexMatch: { input: "$username", regex: usernameRegex } },
-						80,
-						0,
-					],
-				});
-			}
-			if (sanitizedFirstName) {
-				const firstNameRegex = new RegExp(sanitizedFirstName, "i");
-				conditions.push({
-					$cond: [
-						{
-							$regexMatch: {
-								input: { $ifNull: ["$firstName", ""] },
-								regex: firstNameRegex,
-							},
-						},
-						60,
-						0,
-					],
-				});
-			}
-			if (sanitizedLastName) {
-				const lastNameRegex = new RegExp(sanitizedLastName, "i");
-				conditions.push({
-					$cond: [
-						{
-							$regexMatch: {
-								input: { $ifNull: ["$lastName", ""] },
-								regex: lastNameRegex,
-							},
-						},
-						60,
-						0,
-					],
-				});
-			}
-			return conditions.length > 0 ? { $sum: conditions } : { $literal: 0 };
-		};
-		// Aggregation pipeline for search
-		const pipeline = [
-			{ $match: matchConditions },
-			{
-				$addFields: {
-					// Calculate relevance score
-					relevanceScore: calculateRelevanceScore(),
-					// Check if current user follows this user
-					isFollowing: currentUserId
-						? {
-								$in: [currentUserId, { $ifNull: ["$followers", []] }],
-							}
-						: false,
-					// Full name for display
-					fullName: {
-						$trim: {
-							input: {
-								$concat: [
-									{ $ifNull: ["$firstName", ""] },
-									" ",
-									{ $ifNull: ["$lastName", ""] },
-								],
-							},
-						},
-					},
-					// Calculate followers count
-					followersCount: { $size: { $ifNull: ["$followers", []] } },
-					followingCount: { $size: { $ifNull: ["$following", []] } },
-				},
-			},
-			{ $sort: sortStage },
-			{ $skip: skip },
-			{ $limit: limitNum },
-			{
-				$project: {
-					_id: 1,
-					username: 1,
-					firstName: 1,
-					lastName: 1,
-					fullName: 1,
-					avatar: 1,
-					bio: { $substr: [{ $ifNull: ["$bio", ""] }, 0, 150] },
-					followersCount: 1,
-					followingCount: 1,
-					isVerified: { $ifNull: ["$isVerified", false] },
-					isPrivate: { $ifNull: ["$isPrivate", false] },
-					isFollowing: 1,
-					relevanceScore: 1,
-					createdAt: 1,
-				},
-			},
+		// Execute optimized queries with timeout
+		const queryPromises = [
+			User.find(finalQuery)
+				.select(
+					"username firstName lastName avatar bio followers following createdAt isVerified isPrivate isActive isDeleted",
+				)
+				.sort(sortOptions)
+				.skip(skip)
+				.limit(limitNum)
+				.maxTimeMS(5000) // Reduced timeout
+				.lean(), // Use lean for better performance
+			User.countDocuments(finalQuery).maxTimeMS(3000),
 		];
-		// Execute search with timeout and get total count
-		const [users, totalCount] = await Promise.all([
-			User.aggregate(pipeline).maxTimeMS(10000).exec(),
-			User.aggregate([{ $match: matchConditions }, { $count: "total" }])
-				.maxTimeMS(5000)
-				.exec(),
-		]);
-		const total = totalCount.length > 0 ? totalCount[0].total : 0;
-		// Format response
-		const formattedUsers = users.map((user) => ({
-			...user,
-			avatar: user.avatar || "/assets/default-avatar.png",
-			fullName: user.fullName || user.username,
-			bio: user.bio || "",
-		}));
-		const totalPages = Math.ceil(total / limitNum);
-		const hasMore = pageNum < totalPages;
-		// Build search summary for response
-		const searchSummary = [];
-		if (search) searchSummary.push(`general: "${search.trim()}"`);
-		if (username) searchSummary.push(`username: "${username.trim()}"`);
-		if (firstName) searchSummary.push(`firstName: "${firstName.trim()}"`);
-		if (lastName) searchSummary.push(`lastName: "${lastName.trim()}"`);
+		const [users, totalCount] = await Promise.all(queryPromises);
+		// Debug: Log first few users found
+		if (users.length > 0) {
+			console.log(
+				"👥 Sample users found:",
+				users.slice(0, 2).map((u) => ({
+					username: u.username,
+					firstName: u.firstName,
+					lastName: u.lastName,
+					isActive: u.isActive,
+					isDeleted: u.isDeleted,
+					isPrivate: u.isPrivate,
+				})),
+			);
+		}
+		// Format results
+		const formattedUsers = users.map((user) => {
+			const followersCount = Array.isArray(user.followers)
+				? user.followers.length
+				: 0;
+			const followingCount = Array.isArray(user.following)
+				? user.following.length
+				: 0;
+			const isFollowing =
+				currentUserId && Array.isArray(user.followers)
+					? user.followers.some(
+							(id) => id.toString() === currentUserId.toString(),
+						)
+					: false;
+			return {
+				_id: user._id,
+				username: user.username,
+				firstName: user.firstName || "",
+				lastName: user.lastName || "",
+				fullName:
+					`${user.firstName || ""} ${user.lastName || ""}`.trim() ||
+					user.username,
+				avatar: user.avatar || "/assets/default-avatar.png",
+				bio: user.bio ? user.bio.substring(0, 150) : "",
+				followersCount,
+				followingCount,
+				isFollowing,
+				isVerified: user.isVerified || false,
+				createdAt: user.createdAt,
+			};
+		});
+		const totalPages = Math.ceil(totalCount / limitNum);
+		const searchTime = Date.now() - startTime;
 		return res.status(200).json(
 			new ApiResponse(
 				200,
@@ -1284,10 +1136,10 @@ const searchUsers = asyncHandler(async (req, res) => {
 					pagination: {
 						currentPage: pageNum,
 						totalPages,
-						totalResults: total,
-						hasMore,
+						totalResults: totalCount,
+						hasMore: pageNum < totalPages,
 						limit: limitNum,
-						hasNext: hasMore,
+						hasNext: pageNum < totalPages,
 						hasPrevious: pageNum > 1,
 					},
 					meta: {
@@ -1297,36 +1149,23 @@ const searchUsers = asyncHandler(async (req, res) => {
 							firstName: firstName?.trim() || null,
 							lastName: lastName?.trim() || null,
 						},
-						searchSummary: searchSummary.join(", "),
 						resultsCount: formattedUsers.length,
-						searchTime: Date.now() - startTime,
+						searchTime,
 						sortBy,
-						filters: {
-							includePrivate: Boolean(includePrivate),
-						},
 					},
 				},
 				formattedUsers.length === 0
 					? "No users found matching your search criteria"
-					: `Found ${formattedUsers.length} of ${total} users`,
+					: `Found ${formattedUsers.length} of ${totalCount} users`,
 			),
 		);
 	} catch (error) {
-		console.error("User search error:", error);
-		// Handle specific errors
-		if (error.message && error.message.includes("maxTimeMS")) {
+		if (error.message?.includes("maxTimeMS") || error.code === 50) {
 			throw new ApiError(
 				408,
 				"Search timeout - please try a more specific search query",
 			);
 		}
-		if (error.name === "MongoError" && error.code === 2) {
-			throw new ApiError(400, "Invalid search query format");
-		}
-		if (error.name === "CastError") {
-			throw new ApiError(400, "Invalid user ID format");
-		}
-		// Don't expose internal errors
 		if (error instanceof ApiError) {
 			throw error;
 		}
@@ -1336,22 +1175,27 @@ const searchUsers = asyncHandler(async (req, res) => {
 
 // Fixed getUserSuggestions function
 const getUserSuggestions = asyncHandler(async (req, res) => {
+	console.log("🔍 getUserSuggestions called with query:", req.query);
+	console.log("👤 Current user ID:", req.user._id);
 	const { limit = 10, type = "all" } = req.query;
 	const currentUserId = req.user._id;
 	const limitNum = Math.min(50, Math.max(1, parseInt(limit, 10) || 10));
-
+	console.log("📊 Parameters:", { limit: limitNum, type });
 	try {
 		// Get current user's data with better error handling
 		const currentUser = await User.findById(currentUserId).select(
 			"following followers",
 		);
 		if (!currentUser) {
+			console.log("❌ Current user not found:", currentUserId);
 			throw new ApiError(404, "Current user not found");
 		}
-
 		const followingIds = currentUser.following || [];
 		const followerIds = currentUser.followers || [];
-
+		console.log("📈 User stats:", {
+			followingCount: followingIds.length,
+			followersCount: followerIds.length,
+		});
 		// Fixed: Removed duplicate $expr in baseMatch
 		const baseMatch = {
 			_id: { $nin: [currentUserId, ...followingIds] },
@@ -1361,9 +1205,7 @@ const getUserSuggestions = asyncHandler(async (req, res) => {
 				{ $expr: { $ne: [{ $ifNull: ["$isPrivate", false] }, true] } },
 			],
 		};
-
 		let pipeline = [];
-
 		// Different suggestion types with improved logic
 		switch (type) {
 			case "followers":
@@ -1376,6 +1218,7 @@ const getUserSuggestions = asyncHandler(async (req, res) => {
 						},
 					},
 				];
+				console.log("🔄 Using 'followers' type pipeline");
 				break;
 			case "mutual":
 				// People with mutual connections
@@ -1395,6 +1238,7 @@ const getUserSuggestions = asyncHandler(async (req, res) => {
 					},
 					{ $match: { mutualFollowers: { $gt: 0 } } },
 				];
+				console.log("🤝 Using 'mutual' type pipeline");
 				break;
 			case "popular":
 				// Users sorted primarily by popularity
@@ -1407,12 +1251,13 @@ const getUserSuggestions = asyncHandler(async (req, res) => {
 					},
 					{ $match: { followersCount: { $gte: 10 } } }, // Only suggest users with decent following
 				];
+				console.log("⭐ Using 'popular' type pipeline");
 				break;
 			default:
 				// General suggestions with balanced algorithm
 				pipeline = [{ $match: baseMatch }];
+				console.log("🎯 Using 'all' type pipeline");
 		}
-
 		// Add common aggregation stages with improved scoring
 		pipeline.push(
 			{
@@ -1516,14 +1361,13 @@ const getUserSuggestions = asyncHandler(async (req, res) => {
 				},
 			},
 		);
-
+		console.log("⏳ Executing aggregation pipeline...");
 		// Execute aggregation with timeout
 		const suggestions = await User.aggregate(pipeline).maxTimeMS(10000);
-
+		console.log("✅ Suggestions found:", suggestions.length);
 		// Enhanced formatting with better suggestion reasons
 		const formattedSuggestions = suggestions.map((user) => {
 			let suggestionReason = "Suggested for you";
-
 			if (user.followsYou) {
 				suggestionReason = "Follows you";
 			} else if (user.mutualFollowersCount > 0) {
@@ -1536,7 +1380,6 @@ const getUserSuggestions = asyncHandler(async (req, res) => {
 			} else if (user.followersCount > 100) {
 				suggestionReason = "Active user";
 			}
-
 			return {
 				...user,
 				avatar: user.avatar || "/assets/default-avatar.png",
@@ -1545,7 +1388,6 @@ const getUserSuggestions = asyncHandler(async (req, res) => {
 				suggestionReason,
 			};
 		});
-
 		return res.status(200).json(
 			new ApiResponse(
 				200,
@@ -1564,12 +1406,10 @@ const getUserSuggestions = asyncHandler(async (req, res) => {
 			),
 		);
 	} catch (error) {
-		console.error("Get user suggestions error:", error);
-
+		console.error("❌ Get user suggestions error:", error);
 		if (error instanceof ApiError) {
 			throw error;
 		}
-
 		throw new ApiError(
 			500,
 			"Failed to fetch user suggestions. Please try again later.",
@@ -1579,6 +1419,9 @@ const getUserSuggestions = asyncHandler(async (req, res) => {
 
 // Enhanced getUserFeed function with better performance and error handling
 const getUserFeed = asyncHandler(async (req, res) => {
+	console.log("📰 getUserFeed called with query:", req.query);
+	console.log("👤 Current user ID:", req.user._id);
+
 	const {
 		page = 1,
 		limit = 20,
@@ -1592,16 +1435,29 @@ const getUserFeed = asyncHandler(async (req, res) => {
 	const userId = req.user._id;
 	const skip = (pageNum - 1) * limitNum;
 
+	console.log("📊 Feed parameters:", {
+		pageNum,
+		limitNum,
+		sortBy,
+		sortOrder,
+		type,
+	});
+
 	try {
-		const currentUser = await User.findById(userId).select("following").lean(); // Use lean for better performance
+		const currentUser = await User.findById(userId).select("following").lean();
 		if (!currentUser) {
+			console.log("❌ Current user not found:", userId);
 			throw new ApiError(404, "User not found");
 		}
+
 		const followingIds = currentUser.following || [];
+		console.log("👥 Following count:", followingIds.length);
+
 		let matchConditions = {};
 		switch (type) {
 			case "following":
 				if (followingIds.length === 0) {
+					console.log("📭 No following users, returning empty feed");
 					return res.status(200).json(
 						new ApiResponse(
 							200,
@@ -1629,11 +1485,13 @@ const getUserFeed = asyncHandler(async (req, res) => {
 				matchConditions = {
 					owner: { $in: followingIds },
 				};
+				console.log("👥 Using 'following' feed type");
 				break;
 			case "own":
 				matchConditions = {
 					owner: userId,
 				};
+				console.log("👤 Using 'own' feed type");
 				break;
 			case "trending":
 				// Trending posts from last 7 days with high engagement
@@ -1650,6 +1508,7 @@ const getUserFeed = asyncHandler(async (req, res) => {
 						},
 					],
 				};
+				console.log("🔥 Using 'trending' feed type");
 				break;
 			default: // "all"
 				matchConditions = {
@@ -1661,12 +1520,20 @@ const getUserFeed = asyncHandler(async (req, res) => {
 						},
 					],
 				};
+				console.log("🌐 Using 'all' feed type");
 		}
+
 		// Add common filters with better handling
 		matchConditions = {
 			...matchConditions,
 			$and: [{ isActive: { $ne: false } }, { isDeleted: { $ne: true } }],
 		};
+
+		console.log(
+			"🔍 Final match conditions:",
+			JSON.stringify(matchConditions, null, 2),
+		);
+
 		// Enhanced sorting with validation
 		const validSortFields = [
 			"createdAt",
@@ -1680,8 +1547,12 @@ const getUserFeed = asyncHandler(async (req, res) => {
 		const validSortOrder = validSortOrders.includes(sortOrder)
 			? sortOrder
 			: "desc";
+
 		let sortStage = {};
 		sortStage[sortField] = validSortOrder === "desc" ? -1 : 1;
+
+		console.log("📋 Sort stage:", sortStage);
+
 		// Enhanced pipeline with better performance
 		const pipeline = [
 			{ $match: matchConditions },
@@ -1722,6 +1593,7 @@ const getUserFeed = asyncHandler(async (req, res) => {
 				},
 			},
 		];
+
 		// Add sorting based on type
 		if (type === "trending") {
 			pipeline.push({
@@ -1733,6 +1605,7 @@ const getUserFeed = asyncHandler(async (req, res) => {
 		} else {
 			pipeline.push({ $sort: sortStage });
 		}
+
 		// Add pagination and projection
 		pipeline.push(
 			{ $skip: skip },
@@ -1754,59 +1627,96 @@ const getUserFeed = asyncHandler(async (req, res) => {
 				},
 			},
 		);
+
+		console.log("⏳ Executing feed pipeline...");
+
 		// Execute queries with proper error handling
 		let feed = [];
 		let totalPosts = 0;
+
 		try {
-			const db = mongoose.connection.db;
-			// Check if posts collection exists
-			const collections = await db.listCollections({ name: "posts" }).toArray();
-			if (collections.length === 0) {
-				console.warn("Posts collection does not exist");
-				return res.status(200).json(
-					new ApiResponse(
-						200,
-						{
-							feed: [],
-							pagination: {
-								currentPage: pageNum,
-								totalPages: 0,
-								totalPosts: 0,
-								hasNextPage: false,
-								hasPrevPage: false,
-								limit: limitNum,
+			// Try to check if Post model exists (assuming you have it imported)
+			// If not, we'll handle the collection directly
+			let postsCollection;
+
+			try {
+				// Try using Post model first
+				if (typeof Post !== "undefined") {
+					console.log("📝 Using Post model");
+					const [feedResult, totalCountResult] = await Promise.all([
+						Post.aggregate(pipeline).maxTimeMS(15000),
+						Post.aggregate([
+							{ $match: matchConditions },
+							{ $count: "total" },
+						]).maxTimeMS(10000),
+					]);
+					feed = feedResult;
+					totalPosts =
+						totalCountResult.length > 0 ? totalCountResult[0].total : 0;
+				} else {
+					throw new Error("Post model not available");
+				}
+			} catch (modelError) {
+				console.log("📄 Post model not available, using collection directly");
+
+				const db = mongoose.connection.db;
+				// Check if posts collection exists
+				const collections = await db
+					.listCollections({ name: "posts" })
+					.toArray();
+				if (collections.length === 0) {
+					console.warn("⚠️ Posts collection does not exist");
+					return res.status(200).json(
+						new ApiResponse(
+							200,
+							{
+								feed: [],
+								pagination: {
+									currentPage: pageNum,
+									totalPages: 0,
+									totalPosts: 0,
+									hasNextPage: false,
+									hasPrevPage: false,
+									limit: limitNum,
+								},
+								meta: {
+									feedType: type,
+									sortBy: sortField,
+									sortOrder: validSortOrder,
+									followingCount: followingIds.length,
+								},
 							},
-							meta: {
-								feedType: type,
-								sortBy: sortField,
-								sortOrder: validSortOrder,
-								followingCount: followingIds.length,
-							},
-						},
-						"Feed is currently empty",
-					),
-				);
+							"Feed is currently empty - no posts collection found",
+						),
+					);
+				}
+
+				postsCollection = db.collection("posts");
+				// Execute both queries in parallel for better performance
+				const [feedResult, totalCountResult] = await Promise.all([
+					postsCollection.aggregate(pipeline).maxTimeMS(15000).toArray(),
+					postsCollection
+						.aggregate([{ $match: matchConditions }, { $count: "total" }])
+						.maxTimeMS(10000)
+						.toArray(),
+				]);
+				feed = feedResult;
+				totalPosts =
+					totalCountResult.length > 0 ? totalCountResult[0].total : 0;
 			}
-			const postsCollection = db.collection("posts");
-			// Execute both queries in parallel for better performance
-			const [feedResult, totalCountResult] = await Promise.all([
-				postsCollection.aggregate(pipeline).maxTimeMS(15000).toArray(),
-				postsCollection
-					.aggregate([{ $match: matchConditions }, { $count: "total" }])
-					.maxTimeMS(10000)
-					.toArray(),
-			]);
-			feed = feedResult;
-			totalPosts = totalCountResult.length > 0 ? totalCountResult[0].total : 0;
 		} catch (dbError) {
-			console.error("Database error in getUserFeed:", dbError);
+			console.error("❌ Database error in getUserFeed:", dbError);
 			if (dbError.code === 50) {
 				// maxTimeMS exceeded
 				throw new ApiError(408, "Feed request timed out. Please try again.");
 			}
 			throw new ApiError(500, "Database error occurred while fetching feed");
 		}
+
+		console.log("✅ Feed results:", { postsFound: feed.length, totalPosts });
+
 		const totalPages = Math.ceil(totalPosts / limitNum);
+
 		// Enhanced response formatting
 		const formattedFeed = feed.map((post) => ({
 			...post,
@@ -1848,7 +1758,7 @@ const getUserFeed = asyncHandler(async (req, res) => {
 			),
 		);
 	} catch (error) {
-		console.error("Get user feed error:", error);
+		console.error("❌ Get user feed error:", error);
 
 		if (error instanceof ApiError) {
 			throw error;
@@ -2315,6 +2225,6 @@ export {
 	unfollowUser, // ✅
 	getUserFollowers,
 	getUserFollowing,
-	searchUsers,
+	searchUsers, //✅
 	getUserSuggestions,
 };

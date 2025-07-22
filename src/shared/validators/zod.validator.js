@@ -77,13 +77,48 @@ export const zodValidation = {
 	// Search users
 	searchUser: z
 		.object({
-			search: z.string().min(2).max(50).optional(),
-			sortBy: z
-				.enum(["username", "followers", "createdAt", "updatedAt"])
+			search: z
+				.string()
+				.min(2, "Search query must be at least 2 characters")
 				.optional(),
-			includePrivate: z.coerce.boolean().optional(),
+			username: z
+				.string()
+				.min(2, "Username must be at least 2 characters")
+				.optional(),
+			firstName: z
+				.string()
+				.min(2, "First name must be at least 2 characters")
+				.optional(),
+			lastName: z
+				.string()
+				.min(2, "Last name must be at least 2 characters")
+				.optional(),
+			page: z
+				.string()
+				.regex(/^\d+$/, "Page must be a number")
+				.transform(Number)
+				.optional(),
+			limit: z
+				.string()
+				.regex(/^\d+$/, "Limit must be a number")
+				.transform(Number)
+				.optional(),
+			sortBy: z
+				.enum(["relevance", "followers", "newest", "username"])
+				.optional(),
+			includePrivate: z
+				.string()
+				.transform((val) => val === "true")
+				.optional(),
 		})
-		.strict(),
+		.refine(
+			(data) => data.search || data.username || data.firstName || data.lastName,
+			{
+				message: "At least one search parameter is required",
+				path: ["search"],
+			},
+		),
+	// .strict(),
 
 	// Update own profile
 	updateProfile: z
