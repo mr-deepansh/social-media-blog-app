@@ -5,7 +5,7 @@ export class CacheService {
 		this.client = null;
 		this.mockCache = new Map();
 		this.redisInitialized = false;
-		
+
 		// Initialize Redis asynchronously
 		this.initRedis();
 	}

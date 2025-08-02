@@ -4,13 +4,16 @@ import { upload } from "../../../shared/middleware/multer.middleware.js";
 import { verifyJWT } from "../../../shared/middleware/auth.middleware.js";
 import { isAdmin } from "../../../shared/middleware/isAdmin.middleware.js";
 import {
+	getAdminStats,
+	getAdminStatsLive,
+	getAllAdmins,
+	getAdminById,
 	getAllUsers,
 	getUserById,
 	deleteUserById,
 	updateUserById,
 	suspendUser,
 	activateUser,
-	getAdminStats,
 	searchUsers,
 	bulkExportUsers,
 	bulkImportUsers,
@@ -29,7 +32,12 @@ router.use(verifyJWT);
 router.use(isAdmin);
 
 // 📊 Dashboard & Stats
-router.route("/stats").get(getAdminStats);
+router.route("/stats").get(getAdminStats); // * ✅ [TESTED]
+router.route("/stats/live").get(getAdminStatsLive); // * ✅ [TESTED]
+
+// 👤 Admin Management
+router.route("/admins").get(getAllAdmins); // * ✅ [TESTED]
+router.route("/admins/:id").get(getAdminById); // ! This not tested yet
 
 // 🔍 Advanced Search & Export (must come before :id routes)
 router.route("/users/search").get(searchUsers);

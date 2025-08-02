@@ -84,8 +84,10 @@
 		"eslint": "^9.21.0",
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-prettier": "^5.2.3",
+		"jest": "^29.7.0",
 		"nodemon": "^3.0.3",
-		"prettier": "^3.6.2"
+		"prettier": "^3.6.2",
+		"supertest": "^6.3.3"
 	},
 	"optionalDependencies": {
 		"compression": "^1.7.4",
