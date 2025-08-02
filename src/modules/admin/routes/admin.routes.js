@@ -1,12 +1,8 @@
 // src/modules/admin/routes/admin.routes.js
-import express from "express";
+import { Router } from "express";
+import { upload } from "../../../shared/middleware/multer.middleware.js";
 import { verifyJWT } from "../../../shared/middleware/auth.middleware.js";
 import { isAdmin } from "../../../shared/middleware/isAdmin.middleware.js";
-import {
-	validateQuery,
-	validateRequest,
-} from "../../../shared/middleware/validate.middleware.js";
-import { zodValidation } from "../../../shared/validators/zod.validator.js";
 import {
 	getAllUsers,
 	getUserById,
@@ -15,89 +11,68 @@ import {
 	suspendUser,
 	activateUser,
 	getAdminStats,
+	searchUsers,
+	bulkExportUsers,
+	bulkImportUsers,
+	bulkActions,
+	getUserActivityLog,
+	getUserLoginHistory,
+	getUserDeviceInfo,
+	sendNotificationToUser,
+	verifyUserAccount,
+	forcePasswordReset,
+	getUserSecurityAnalysis,
 } from "../controllers/admin.controller.js";
 
-const router = express.Router();
+const router = Router();
+router.use(verifyJWT);
+router.use(isAdmin);
 
-// Add debug middleware to check if routes are being hit
-/* router.use((req, res, next) => {
-	console.log(`🔍 Admin Route Hit: ${req.method} ${req.originalUrl}`);
-	console.log(`🔍 Headers:`, req.headers);
-	next();
-}); */
+// 📊 Dashboard & Stats
+router.route("/stats").get(getAdminStats);
 
-// Test route without any auth middleware
-router.get("/test-no-auth", (req, res) => {
-	// console.log("🧪 Test route hit (no auth)");
-	res.json({
-		success: true,
-		message: "Admin routes are working! (No auth required)",
-		path: req.originalUrl,
-		method: req.method,
-		timestamp: new Date().toISOString(),
-	});
-});
+// 🔍 Advanced Search & Export (must come before :id routes)
+router.route("/users/search").get(searchUsers);
+router.route("/users/export").get(bulkExportUsers);
 
-// Test route with auth but no admin check
-router.get("/test-auth-only", verifyJWT, (req, res) => {
-	// console.log("🧪 Test route hit (auth only)");
-	res.json({
-		success: true,
-		message: "Auth working! User authenticated",
-		user: {
-			id: req.user._id,
-			email: req.user.email,
-			role: req.user.role,
-		},
-		path: req.originalUrl,
-		method: req.method,
-		timestamp: new Date().toISOString(),
-	});
-});
+// 👥 User Management
+router.route("/users").get(getAllUsers);
 
-// Apply auth middleware to all OTHER routes (not test route)
-router.use((req, res, next) => {
-	// Skip auth for test route
-	if (req.path === "/test") {
-		return next();
-	}
-	// Apply auth middleware for other routes
-	verifyJWT(req, res, (err) => {
-		if (err) {
-			console.log("❌ JWT verification failed:", err.message);
-			return next(err);
-		}
-		// console.log("✅ JWT verified successfully");
+router
+	.route("/users/:id")
+	.get(getUserById)
+	.put(updateUserById)
+	.delete(deleteUserById);
 
-		isAdmin(req, res, (err) => {
-			if (err) {
-				// console.log("❌ Admin check failed:", err.message);
-				return next(err);
-			}
-			// console.log("✅ Admin check passed");
-			next();
-		});
-	});
-});
+// 🔄 User Status Management
+router.route("/users/:id/suspend").patch(suspendUser);
+router.route("/users/:id/activate").patch(activateUser);
 
-// Dashboard stats
-router.get("/stats", (req, res) => {
-	// console.log("📊 Stats route hit");
-	getAdminStats(req, res);
-});
-
-// User management
-router.get("/users", validateQuery(zodValidation.getUsers), getAllUsers);
-router.get("/users/:id", getUserById);
-router.put(
-	"/users/:id",
-	validateRequest(zodValidation.updateUser),
-	updateUserById,
+// 📥 Bulk Import (with file upload)
+router.route("/users/import").post(
+	upload.single("csvFile"), // Multer middleware for file upload
+	bulkImportUsers,
 );
-router.delete("/users/:id", deleteUserById);
 
-// User status management
-router.patch("/users/:id/suspend", suspendUser);
-router.patch("/users/:id/activate", activateUser);
+// ⚡ Bulk Actions
+router.route("/users/bulk-actions").post(bulkActions);
+
+// 📊 User Analytics & Monitoring
+router.route("/users/:id/activity-log").get(getUserActivityLog);
+
+router.route("/users/:id/login-history").get(getUserLoginHistory);
+
+router.route("/users/:id/devices").get(getUserDeviceInfo);
+
+// 📧 Communication & Notifications
+router.route("/users/:id/notify").post(sendNotificationToUser);
+
+// 🔒 Security & Verification
+router.route("/users/:id/verify").patch(verifyUserAccount);
+
+router.route("/users/:id/force-password-reset").post(forcePasswordReset);
+
+// 🔍 Security Analysis
+router.route("/users/:id/security-analysis").get(getUserSecurityAnalysis);
 
 export default router;
