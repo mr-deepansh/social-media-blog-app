@@ -131,7 +131,7 @@ const aggregationOptions = {
 // * TODO ANALYTICS & DASHBOARD CONTROLLERS
 // ============================================================================
 
-// * ✅ [TESTED] 🚀 Get Admin Stats
+// 🚀 Get Admin Stats
 const getAdminStats = asyncHandler(async (req, res) => {
 	let startTime = process.hrtime.bigint();
 	let cacheHit = false;
@@ -521,7 +521,7 @@ const getAdminStats = asyncHandler(async (req, res) => {
 	}
 });
 
-// * ✅ [TESTED] 🚀 live stats endpoint
+// 🚀 live stats endpoint
 const getAdminStatsLive = asyncHandler(async (req, res) => {
 	const startTime = process.hrtime.bigint();
 	try {
@@ -629,7 +629,7 @@ const getAdminStatsLive = asyncHandler(async (req, res) => {
 //*  ADMIN MANAGEMENT CONTROLLERS
 // ============================================================================
 
-// * ✅ [TESTED] 🚀 Get All Admins with Advanced Filtering, Pagination & Caching
+// 🚀 Get All Admins with Advanced Filtering, Pagination & Caching
 const getAllAdmins = asyncHandler(async (req, res) => {
 	try {
 		const startTime = Date.now();
