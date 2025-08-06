@@ -1,4 +1,5 @@
 ## **All routes are now properly configured and ready for testing!**
+
 ```
 social-media-blog-app/
 ├── 📁 src/                             # Source code
