@@ -9,6 +9,7 @@ import {
 import { zodValidation } from "../../../shared/validators/zod.validator.js";
 import * as userController from "../controllers/user.controller.js";
 import { asyncHandler } from "../../../shared/utils/AsyncHandler.js";
+import { apiRateLimiter } from "../../../shared/middleware/rateLimit.middleware.js";
 
 // ✅ Highest priority: Auth
 router.post(
@@ -19,7 +20,8 @@ router.post(
 
 router.post(
 	"/login",
-	validateRequest(zodValidation.loginUser),
+	apiRateLimiter,
+	validateRequest(zodValidation.loginFlexible),
 	asyncHandler(userController.loginUser),
 );
 

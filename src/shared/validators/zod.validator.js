@@ -41,13 +41,66 @@ export const zodValidation = {
 			path: ["password"],
 		}),
 
-	// Login
+	// Fixed Login - allows both username and email
 	loginUser: z
 		.object({
-			email: z.string().email().trim().toLowerCase(),
+			username: z
+				.string()
+				.min(3, "Username must be at least 3 characters")
+				.max(30, "Username cannot exceed 30 characters")
+				.trim()
+				.optional(),
+			email: z
+				.string()
+				.email("Enter a valid email address")
+				.trim()
+				.toLowerCase()
+				.optional(),
+			password: z.string().min(1, "Password is required"),
+		})
+		.strict()
+		.refine((data) => data.username || data.email, {
+			message: "Either username or email is required",
+			path: ["username"], // This will show error on username field
+		}),
+
+	// Alternative login schemas for different use cases
+	loginWithEmail: z
+		.object({
+			email: z.string().email("Enter a valid email").trim().toLowerCase(),
 			password: z.string().min(1, "Password is required"),
 		})
 		.strict(),
+
+	loginWithUsername: z
+		.object({
+			username: z
+				.string()
+				.min(3, "Username must be at least 3 characters")
+				.max(30, "Username cannot exceed 30 characters")
+				.trim(),
+			password: z.string().min(1, "Password is required"),
+		})
+		.strict(),
+
+	// More flexible login that accepts identifier field
+	loginFlexible: z
+		.object({
+			identifier: z
+				.string()
+				.min(1, "Username or email is required")
+				.trim()
+				.optional(),
+			username: z.string().min(1).trim().optional(),
+			email: z.string().email().trim().toLowerCase().optional(),
+			password: z.string().min(1, "Password is required"),
+			rememberMe: z.boolean().optional().default(false),
+		})
+		.strict()
+		.refine((data) => data.identifier || data.username || data.email, {
+			message: "Username, email, or identifier is required",
+			path: ["identifier"],
+		}),
 
 	// Update user
 	updateUser: z
@@ -74,6 +127,7 @@ export const zodValidation = {
 				.optional(),
 		})
 		.strict(),
+
 	// Search users
 	searchUser: z
 		.object({
@@ -118,7 +172,6 @@ export const zodValidation = {
 				path: ["search"],
 			},
 		),
-	// .strict(),
 
 	// Update own profile
 	updateProfile: z
@@ -190,6 +243,7 @@ export const zodValidation = {
 			sortOrder: z.enum(["asc", "desc"]).default("desc"),
 		})
 		.strict(),
+
 	getFollowers: z
 		.object({
 			page: z.coerce.number().int().min(1).default(1),
@@ -214,4 +268,55 @@ export const zodValidation = {
 				.default("recent"),
 		})
 		.strict(),
+};
+
+// Usage examples and middleware function
+export const validateLogin = (req, res, next) => {
+	try {
+		// Validate the request body
+		const validatedData = zodValidation.loginUser.parse(req.body);
+
+		// Attach validated data to request
+		req.validatedBody = validatedData;
+		next();
+	} catch (error) {
+		if (error instanceof z.ZodError) {
+			return res.status(400).json({
+				success: false,
+				message: "Validation failed",
+				errors: error.errors.map((err) => ({
+					field: err.path.join("."),
+					message: err.message,
+				})),
+			});
+		}
+		return res.status(500).json({
+			success: false,
+			message: "Internal server error",
+		});
+	}
+};
+
+// Alternative validation for flexible login
+export const validateFlexibleLogin = (req, res, next) => {
+	try {
+		const validatedData = zodValidation.loginFlexible.parse(req.body);
+		req.validatedBody = validatedData;
+		next();
+	} catch (error) {
+		if (error instanceof z.ZodError) {
+			return res.status(400).json({
+				success: false,
+				message: "Validation failed",
+				errors: error.errors.map((err) => ({
+					field: err.path.join("."),
+					message: err.message,
+				})),
+			});
+		}
+		return res.status(500).json({
+			success: false,
+			message: "Internal server error",
+		});
+	}
 };

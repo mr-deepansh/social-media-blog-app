@@ -339,53 +339,80 @@ const registerUser = asyncHandler(async (req, res) => {
 		.json(new ApiResponse(201, createdUser, "User registered successfully"));
 });
 
-// Login a user
+// **login for production scalability
 const loginUser = asyncHandler(async (req, res) => {
-	const { email, password } = req.body;
-	// TODO login by username or email
-	if (!email || !password) {
-		throw new ApiError(400, "Email and password are required");
+	const {
+		identifier,
+		username,
+		email,
+		password,
+		rememberMe = false,
+	} = req.body;
+
+	// Input validation
+	const loginId = (identifier || username || email)?.trim()?.toLowerCase();
+	if (!loginId || !password) {
+		throw new ApiError(400, "Credentials required");
 	}
-	const user = await User.findOne({ email: email.toLowerCase() });
-
-	if (!user) {
-		throw new ApiError(404, "User not found");
+	try {
+		// Single optimized query with projection
+		const user = await User.findOne(
+			{ $or: [{ username: loginId }, { email: loginId }] },
+			{
+				password: 1,
+				username: 1,
+				email: 1,
+				firstName: 1,
+				lastName: 1,
+				avatar: 1,
+				isActive: 1,
+			},
+		).lean();
+		if (!user || user.isActive === false) {
+			throw new ApiError(401, "Invalid credentials");
+		}
+		// Parallel password check and token generation
+		const [isValidPassword, tokens] = await Promise.all([
+			User.findById(user._id).then((u) => u.isPasswordCorrect(password)),
+			generateAccessAndRefreshTokens(user._id),
+		]);
+		if (!isValidPassword) {
+			throw new ApiError(401, "Invalid credentials");
+		}
+		// Prepare response data
+		const userData = {
+			_id: user._id,
+			username: user.username,
+			email: user.email,
+			firstName: user.firstName,
+			lastName: user.lastName,
+			avatar: user.avatar,
+		};
+		const cookieOptions = {
+			httpOnly: true,
+			secure: process.env.NODE_ENV === "production",
+			sameSite: "strict",
+			maxAge: rememberMe ? 2592000000 : 86400000, // 30d : 1d
+		};
+		return res
+			.status(200)
+			.cookie("accessToken", tokens.accessToken, cookieOptions)
+			.cookie("refreshToken", tokens.refreshToken, cookieOptions)
+			.json(
+				new ApiResponse(
+					200,
+					{
+						user: userData,
+						accessToken: tokens.accessToken,
+						refreshToken: tokens.refreshToken,
+					},
+					"Login successful",
+				),
+			);
+	} catch (error) {
+		if (error instanceof ApiError) throw error;
+		throw new ApiError(500, "Login failed");
 	}
-
-	const isPasswordValid = await user.isPasswordCorrect(password);
-
-	if (!isPasswordValid) {
-		throw new ApiError(401, "Invalid credentials");
-	}
-
-	const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
-		user._id,
-	);
-
-	const loggedInUser = await User.findById(user._id).select(
-		"-password -refreshToken",
-	);
-
-	const options = {
-		httpOnly: true,
-		secure: process.env.NODE_ENV === "production",
-	};
-
-	return res
-		.status(200)
-		.cookie("accessToken", accessToken, options)
-		.cookie("refreshToken", refreshToken, options)
-		.json(
-			new ApiResponse(
-				200,
-				{
-					user: loggedInUser,
-					accessToken,
-					refreshToken,
-				},
-				"User logged in successfully",
-			),
-		);
 });
 
 const logoutUser = asyncHandler(async (req, res) => {
