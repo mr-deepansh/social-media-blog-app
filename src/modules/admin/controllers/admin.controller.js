@@ -12,6 +12,11 @@ import auditService from "../services/audit.service.js";
 import { ExportImportService } from "../services/exportImport.service.js";
 import { SecurityService } from "../services/security.service.js";
 import { log } from "console";
+import { Worker, isMainThread, parentPort } from "worker_threads";
+import Bull from "bull";
+import Redis from "ioredis";
+import { Transform, pipeline } from "stream";
+import { promisify } from "util";
 
 // Initialize services
 const cache = new CacheService();
@@ -23,88 +28,6 @@ const securityService = new SecurityService();
 
 // ENTERPRISE-GRADE PERFORMANCE OPTIMIZATIONS
 
-// Pre-compiled aggregation pipelines for maximum performance
-const AGGREGATION_PIPELINES = {
-	basicCounts: [
-		{
-			$facet: {
-				totalUsers: [{ $count: "count" }],
-				activeUsers: [{ $match: { isActive: true } }, { $count: "count" }],
-				adminUsers: [{ $match: { role: "admin" } }, { $count: "count" }],
-				usersByRole: [
-					{ $group: { _id: "$role", count: { $sum: 1 } } },
-					{ $project: { _id: 0, role: "$_id", count: 1 } },
-					{ $sort: { count: -1 } },
-				],
-			},
-		},
-	],
-	userAnalytics: [
-		{
-			$facet: {
-				locationStats: [
-					{
-						$match: {
-							"location.country": { $exists: true, $ne: null, $ne: "" },
-						},
-					},
-					{ $group: { _id: "$location.country", count: { $sum: 1 } } },
-					{ $project: { _id: 0, country: "$_id", count: 1 } },
-					{ $sort: { count: -1 } },
-					{ $limit: 5 },
-				],
-				engagementStats: [
-					{
-						$project: {
-							daysSinceLastLogin: {
-								$cond: {
-									if: { $ifNull: ["$lastLoginAt", false] },
-									then: {
-										$divide: [
-											{ $subtract: [new Date(), "$lastLoginAt"] },
-											86400000,
-										],
-									},
-									else: 999,
-								},
-							},
-						},
-					},
-					{
-						$group: {
-							_id: null,
-							highly_engaged: {
-								$sum: {
-									$cond: [{ $lt: ["$daysSinceLastLogin", 7] }, 1, 0],
-								},
-							},
-							moderately_engaged: {
-								$sum: {
-									$cond: [
-										{
-											$and: [
-												{ $gte: ["$daysSinceLastLogin", 7] },
-												{ $lt: ["$daysSinceLastLogin", 30] },
-											],
-										},
-										1,
-										0,
-									],
-								},
-							},
-							low_engaged: {
-								$sum: {
-									$cond: [{ $gte: ["$daysSinceLastLogin", 30] }, 1, 0],
-								},
-							},
-						},
-					},
-					{ $project: { _id: 0 } },
-				],
-			},
-		},
-	],
-};
 // Constants for better performance
 const MONTH_NAMES = [
 	"Jan",
@@ -126,301 +49,691 @@ const aggregationOptions = {
 	maxTimeMS: 30000,
 	readConcern: { level: "local" },
 };
-
-// ============================================================================
-// * TODO ANALYTICS & DASHBOARD CONTROLLERS
-// ============================================================================
-
-// 🚀 Get Admin Stats
-const getAdminStats = asyncHandler(async (req, res) => {
-	let startTime = process.hrtime.bigint();
-	let cacheHit = false;
-	try {
-		// 🚀 TIER 1: Multi-level caching strategy
-		const cacheKey = `admin:stats:${Math.floor(Date.now() / 60000)}`;
-		const fallbackCacheKey = `admin:stats:fallback`;
-		// Try primary cache first
-		try {
-			const cachedStats = await cache.get(cacheKey);
-			if (cachedStats) {
-				cacheHit = true;
-				const responseTime =
-					Number(process.hrtime.bigint() - startTime) / 1000000;
-				return res.status(200).json(
-					new ApiResponse(
-						200,
-						{
-							stats: {
-								...cachedStats,
-								metadata: {
-									...cachedStats.metadata,
-									generatedAt: new Date().toISOString(),
-									fromCache: true,
-									responseTime: `${responseTime.toFixed(2)}ms`,
+// PRODUCTION-OPTIMIZED CONSTANTS
+const CACHE_TTL = {
+	ADMIN_STATS: 60, // 1 minute
+	ADMIN_STATS_LIVE: 30, // 30 seconds
+	USER_LIST: 120, // 2 minutes
+	USER_PROFILE: 300, // 5 minutes
+	SEARCH_RESULTS: 90, // 1.5 minutes
+};
+const PERFORMANCE_THRESHOLDS = {
+	EXCELLENT: 50,
+	GOOD: 100,
+	ACCEPTABLE: 200,
+	POOR: 500,
+};
+// Optimized admin stats aggregation pipeline
+const OPTIMIZED_ADMIN_STATS_PIPELINE = [
+	{
+		$facet: {
+			// Basic user counts - highly optimized
+			basicCounts: [
+				{
+					$group: {
+						_id: null,
+						totalUsers: { $sum: 1 },
+						activeUsers: { $sum: { $cond: ["$isActive", 1, 0] } },
+						adminUsers: {
+							$sum: { $cond: [{ $eq: ["$role", "admin"] }, 1, 0] },
+						},
+						verifiedUsers: { $sum: { $cond: ["$isVerified", 1, 0] } },
+					},
+				},
+			],
+			// Role distribution
+			roleDistribution: [
+				{ $group: { _id: "$role", count: { $sum: 1 } } },
+				{ $sort: { count: -1 } },
+				{ $limit: 10 },
+			],
+			// Location statistics (top 5)
+			locationStats: [
+				{
+					$match: {
+						"location.country": { $exists: true, $ne: null, $ne: "" },
+					},
+				},
+				{ $group: { _id: "$location.country", count: { $sum: 1 } } },
+				{ $sort: { count: -1 } },
+				{ $limit: 5 },
+			],
+			// Engagement analysis based on last login
+			engagementStats: [
+				{
+					$addFields: {
+						daysSinceLogin: {
+							$cond: {
+								if: { $ifNull: ["$lastLoginAt", false] },
+								then: {
+									$floor: {
+										$divide: [
+											{ $subtract: ["$$NOW", "$lastLoginAt"] },
+											86400000,
+										],
+									},
 								},
-							},
-							meta: {
-								cacheHit: true,
-								generatedAt: new Date().toISOString(),
-								executionTime: `${responseTime.toFixed(2)}ms`,
-								dataFreshness: "cached_1_minute",
-								performanceGrade: "A++",
+								else: 999,
 							},
 						},
-						"Admin stats from cache",
-					),
+					},
+				},
+				{
+					$group: {
+						_id: null,
+						highly_engaged: {
+							$sum: { $cond: [{ $lte: ["$daysSinceLogin", 7] }, 1, 0] },
+						},
+						moderately_engaged: {
+							$sum: {
+								$cond: [
+									{
+										$and: [
+											{ $gt: ["$daysSinceLogin", 7] },
+											{ $lte: ["$daysSinceLogin", 30] },
+										],
+									},
+									1,
+									0,
+								],
+							},
+						},
+						low_engaged: {
+							$sum: { $cond: [{ $gt: ["$daysSinceLogin", 30] }, 1, 0] },
+						},
+					},
+				},
+			],
+			// Recent users (last 10)
+			recentUsers: [
+				{ $sort: { createdAt: -1 } },
+				{ $limit: 10 },
+				{
+					$project: {
+						_id: 1,
+						username: 1,
+						email: 1,
+						role: 1,
+						createdAt: 1,
+						isActive: 1,
+						lastLoginAt: 1,
+					},
+				},
+			],
+			// Monthly growth (last 6 months)
+			monthlyGrowth: [
+				{
+					$match: {
+						createdAt: {
+							$gte: new Date(Date.now() - 6 * 30 * 24 * 60 * 60 * 1000),
+						},
+					},
+				},
+				{
+					$group: {
+						_id: {
+							year: { $year: "$createdAt" },
+							month: { $month: "$createdAt" },
+						},
+						count: { $sum: 1 },
+					},
+				},
+				{ $sort: { "_id.year": 1, "_id.month": 1 } },
+				{ $limit: 6 },
+			],
+			// Daily growth (last 14 days)
+			dailyGrowth: [
+				{
+					$match: {
+						createdAt: {
+							$gte: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
+						},
+					},
+				},
+				{
+					$group: {
+						_id: {
+							year: { $year: "$createdAt" },
+							month: { $month: "$createdAt" },
+							day: { $dayOfMonth: "$createdAt" },
+						},
+						count: { $sum: 1 },
+					},
+				},
+				{ $sort: { "_id.year": 1, "_id.month": 1, "_id.day": 1 } },
+				{ $limit: 14 },
+			],
+		},
+	},
+];
+
+// PRODUCTION UTILITY FUNCTIONS
+const getPerformanceGrade = (executionTime) => {
+	if (executionTime < PERFORMANCE_THRESHOLDS.EXCELLENT) return "A++";
+	if (executionTime < PERFORMANCE_THRESHOLDS.GOOD) return "A+";
+	if (executionTime < PERFORMANCE_THRESHOLDS.ACCEPTABLE) return "A";
+	if (executionTime < PERFORMANCE_THRESHOLDS.POOR) return "B";
+	return "C";
+};
+
+const generateCacheKey = (prefix, params, version = "v3") => {
+	const paramString =
+		typeof params === "object" ? JSON.stringify(params) : String(params);
+	const hash = Buffer.from(paramString).toString("base64").slice(0, 16);
+	return `${prefix}:${version}:${hash}`;
+};
+
+const safeAsyncOperation = async (
+	operation,
+	fallback = null,
+	logError = true,
+) => {
+	try {
+		return await operation();
+	} catch (error) {
+		if (logError) {
+			console.warn("Async operation failed:", error.message);
+		}
+		return fallback;
+	}
+};
+const CONFIG = {
+	CACHE: {
+		ADMIN_STATS: 60,
+		ADMIN_STATS_LIVE: 30,
+		USER_LIST: 120,
+		USER_PROFILE: 300,
+		SEARCH_RESULTS: 90,
+		EXPORT_DATA: 300,
+	},
+
+	PERFORMANCE: {
+		THRESHOLDS: {
+			EXCELLENT: 50,
+			GOOD: 100,
+			ACCEPTABLE: 200,
+			POOR: 500,
+		},
+		MAX_QUERY_TIME: 15000,
+		BATCH_SIZE: 1000,
+		MAX_CONCURRENT_OPERATIONS: 5,
+	},
+
+	EXPORT: {
+		MAX_RECORDS: 100000,
+		DEFAULT_LIMIT: 10000,
+		SUPPORTED_FORMATS: ["csv", "json", "xlsx", "pdf"],
+		STREAMING_THRESHOLD: 5000,
+	},
+
+	BULK_ACTIONS: {
+		MAX_BATCH_SIZE: 50000,
+		CHUNK_SIZE: 1000,
+		TIMEOUT: 300000, // 5 minutes
+		RATE_LIMIT: { windowMs: 60000, max: 10 },
+	},
+
+	SECURITY: {
+		DESTRUCTIVE_ACTIONS: ["delete", "suspend", "force_password_reset"],
+		REQUIRE_PASSWORD_CONFIRMATION: true,
+		AUDIT_RETENTION_DAYS: 90,
+	},
+};
+
+// ==========================================
+// ENTERPRISE UTILITY CLASSES
+// ==========================================
+
+class PerformanceMonitor {
+	constructor(operation, userId = null) {
+		this.operation = operation;
+		this.userId = userId;
+		this.startTime = process.hrtime.bigint();
+		this.startMemory = process.memoryUsage();
+		this.metrics = {
+			dbQueries: 0,
+			cacheHits: 0,
+			cacheMisses: 0,
+			errors: 0,
+		};
+	}
+
+	recordDbQuery() {
+		this.metrics.dbQueries++;
+	}
+	recordCacheHit() {
+		this.metrics.cacheHits++;
+	}
+	recordCacheMiss() {
+		this.metrics.cacheMisses++;
+	}
+	recordError() {
+		this.metrics.errors++;
+	}
+
+	end(additionalData = {}) {
+		const endTime = process.hrtime.bigint();
+		const endMemory = process.memoryUsage();
+
+		const result = {
+			operation: this.operation,
+			userId: this.userId,
+			executionTime: Number(endTime - this.startTime) / 1000000, // Convert to milliseconds
+			memoryUsage: {
+				heapUsed: endMemory.heapUsed - this.startMemory.heapUsed,
+				heapTotal: endMemory.heapTotal - this.startMemory.heapTotal,
+				rss: endMemory.rss - this.startMemory.rss,
+			},
+			performanceGrade: this.getPerformanceGrade(
+				Number(endTime - this.startTime) / 1000000,
+			),
+			...this.metrics,
+			...additionalData,
+			timestamp: new Date().toISOString(),
+		};
+
+		// Log performance metrics asynchronously
+		setImmediate(() => this.logMetrics(result));
+
+		return result;
+	}
+
+	getPerformanceGrade(executionTime) {
+		if (executionTime < CONFIG.PERFORMANCE.THRESHOLDS.EXCELLENT) return "A++";
+		if (executionTime < CONFIG.PERFORMANCE.THRESHOLDS.GOOD) return "A+";
+		if (executionTime < CONFIG.PERFORMANCE.THRESHOLDS.ACCEPTABLE) return "A";
+		if (executionTime < CONFIG.PERFORMANCE.THRESHOLDS.POOR) return "B";
+		return "C";
+	}
+
+	logMetrics(metrics) {
+		if (metrics.performanceGrade === "C" || metrics.executionTime > 1000) {
+			console.warn(`⚠️ SLOW OPERATION: ${metrics.operation}`, {
+				executionTime: `${metrics.executionTime.toFixed(2)}ms`,
+				memoryUsage: `${Math.round(metrics.memoryUsage.heapUsed / 1024 / 1024)}MB`,
+				dbQueries: metrics.dbQueries,
+				grade: metrics.performanceGrade,
+			});
+		} else {
+			console.log(
+				`📊 Performance: ${metrics.operation} - ${metrics.executionTime.toFixed(2)}ms (${metrics.performanceGrade})`,
+			);
+		}
+	}
+}
+
+class EnhancedCacheManager {
+	static redis = new Redis(process.env.REDIS_URL);
+
+	static async get(key, parseJson = true) {
+		try {
+			const data = await this.redis.get(key);
+			return data ? (parseJson ? JSON.parse(data) : data) : null;
+		} catch (error) {
+			console.warn(`Cache get error for key ${key}:`, error.message);
+			return null;
+		}
+	}
+
+	static async set(key, data, ttl = 300) {
+		try {
+			const serializedData =
+				typeof data === "string" ? data : JSON.stringify(data);
+			await this.redis.setex(key, ttl, serializedData);
+			return true;
+		} catch (error) {
+			console.warn(`Cache set error for key ${key}:`, error.message);
+			return false;
+		}
+	}
+
+	static async del(key) {
+		try {
+			await this.redis.del(key);
+			return true;
+		} catch (error) {
+			console.warn(`Cache delete error for key ${key}:`, error.message);
+			return false;
+		}
+	}
+
+	static async invalidatePattern(pattern) {
+		try {
+			const keys = await this.redis.keys(pattern);
+			if (keys.length > 0) {
+				await this.redis.del(...keys);
+				console.log(
+					`🧹 Invalidated ${keys.length} cache keys matching: ${pattern}`,
 				);
 			}
-		} catch (cacheError) {
-			console.warn("Primary cache failed:", cacheError.message);
+			return keys.length;
+		} catch (error) {
+			console.warn(`Cache pattern invalidation error:`, error.message);
+			return 0;
 		}
-		// 🚀 TIER 2: Database operations with circuit breaker pattern
-		const dbOperations = async () => {
-			const [basicCounts, userAnalytics, recentActivity, timeBasedGrowth] =
-				await Promise.all([
-					// Basic counts with optimized aggregation
-					User.aggregate(AGGREGATION_PIPELINES.basicCounts, aggregationOptions)
-						.hint({ _id: 1 })
-						.catch((err) => {
-							console.error("Basic counts error:", err.message);
-							return [
-								{
-									totalUsers: [{ count: 0 }],
-									activeUsers: [{ count: 0 }],
-									adminUsers: [{ count: 0 }],
-									usersByRole: [],
-								},
-							];
-						}),
-					User.aggregate(
-						AGGREGATION_PIPELINES.userAnalytics,
-						aggregationOptions,
-					)
-						.hint({ lastLoginAt: 1 })
-						.catch((err) => {
-							console.error("User analytics error:", err.message);
-							return [
-								{
-									locationStats: [],
-									engagementStats: [
-										{
-											highly_engaged: 0,
-											moderately_engaged: 0,
-											low_engaged: 0,
-										},
-									],
-								},
-							];
-						}),
-					// Recent users with lean query
-					User.find(
-						{},
-						{ name: 1, email: 1, role: 1, createdAt: 1, isActive: 1 },
-					)
-						.sort({ createdAt: -1 })
-						.limit(8)
-						.lean(true)
-						.hint({ createdAt: -1 })
-						.catch((err) => {
-							console.error("Recent activity error:", err.message);
-							return [];
-						}),
-					// Time-based growth analytics
-					User.aggregate(
-						[
-							{
-								$facet: {
-									monthlyGrowth: [
-										{
-											$match: {
-												createdAt: {
-													$gte: new Date(
-														Date.now() - 6 * 30 * 24 * 60 * 60 * 1000,
-													),
-												},
-											},
-										},
-										{
-											$group: {
-												_id: {
-													year: { $year: "$createdAt" },
-													month: { $month: "$createdAt" },
-												},
-												count: { $sum: 1 },
-											},
-										},
-										{ $sort: { "_id.year": 1, "_id.month": 1 } },
-										{
-											$project: {
-												_id: 0,
-												year: "$_id.year",
-												month: "$_id.month",
-												count: 1,
-											},
-										},
-									],
-									dailyGrowth: [
-										{
-											$match: {
-												createdAt: {
-													$gte: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
-												},
-											},
-										},
-										{
-											$group: {
-												_id: {
-													year: { $year: "$createdAt" },
-													month: { $month: "$createdAt" },
-													day: { $dayOfMonth: "$createdAt" },
-												},
-												count: { $sum: 1 },
-											},
-										},
-										{ $sort: { "_id.year": 1, "_id.month": 1, "_id.day": 1 } },
-										{
-											$project: {
-												_id: 0,
-												year: "$_id.year",
-												month: "$_id.month",
-												day: "$_id.day",
-												count: 1,
-											},
-										},
-									],
-								},
-							},
-						],
-						aggregationOptions,
-					)
-						.hint({ createdAt: 1 })
-						.catch((err) => {
-							console.error("Time-based growth error:", err.message);
-							return [{ monthlyGrowth: [], dailyGrowth: [] }];
-						}),
-				]);
+	}
 
-			return [basicCounts, userAnalytics, recentActivity, timeBasedGrowth];
+	static generateKey(prefix, params, version = "v4") {
+		const paramString =
+			typeof params === "object" ? JSON.stringify(params) : String(params);
+		const hash = require("crypto")
+			.createHash("sha256")
+			.update(paramString)
+			.digest("hex")
+			.substring(0, 16);
+		return `${prefix}:${version}:${hash}`;
+	}
+
+	static async getOrSet(key, asyncFn, ttl = 300) {
+		const cached = await this.get(key);
+		if (cached) return { data: cached, fromCache: true };
+
+		const data = await asyncFn();
+		await this.set(key, data, ttl);
+		return { data, fromCache: false };
+	}
+}
+
+class QueryOptimizer {
+	static buildUserPipeline(filters = {}, options = {}) {
+		const pipeline = [];
+		const {
+			search,
+			role,
+			isActive,
+			dateFrom,
+			dateTo,
+			sortBy = "createdAt",
+			sortOrder = "desc",
+			limit = 1000,
+			skip = 0,
+		} = options;
+
+		// Match stage
+		const matchStage = { ...filters };
+
+		if (search?.trim()) {
+			const searchRegex = { $regex: search.trim(), $options: "i" };
+			matchStage.$or = [
+				{ username: searchRegex },
+				{ email: searchRegex },
+				{ firstName: searchRegex },
+				{ lastName: searchRegex },
+			];
+		}
+
+		if (role && role !== "all") {
+			matchStage.role = Array.isArray(role) ? { $in: role } : role;
+		}
+
+		if (isActive !== undefined && isActive !== "all") {
+			matchStage.isActive = isActive === "true" || isActive === true;
+		}
+
+		if (dateFrom || dateTo) {
+			matchStage.createdAt = {};
+			if (dateFrom) matchStage.createdAt.$gte = new Date(dateFrom);
+			if (dateTo) matchStage.createdAt.$lte = new Date(dateTo);
+		}
+
+		if (Object.keys(matchStage).length > 0) {
+			pipeline.push({ $match: matchStage });
+		}
+
+		// Sort stage
+		const validSortFields = [
+			"createdAt",
+			"username",
+			"email",
+			"firstName",
+			"lastName",
+			"role",
+			"lastLoginAt",
+		];
+		const finalSortBy = validSortFields.includes(sortBy) ? sortBy : "createdAt";
+		const sortObj = { [finalSortBy]: sortOrder === "asc" ? 1 : -1 };
+		pipeline.push({ $sort: sortObj });
+
+		// Project stage - only include necessary fields
+		pipeline.push({
+			$project: {
+				password: 0,
+				refreshToken: 0,
+				__v: 0,
+				"tokens.refreshToken": 0,
+				"sessions.token": 0,
+			},
+		});
+
+		// Pagination
+		if (skip > 0) pipeline.push({ $skip: skip });
+		if (limit > 0) pipeline.push({ $limit: limit });
+
+		return pipeline;
+	}
+
+	static getAggregationOptions(timeout = CONFIG.PERFORMANCE.MAX_QUERY_TIME) {
+		return {
+			allowDiskUse: false,
+			maxTimeMS: timeout,
+			readConcern: { level: "local" },
+			readPreference: "secondaryPreferred",
 		};
-		// Execute database operations with timeout
-		const dbResults = await Promise.race([
-			dbOperations(),
-			new Promise((_, reject) =>
-				setTimeout(
-					() => reject(new Error("Database operation timeout")),
-					25000,
+	}
+}
+
+class StreamingProcessor {
+	static createTransformStream(transformFn) {
+		return new Transform({
+			objectMode: true,
+			transform(chunk, encoding, callback) {
+				try {
+					const result = transformFn(chunk);
+					callback(null, result);
+				} catch (error) {
+					callback(error);
+				}
+			},
+		});
+	}
+
+	static async processInBatches(items, batchSize, processFn) {
+		const results = [];
+		for (let i = 0; i < items.length; i += batchSize) {
+			const batch = items.slice(i, i + batchSize);
+			const batchResults = await processFn(batch);
+			results.push(...batchResults);
+		}
+		return results;
+	}
+}
+
+// ==========================================
+// QUEUE SETUP FOR BACKGROUND PROCESSING
+// ==========================================
+
+const exportQueue = new Bull("user-export", {
+	redis: { port: process.env.REDIS_PORT, host: process.env.REDIS_HOST },
+});
+const bulkActionQueue = new Bull("bulk-actions", {
+	redis: { port: process.env.REDIS_PORT, host: process.env.REDIS_HOST },
+});
+
+// * TODO ANALYTICS & DASHBOARD CONTROLLERS ***
+
+// ** 🚀 Get Admin Stats tested
+const getAdminStats = asyncHandler(async (req, res) => {
+	const startTime = process.hrtime.bigint();
+
+	try {
+		// Smart cache key with time bucketing (30-second intervals)
+		const timeSlot = Math.floor(Date.now() / 30000);
+		const cacheKey = `admin:stats:v3:${timeSlot}`;
+
+		// Try cache first
+		const cachedStats = await safeAsyncOperation(
+			() => cache.get(cacheKey),
+			null,
+			false,
+		);
+
+		if (cachedStats) {
+			const responseTime =
+				Number(process.hrtime.bigint() - startTime) / 1000000;
+			return res.status(200).json(
+				new ApiResponse(
+					200,
+					{
+						stats: {
+							...cachedStats,
+							metadata: {
+								...cachedStats.metadata,
+								generatedAt: new Date().toISOString(),
+								fromCache: true,
+								responseTime: `${responseTime.toFixed(2)}ms`,
+							},
+						},
+						meta: {
+							cacheHit: true,
+							executionTime: `${responseTime.toFixed(2)}ms`,
+							performanceGrade: "A++",
+							dataFreshness: "cached_30s",
+						},
+					},
+					"Admin stats from cache",
 				),
-			),
+			);
+		}
+
+		// Execute optimized aggregation with timeout protection
+		const aggregationTimeout = new Promise((_, reject) =>
+			setTimeout(() => reject(new Error("Aggregation timeout")), 15000),
+		);
+
+		const aggregationQuery = User.aggregate(OPTIMIZED_ADMIN_STATS_PIPELINE, {
+			allowDiskUse: false,
+			maxTimeMS: 12000,
+			readConcern: { level: "local" },
+		});
+
+		const [aggregationResult] = await Promise.race([
+			aggregationQuery,
+			aggregationTimeout,
 		]);
-		const [basicCounts, userAnalytics, recentActivity, timeBasedGrowth] =
-			dbResults;
-		const executionTime = Number(process.hrtime.bigint() - startTime) / 1000000;
-		// 🚀 TIER 3: Ultra-fast data processing
-		const basicStats = basicCounts[0] || {};
-		const analytics = userAnalytics[0] || {};
-		const timeData = timeBasedGrowth[0] || {};
-		const totalUsers = basicStats.totalUsers?.[0]?.count || 0;
-		const activeUsers = basicStats.activeUsers?.[0]?.count || 0;
-		const adminUsers = basicStats.adminUsers?.[0]?.count || 0;
+
+		// Process results with safe fallbacks
+		const {
+			basicCounts = [{}],
+			roleDistribution = [],
+			locationStats = [],
+			engagementStats = [{}],
+			recentUsers = [],
+			monthlyGrowth = [],
+			dailyGrowth = [],
+		} = aggregationResult;
+
+		const counts = basicCounts[0] || {};
+		const engagement = engagementStats[0] || {};
+
+		const totalUsers = counts.totalUsers || 0;
+		const activeUsers = counts.activeUsers || 0;
+		const adminUsers = counts.adminUsers || 0;
+		const verifiedUsers = counts.verifiedUsers || 0;
 		const suspendedUsers = totalUsers - activeUsers;
+
 		const activePercentage =
 			totalUsers > 0 ? ((activeUsers / totalUsers) * 100).toFixed(1) : "0.0";
+
+		// Calculate current month growth
 		const now = new Date();
 		const currentMonth = now.getMonth() + 1;
 		const currentYear = now.getFullYear();
 		const currentMonthGrowth =
-			timeData.monthlyGrowth?.find(
-				(item) => item.month === currentMonth && item.year === currentYear,
+			monthlyGrowth.find(
+				(item) =>
+					item._id.month === currentMonth && item._id.year === currentYear,
 			)?.count || 0;
-		// 🚀 TIER 4: Optimized object construction
+
+		// Build optimized response structure
 		const stats = {
 			overview: {
 				totalUsers,
 				activeUsers,
 				adminUsers,
+				verifiedUsers,
 				suspendedUsers,
 				activePercentage: `${activePercentage}%`,
 				currentMonthSignups: currentMonthGrowth,
-				userGrowthTrend: currentMonthGrowth > 0 ? "up" : "down",
-				healthScore: Math.round((activeUsers / (totalUsers || 1)) * 100),
+				userGrowthTrend: currentMonthGrowth > 0 ? "up" : "stable",
+				healthScore: Math.round((activeUsers / Math.max(totalUsers, 1)) * 100),
 			},
+
 			breakdown: {
 				usersByRole: Object.fromEntries(
-					(basicStats.usersByRole || []).map((item) => [
-						item.role || "undefined",
-						item.count,
-					]),
+					roleDistribution.map((item) => [item._id || "undefined", item.count]),
 				),
 				usersByLocation: Object.fromEntries(
-					(analytics.locationStats || []).map((item) => [
-						item.country,
-						item.count,
-					]),
+					locationStats.map((item) => [item._id, item.count]),
 				),
-				monthlyGrowth: (timeData.monthlyGrowth || []).map((item) => ({
-					...item,
-					monthName: MONTH_NAMES[item.month - 1] || "Unknown",
+				monthlyGrowth: monthlyGrowth.map((item) => ({
+					year: item._id.year,
+					month: item._id.month,
+					count: item.count,
+					monthName: MONTH_NAMES[item._id.month - 1] || "Unknown",
 				})),
-				dailyGrowth: timeData.dailyGrowth || [],
+				dailyGrowth: dailyGrowth.map((item) => ({
+					year: item._id.year,
+					month: item._id.month,
+					day: item._id.day,
+					count: item.count,
+					date: new Date(item._id.year, item._id.month - 1, item._id.day)
+						.toISOString()
+						.split("T")[0],
+				})),
 			},
+
 			activity: {
-				recentUsers: (recentActivity || []).map((user) => ({
+				recentUsers: recentUsers.map((user) => ({
 					id: user._id,
-					name: user.name,
+					username: user.username,
 					email: user.email,
 					role: user.role,
 					joinedAt: user.createdAt,
+					lastLogin: user.lastLoginAt,
 					status: user.isActive ? "active" : "suspended",
 					daysSinceJoined: Math.floor(
 						(Date.now() - new Date(user.createdAt)) / (24 * 60 * 60 * 1000),
 					),
 				})),
 			},
-			engagement: analytics.engagementStats?.[0] || {
-				highly_engaged: 0,
-				moderately_engaged: 0,
-				low_engaged: 0,
+
+			engagement: {
+				highly_engaged: engagement.highly_engaged || 0,
+				moderately_engaged: engagement.moderately_engaged || 0,
+				low_engaged: engagement.low_engaged || 0,
 			},
+
 			metadata: {
 				generatedAt: new Date().toISOString(),
-				queryExecutionTime: `${executionTime.toFixed(2)}ms`,
-				totalQueries: 4,
-				optimizedVersion: "4.0-Enterprise",
 				fromCache: false,
-				performance: {
-					dbLatency: `${executionTime.toFixed(2)}ms`,
-					cacheStatus: "miss",
-					optimization: "enterprise",
-				},
+				optimizedVersion: "v3.0-Production",
+				pipeline: "single_facet_aggregation",
 			},
 		};
-		// 🚀 TIER 5: Non-blocking background operations
-		const backgroundOps = [
-			// Set primary cache with proper method call
-			cache
-				.setex(cacheKey, 60, stats)
-				.catch((err) => console.warn("Primary cache set failed:", err.message)),
-			// Set fallback cache (longer TTL)
-			cache
-				.setex(fallbackCacheKey, 300, stats)
-				.catch((err) =>
-					console.warn("Fallback cache set failed:", err.message),
-				),
-			// Update analytics if available
-			analyticsService
-				.updateDashboardMetrics?.(stats)
-				.catch((err) => console.warn("Analytics update failed:", err.message)),
-		];
-		// Execute background operations without blocking response
-		Promise.allSettled(backgroundOps);
-		// Performance grading
-		const getPerformanceGrade = (time) => {
-			if (time < 50) return "A++";
-			if (time < 100) return "A+";
-			if (time < 200) return "A";
-			if (time < 400) return "B";
-			return "C";
-		};
+
+		const executionTime = Number(process.hrtime.bigint() - startTime) / 1000000;
+
+		// Background cache operations (non-blocking)
+		setImmediate(() => {
+			Promise.allSettled([
+				cache.setex(cacheKey, CACHE_TTL.ADMIN_STATS, stats),
+				cache.setex(`admin:stats:fallback:v3`, 300, stats), // 5-minute fallback
+				analyticsService.updateDashboardMetrics?.(stats),
+			]).catch((err) =>
+				console.warn("Background operations failed:", err.message),
+			);
+		});
+
 		return res.status(200).json(
 			new ApiResponse(
 				200,
@@ -429,104 +742,66 @@ const getAdminStats = asyncHandler(async (req, res) => {
 					meta: {
 						cacheHit: false,
 						generatedAt: new Date().toISOString(),
-						totalQueries: 4,
 						executionTime: `${executionTime.toFixed(2)}ms`,
-						dataFreshness: "real_time",
 						performanceGrade: getPerformanceGrade(executionTime),
-						insights: {
-							speed:
-								executionTime < 100
-									? "optimal"
-									: executionTime < 200
-										? "good"
-										: "needs_optimization",
-							cacheRecommendation: "enabled",
-							nextOptimization:
-								executionTime > 200
-									? "consider_database_sharding"
-									: "none_needed",
-						},
+						dataFreshness: "real_time",
+						optimizations: [
+							"single_facet_pipeline",
+							"optimized_date_calculations",
+							"smart_caching",
+							"timeout_protection",
+						],
 					},
 				},
-				"Admin stats fetched successfully",
+				"Admin stats generated successfully",
 			),
 		);
 	} catch (error) {
-		// 🚀 TIER 6: Enterprise error handling with fallback strategy
-		try {
-			// Try fallback cache first
-			const fallbackStats = await cache.get("admin:stats:fallback");
-			if (fallbackStats) {
-				console.log("🔄 Returning fallback cached stats due to error");
-				return res.status(200).json(
-					new ApiResponse(
-						200,
-						{
-							stats: {
-								...fallbackStats,
-								metadata: {
-									...fallbackStats.metadata,
-									warning: "Using cached data due to temporary issue",
-									generatedAt: new Date().toISOString(),
-								},
-							},
-							meta: {
-								cacheHit: true,
-								dataFreshness: "fallback_cache",
-								warning: "Using cached data due to temporary issue",
-							},
+		// Enhanced fallback strategy
+		const fallbackStats = await safeAsyncOperation(
+			() => cache.get("admin:stats:fallback:v3"),
+			null,
+			false,
+		);
+
+		if (fallbackStats) {
+			return res.status(200).json(
+				new ApiResponse(
+					200,
+					{
+						stats: fallbackStats,
+						meta: {
+							cacheHit: true,
+							dataFreshness: "fallback_cache",
+							warning: "Using cached data due to temporary issue",
 						},
-						"Admin stats from fallback cache",
-					),
-				);
-			}
-		} catch (fallbackError) {
-			console.error("Fallback cache error:", fallbackError.message);
-		}
-		// 🛠️ Enhanced audit logging
-		try {
-			await auditService.logAdminActivity({
-				adminId: req.user?._id,
-				action: "GET_ADMIN_STATS",
-				details: {
-					error: error.message,
-					stack: error.stack?.split("\n").slice(0, 5).join("\n"),
-					timestamp: new Date().toISOString(),
-				},
-				level: "error",
-				status: "failure",
-				ipAddress: req.ip,
-				userAgent: req.get("User-Agent"),
-			});
-		} catch (auditError) {
-			console.error("❌ Audit logging failed:", auditError.message);
-		}
-		// Enhanced error handling with specific error types
-		if (error.message === "Database operation timeout") {
-			throw new ApiError(504, "Database response timeout. Please try again.");
-		}
-		if (error.name === "MongoError" || error.name === "MongoServerError") {
-			throw new ApiError(
-				503,
-				"Database temporarily unavailable. Please try again.",
+					},
+					"Admin stats from fallback cache",
+				),
 			);
 		}
-		if (error.name === "MongoNetworkError") {
-			throw new ApiError(503, "Database connection issue. Please try again.");
+
+		console.error("❌ Admin stats error:", error.message);
+
+		if (error.message === "Aggregation timeout") {
+			throw new ApiError(504, "Database query timeout. Please try again.");
 		}
-		if (error instanceof ApiError) {
-			throw error;
-		}
+
 		throw new ApiError(500, `Admin stats failed: ${error.message}`);
 	}
 });
 
-// 🚀 live stats endpoint
+// ** 🚀 live stats endpoint tested
 const getAdminStatsLive = asyncHandler(async (req, res) => {
 	const startTime = process.hrtime.bigint();
 	try {
-		// Check cache first for instant response
-		const liveCache = await cache.get("admin:stats:live");
+		// Check live cache first
+		const cacheKey = "admin:stats:live:v3";
+		const liveCache = await safeAsyncOperation(
+			() => cache.get(cacheKey),
+			null,
+			false,
+		);
 		if (liveCache) {
 			const responseTime =
 				Number(process.hrtime.bigint() - startTime) / 1000000;
@@ -545,6 +820,7 @@ const getAdminStatsLive = asyncHandler(async (req, res) => {
 				),
 			);
 		}
+		// Fast basic stats query
 		const basicStatsPromise = User.aggregate(
 			[
 				{
@@ -552,30 +828,32 @@ const getAdminStatsLive = asyncHandler(async (req, res) => {
 						total: [{ $count: "count" }],
 						active: [{ $match: { isActive: true } }, { $count: "count" }],
 						admin: [{ $match: { role: "admin" } }, { $count: "count" }],
+						verified: [{ $match: { isVerified: true } }, { $count: "count" }],
 					},
 				},
 			],
 			{
 				allowDiskUse: false,
 				maxTimeMS: 5000,
+				hint: { _id: 1 },
 			},
-		).hint({ _id: 1 });
-		const basicStats = await Promise.race([
-			basicStatsPromise,
-			new Promise((_, reject) =>
-				setTimeout(() => reject(new Error("Live stats timeout")), 4000),
-			),
-		]);
-		const stats = basicStats[0] || {};
+		);
+		const timeout = new Promise((_, reject) =>
+			setTimeout(() => reject(new Error("Live stats timeout")), 4000),
+		);
+		const [basicStats] = await Promise.race([basicStatsPromise, timeout]);
+		const stats = basicStats || {};
 		const totalUsers = stats.total?.[0]?.count || 0;
 		const activeUsers = stats.active?.[0]?.count || 0;
 		const adminUsers = stats.admin?.[0]?.count || 0;
+		const verifiedUsers = stats.verified?.[0]?.count || 0;
 		const executionTime = Number(process.hrtime.bigint() - startTime) / 1000000;
 		const liveData = {
 			overview: {
 				totalUsers,
 				activeUsers,
 				adminUsers,
+				verifiedUsers,
 				suspendedUsers: totalUsers - activeUsers,
 				activePercentage: `${totalUsers > 0 ? ((activeUsers / totalUsers) * 100).toFixed(1) : "0.0"}%`,
 			},
@@ -583,33 +861,40 @@ const getAdminStatsLive = asyncHandler(async (req, res) => {
 				type: "live",
 				generatedAt: new Date().toISOString(),
 				executionTime: `${executionTime.toFixed(2)}ms`,
-				performanceGrade:
-					executionTime < 25 ? "A++" : executionTime < 50 ? "A+" : "A",
+				performanceGrade: getPerformanceGrade(executionTime),
 			},
 		};
 		// Cache for 30 seconds (non-blocking)
-		cache.setex("admin:stats:live", 30, liveData).catch(() => {});
+		setImmediate(() => {
+			cache.setex(cacheKey, 30, liveData).catch(() => {});
+		});
 		return res
 			.status(200)
 			.json(new ApiResponse(200, liveData, "Live admin stats"));
 	} catch (error) {
 		console.error("❌ Live stats error:", error);
 		// Log error (non-blocking)
-		auditService
-			.logAdminActivity({
-				adminId: req.user?._id,
-				action: "GET_ADMIN_STATS_LIVE",
-				details: { error: error.message },
-				level: "error",
-				status: "failure",
-			})
-			.catch(() => {});
-		// Return minimal fallback data
+		setImmediate(() => {
+			safeAsyncOperation(
+				() =>
+					auditService.logAdminActivity({
+						adminId: req.user?._id,
+						action: "GET_ADMIN_STATS_LIVE",
+						details: { error: error.message },
+						level: "error",
+						status: "failure",
+					}),
+				null,
+				false,
+			);
+		});
+		// Return minimal fallback
 		const fallbackData = {
 			overview: {
 				totalUsers: 0,
 				activeUsers: 0,
 				adminUsers: 0,
+				verifiedUsers: 0,
 				suspendedUsers: 0,
 				activePercentage: "0.0%",
 			},
@@ -625,11 +910,9 @@ const getAdminStatsLive = asyncHandler(async (req, res) => {
 	}
 });
 
-// ============================================================================
-//*  ADMIN MANAGEMENT CONTROLLERS
-// ============================================================================
+//**  ADMIN MANAGEMENT CONTROLLERS ***
 
-// 🚀 Get All Admins with Advanced Filtering, Pagination & Caching
+//** 🚀 get all admins tested need optimization
 const getAllAdmins = asyncHandler(async (req, res) => {
 	try {
 		const startTime = Date.now();
@@ -639,99 +922,71 @@ const getAllAdmins = asyncHandler(async (req, res) => {
 			sortBy = "createdAt",
 			sortOrder = "desc",
 			search = "",
-			status = "all", // 'active', 'suspended', 'all'
-			role = "admin", // 'admin', 'super_admin', 'all'
+			status = "all",
+			role = "admin",
 			dateFrom,
 			dateTo,
 			lastLoginFrom,
 			lastLoginTo,
 		} = req.query;
+
+		// Input validation
 		const validatedParams = validator.validatePagination(page, limit);
-		// Add sort validation
-		const validSortFields = ["createdAt", "name", "email", "lastLoginAt"];
+		const validSortFields = ["createdAt", "username", "email", "lastLoginAt"];
 		const validSortOrders = ["asc", "desc"];
 		const finalSortBy = validSortFields.includes(sortBy) ? sortBy : "createdAt";
 		const finalSortOrder = validSortOrders.includes(sortOrder)
 			? sortOrder
 			: "desc";
-		// 🔥 Build cache key based on query params
-		const cacheKey = `admin:list:${JSON.stringify(req.query)}`;
-		let cachedResult = null;
-		// Safe cache get with fallback
-		if (cache && typeof cache.get === "function") {
-			try {
-				cachedResult = await cache.get(cacheKey);
-			} catch (error) {
-				console.warn("Cache get failed:", error.message);
-			}
-		}
+		// Smart caching
+		const cacheKey = generateCacheKey("admin:list", req.query);
+		const cachedResult = await safeAsyncOperation(
+			() => cache.get(cacheKey),
+			null,
+			false,
+		);
 		if (cachedResult) {
 			console.log(`⚡ Admin list cache hit - ${Date.now() - startTime}ms`);
 			return res
 				.status(200)
 				.json(new ApiResponse(200, cachedResult, "Admins fetched from cache"));
 		}
-		// 🚀 Build dynamic filter object
+		// Build dynamic filter
 		const filter = {
 			role: { $in: role === "all" ? ["admin", "super_admin"] : [role] },
 		};
-		// Status filter
 		if (status !== "all") {
 			filter.isActive = status === "active";
 		}
-		// Search filter (name, email, phone) - sanitize search input
+		// Search filter with sanitization
 		const sanitizedSearch = validator.sanitizeSearchQuery(search);
 		if (sanitizedSearch) {
 			filter.$or = [
-				{ name: { $regex: sanitizedSearch, $options: "i" } },
+				{ username: { $regex: sanitizedSearch, $options: "i" } },
 				{ email: { $regex: sanitizedSearch, $options: "i" } },
 				{ phone: { $regex: sanitizedSearch, $options: "i" } },
 			];
 		}
-		// Date range filters
+		// Date filters
 		if (dateFrom || dateTo) {
 			filter.createdAt = {};
-			if (dateFrom) {
-				try {
-					filter.createdAt.$gte = new Date(dateFrom);
-				} catch (error) {
-					throw new ApiError(400, "Invalid dateFrom format");
-				}
-			}
-			if (dateTo) {
-				try {
-					filter.createdAt.$lte = new Date(dateTo);
-				} catch (error) {
-					throw new ApiError(400, "Invalid dateTo format");
-				}
-			}
+			if (dateFrom) filter.createdAt.$gte = new Date(dateFrom);
+			if (dateTo) filter.createdAt.$lte = new Date(dateTo);
 		}
-		// Last login filter
 		if (lastLoginFrom || lastLoginTo) {
 			filter.lastLoginAt = {};
-			if (lastLoginFrom) {
-				try {
-					filter.lastLoginAt.$gte = new Date(lastLoginFrom);
-				} catch (error) {
-					throw new ApiError(400, "Invalid lastLoginFrom format");
-				}
-			}
-			if (lastLoginTo) {
-				try {
-					filter.lastLoginAt.$lte = new Date(lastLoginTo);
-				} catch (error) {
-					throw new ApiError(400, "Invalid lastLoginTo format");
-				}
-			}
+			if (lastLoginFrom) filter.lastLoginAt.$gte = new Date(lastLoginFrom);
+			if (lastLoginTo) filter.lastLoginAt.$lte = new Date(lastLoginTo);
 		}
 		const sort = {
 			[finalSortBy]: finalSortOrder === "desc" ? -1 : 1,
 		};
+		// Execute parallel queries
 		const [admins, totalCount, activeCount, recentActivityCount] =
 			await Promise.all([
 				User.find(filter)
 					.select(
-						"name email phone role isActive createdAt lastLoginAt profileImage permissions department",
+						"username email phone role isActive createdAt lastLoginAt profileImage permissions department",
 					)
 					.sort(sort)
 					.skip((validatedParams.page - 1) * validatedParams.limit)
@@ -745,9 +1000,10 @@ const getAllAdmins = asyncHandler(async (req, res) => {
 				}),
 			]);
 		const executionTime = Date.now() - startTime;
+		// Transform admin data
 		const transformedAdmins = admins.map((admin) => ({
 			id: admin._id,
-			name: admin.name,
+			username: admin.username,
 			email: admin.email,
 			phone: admin.phone || null,
 			role: admin.role,
@@ -758,7 +1014,6 @@ const getAllAdmins = asyncHandler(async (req, res) => {
 			profileImage: admin.profileImage || null,
 			department: admin.department || null,
 			permissions: admin.permissions || [],
-			// Calculated fields
 			daysSinceJoined: Math.floor(
 				(Date.now() - new Date(admin.createdAt)) / (24 * 60 * 60 * 1000),
 			),
@@ -768,13 +1023,11 @@ const getAllAdmins = asyncHandler(async (req, res) => {
 					)
 				: null,
 			isOnline: admin.lastLoginAt
-				? Date.now() - new Date(admin.lastLoginAt) < 15 * 60 * 1000 // 15 minutes
+				? Date.now() - new Date(admin.lastLoginAt) < 15 * 60 * 1000
 				: false,
 		}));
-		// 🔥 Calculate pagination metadata
+		// Build response
 		const totalPages = Math.ceil(totalCount / validatedParams.limit);
-		const hasNextPage = validatedParams.page < totalPages;
-		const hasPrevPage = validatedParams.page > 1;
 		const result = {
 			admins: transformedAdmins,
 			pagination: {
@@ -782,10 +1035,11 @@ const getAllAdmins = asyncHandler(async (req, res) => {
 				totalPages,
 				totalCount,
 				limit: validatedParams.limit,
-				hasNextPage,
-				hasPrevPage,
-				nextPage: hasNextPage ? validatedParams.page + 1 : null,
-				prevPage: hasPrevPage ? validatedParams.page - 1 : null,
+				hasNextPage: validatedParams.page < totalPages,
+				hasPrevPage: validatedParams.page > 1,
+				nextPage:
+					validatedParams.page < totalPages ? validatedParams.page + 1 : null,
+				prevPage: validatedParams.page > 1 ? validatedParams.page - 1 : null,
 			},
 			summary: {
 				totalAdmins: totalCount,
@@ -808,35 +1062,40 @@ const getAllAdmins = asyncHandler(async (req, res) => {
 				available: {
 					statuses: ["all", "active", "suspended"],
 					roles: ["all", "admin", "super_admin"],
-					sortOptions: ["createdAt", "name", "email", "lastLoginAt"],
+					sortOptions: ["createdAt", "username", "email", "lastLoginAt"],
 				},
 			},
 			metadata: {
 				generatedAt: new Date().toISOString(),
 				executionTime: `${executionTime}ms`,
+				performanceGrade:
+					executionTime < 100 ? "A++" : executionTime < 200 ? "A+" : "B",
 				cached: false,
 				dataFreshness: "real_time",
 			},
 		};
-		// 🚀 Cache the result (2 minutes for list data) - using setex method
-		if (cache && typeof cache.setex === "function") {
-			try {
-				await cache.setex(cacheKey, 120, result);
-			} catch (error) {
-				console.warn("Cache set failed:", error.message);
-			}
-		}
-		// 🔥 Log admin access for audit
-		auditService
-			.logAdminActivity({
-				adminId: req.user._id,
-				action: "VIEW_ADMIN_LIST",
-				details: {
-					filters: result.filters.applied,
-					resultCount: transformedAdmins.length,
-				},
-			})
-			.catch(() => {});
+		// Cache result (non-blocking)
+		setImmediate(() => {
+			cache
+				.setex(cacheKey, CACHE_TTL.USER_LIST, result)
+				.catch((err) => console.warn("Cache set failed:", err.message));
+		});
+		// Log audit (non-blocking)
+		setImmediate(() => {
+			safeAsyncOperation(
+				() =>
+					auditService.logAdminActivity({
+						adminId: req.user._id,
+						action: "VIEW_ADMIN_LIST",
+						details: {
+							filters: result.filters.applied,
+							resultCount: transformedAdmins.length,
+						},
+					}),
+				null,
+				false,
+			);
+		});
 		return res
 			.status(200)
 			.json(new ApiResponse(200, result, "Admins fetched successfully"));
@@ -845,109 +1104,82 @@ const getAllAdmins = asyncHandler(async (req, res) => {
 		if (error instanceof ApiError) {
 			throw error;
 		}
-		// Log error for monitoring
-		auditService
-			.logAdminError({
-				adminId: req.user?._id,
-				action: "GET_ALL_ADMINS",
-				error: error.message,
-				filters: req.query,
-			})
-			.catch(() => {});
+		// Log error (non-blocking)
+		setImmediate(() => {
+			safeAsyncOperation(
+				() =>
+					auditService.logAdminError({
+						adminId: req.user?._id,
+						action: "GET_ALL_ADMINS",
+						error: error.message,
+						filters: req.query,
+					}),
+				null,
+				false,
+			);
+		});
 		throw new ApiError(500, `Failed to fetch admins: ${error.message}`);
 	}
 });
 
-// ! 🚀 Get Admin by ID with Detailed Information & Activity History
+// ** 🚀 Get Admin by ID with Detailed Information & Activity History tested
 const getAdminById = asyncHandler(async (req, res) => {
 	try {
 		const startTime = Date.now();
 		const { adminId } = req.params;
+
+		// Enhanced validation with detailed logging
+		console.log("🔍 Received adminId:", adminId);
+		console.log("🔍 AdminId type:", typeof adminId);
+		console.log("🔍 AdminId length:", adminId?.length);
+
 		if (!mongoose.Types.ObjectId.isValid(adminId)) {
 			throw new ApiError(400, "Invalid admin ID format");
 		}
-		// 🚀 Check cache first
-		const cacheKey = `admin:profile:${adminId}`;
-		const cachedAdmin = await cache.get(cacheKey).catch(() => null);
+		// Check cache first
+		const cacheKey = `admin:profile:${adminId}:v3`;
+		const cachedAdmin = await safeAsyncOperation(
+			() => cache.get(cacheKey),
+			null,
+			false,
+		);
 		if (cachedAdmin) {
 			console.log(`⚡ Admin profile cache hit - ${Date.now() - startTime}ms`);
 			return res
 				.status(200)
 				.json(new ApiResponse(200, cachedAdmin, "Admin profile from cache"));
 		}
-		// 🚀 Execute parallel queries for comprehensive admin data
+		// Execute parallel queries for comprehensive admin data
 		const [adminData, loginHistory, recentActivities, managedUsers] =
 			await Promise.all([
-				// Main admin data
-				User.findById(adminId)
-					.select("-password -refreshToken") // Exclude sensitive fields
-					.lean(),
-				// Login history (last 10 logins)
-				User.aggregate([
-					{ $match: { _id: new mongoose.Types.ObjectId(adminId) } },
-					{
-						$unwind: {
-							path: "$loginHistory",
-							preserveNullAndEmptyArrays: true,
-						},
-					},
-					{ $sort: { "loginHistory.timestamp": -1 } },
-					{ $limit: 10 },
-					{
-						$project: {
-							_id: 0,
-							timestamp: "$loginHistory.timestamp",
-							ipAddress: "$loginHistory.ipAddress",
-							userAgent: "$loginHistory.userAgent",
-							location: "$loginHistory.location",
-						},
-					},
-				]),
-				// Recent admin activities (if audit system exists)
-				User.aggregate([
-					{ $match: { _id: new mongoose.Types.ObjectId(adminId) } },
-					{
-						$unwind: {
-							path: "$recentActivities",
-							preserveNullAndEmptyArrays: true,
-						},
-					},
-					{ $sort: { "recentActivities.timestamp": -1 } },
-					{ $limit: 20 },
-					{
-						$project: {
-							_id: 0,
-							action: "$recentActivities.action",
-							timestamp: "$recentActivities.timestamp",
-							details: "$recentActivities.details",
-							ipAddress: "$recentActivities.ipAddress",
-						},
-					},
-				]),
-				// Users managed by this admin (if applicable)
+				User.findById(adminId).select("-password -refreshToken").lean(),
+				// Mock login history - replace with actual implementation
+				Promise.resolve([]),
+				// Mock activities - replace with actual implementation
+				Promise.resolve([]),
+				// Count users managed by this admin
 				User.countDocuments({
 					createdBy: adminId,
 					role: { $ne: "admin" },
 				}),
 			]);
-		const executionTime = Date.now() - startTime;
 		if (!adminData) {
 			throw new ApiError(404, "Admin not found");
 		}
-		// 🔥 Check if requesting user has permission to view this admin
+		// Permission check
 		const currentUser = req.user;
 		if (
 			currentUser.role !== "super_admin" &&
 			currentUser._id.toString() !== adminId
 		) {
-			// Allow admins to view their own profile, super_admins can view all
 			throw new ApiError(403, "Access denied. Insufficient permissions");
 		}
-		// 🚀 Transform and enrich admin data
+		const executionTime = Date.now() - startTime;
+		// Transform and enrich admin data
 		const enrichedAdmin = {
 			id: adminData._id,
 			personalInfo: {
-				name: adminData.name,
+				username: adminData.username,
 				email: adminData.email,
 				phone: adminData.phone || null,
 				profileImage: adminData.profileImage || null,
@@ -961,6 +1193,7 @@ const getAdminById = asyncHandler(async (req, res) => {
 				isEmailVerified: adminData.isEmailVerified || false,
 				isPhoneVerified: adminData.isPhoneVerified || false,
 				twoFactorEnabled: adminData.twoFactorEnabled || false,
+				isVerified: adminData.isVerified || false,
 			},
 			professionalInfo: {
 				department: adminData.department || null,
@@ -988,9 +1221,9 @@ const getAdminById = asyncHandler(async (req, res) => {
 					: false,
 			},
 			statistics: {
-				managedUsers: managedUsers,
-				loginHistory: loginHistory,
-				recentActivities: recentActivities,
+				managedUsers,
+				loginHistory,
+				recentActivities,
 				averageSessionDuration: adminData.averageSessionDuration || null,
 				totalActionsPerformed: adminData.totalActions || 0,
 			},
@@ -1011,22 +1244,29 @@ const getAdminById = asyncHandler(async (req, res) => {
 				lastProfileUpdate: adminData.lastProfileUpdate || null,
 			},
 		};
-		// 🚀 Cache the result (5 minutes for profile data)
-		cache.set(cacheKey, enrichedAdmin, 300).catch((error) => {
-			console.warn("Cache set failed:", error.message);
+		// Cache result (non-blocking)
+		setImmediate(() => {
+			cache
+				.setex(cacheKey, CACHE_TTL.USER_PROFILE, enrichedAdmin)
+				.catch((err) => console.warn("Cache set failed:", err.message));
 		});
-		// 🔥 Log profile view for audit
-		auditService
-			.logAdminActivity({
-				adminId: currentUser._id,
-				action: "VIEW_ADMIN_PROFILE",
-				targetAdminId: adminId,
-				details: {
-					viewedBy: currentUser.role,
-					profileOwner: adminData.role,
-				},
-			})
-			.catch(() => {});
+		// Log profile view (non-blocking)
+		setImmediate(() => {
+			safeAsyncOperation(
+				() =>
+					auditService.logAdminActivity({
+						adminId: currentUser._id,
+						action: "VIEW_ADMIN_PROFILE",
+						targetAdminId: adminId,
+						details: {
+							viewedBy: currentUser.role,
+							profileOwner: adminData.role,
+						},
+					}),
+				null,
+				false,
+			);
+		});
 		console.log(`⚡ Admin profile generated in ${executionTime}ms`);
 		return res.status(200).json(
 			new ApiResponse(
@@ -1035,6 +1275,8 @@ const getAdminById = asyncHandler(async (req, res) => {
 					admin: enrichedAdmin,
 					meta: {
 						executionTime: `${executionTime}ms`,
+						performanceGrade:
+							executionTime < 100 ? "A++" : executionTime < 200 ? "A+" : "B",
 						cached: false,
 						dataFreshness: "real_time",
 						permissionLevel: currentUser.role,
@@ -1051,116 +1293,183 @@ const getAdminById = asyncHandler(async (req, res) => {
 		if (error instanceof ApiError) {
 			throw error;
 		}
-		// Log error for monitoring
-		auditService
-			.logAdminError({
-				adminId: req.user?._id,
-				action: "GET_ADMIN_BY_ID",
-				targetAdminId: req.params.adminId,
-				error: error.message,
-			})
-			.catch(() => {});
+		// Log error (non-blocking)
+		setImmediate(() => {
+			safeAsyncOperation(
+				() =>
+					auditService.logAdminError({
+						adminId: req.user?._id,
+						action: "GET_ADMIN_BY_ID",
+						targetAdminId: req.params.adminId,
+						error: error.message,
+					}),
+				null,
+				false,
+			);
+		});
+
 		throw new ApiError(500, `Failed to fetch admin profile: ${error.message}`);
 	}
 });
 
-// ============================================================================
-// USER MANAGEMENT CONTROLLERS
-// ============================================================================
+// ** USER MANAGEMENT CONTROLLERS ***
 
+// ** 🚀 Get All Admins with Pagination, Sorting, and Filtering tested
 const getAllUsers = asyncHandler(async (req, res) => {
-	const {
-		page = 1,
-		limit = 10,
-		search,
-		role,
-		isActive,
-		sortBy = "createdAt",
-		sortOrder = "desc",
-	} = req.query;
-
-	// Cache implementation (optional)
 	try {
-		const cacheKey = `users:list:${Buffer.from(JSON.stringify(req.query)).toString("base64")}`;
-		const cachedResult = await cache.get(cacheKey);
-		if (cachedResult) {
-			return res
-				.status(200)
-				.json(
-					new ApiResponse(
-						200,
-						JSON.parse(cachedResult),
-						"Users fetched from cache",
-					),
-				);
+		const startTime = Date.now();
+		const {
+			page = 1,
+			limit = 10,
+			sortBy = "createdAt",
+			sortOrder = "desc",
+			search = "",
+			role,
+			isActive,
+		} = req.query;
+
+		// Input validation
+		const pageNum = Math.max(1, parseInt(page) || 1);
+		const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 10));
+		const skip = (pageNum - 1) * limitNum;
+		// 🚀 OPTIMIZATION 1: Smart cache key
+		const cacheKey = `users:list:v2:${Buffer.from(
+			JSON.stringify({
+				page: pageNum,
+				limit: limitNum,
+				sortBy,
+				sortOrder,
+				search,
+				role,
+				isActive,
+			}),
+		)
+			.toString("base64")
+			.slice(0, 32)}`;
+		// Try cache first
+		try {
+			const cached = await cache.get(cacheKey);
+			if (cached) {
+				return res
+					.status(200)
+					.json(new ApiResponse(200, cached, "Users fetched from cache"));
+			}
+		} catch (cacheError) {
+			console.warn("Cache get failed:", cacheError.message);
 		}
-	} catch (cacheError) {
-		// Cache not available, continue without caching
-	}
-
-	const pipeline = [];
-	const matchStage = {};
-
-	if (search) {
-		matchStage.$or = [
-			{ username: { $regex: search, $options: "i" } },
-			{ email: { $regex: search, $options: "i" } },
-			{ firstName: { $regex: search, $options: "i" } },
-			{ lastName: { $regex: search, $options: "i" } },
+		// 🚀 OPTIMIZATION 2: Single aggregation pipeline
+		const pipeline = [];
+		const matchStage = {};
+		// Build match conditions
+		if (search?.trim()) {
+			const searchRegex = { $regex: search.trim(), $options: "i" };
+			matchStage.$or = [
+				{ username: searchRegex },
+				{ email: searchRegex },
+				{ firstName: searchRegex },
+				{ lastName: searchRegex },
+			];
+		}
+		if (role) matchStage.role = role;
+		if (isActive !== undefined) {
+			matchStage.isActive = isActive === "true" || isActive === true;
+		}
+		// Add match stage if needed
+		if (Object.keys(matchStage).length > 0) {
+			pipeline.push({ $match: matchStage });
+		}
+		// Sort
+		const sortObj = {};
+		const validSortFields = [
+			"createdAt",
+			"username",
+			"email",
+			"firstName",
+			"lastName",
 		];
+		const validSortBy = validSortFields.includes(sortBy) ? sortBy : "createdAt";
+		sortObj[validSortBy] = sortOrder === "desc" ? -1 : 1;
+		pipeline.push({ $sort: sortObj });
+		// Project only needed fields
+		pipeline.push({
+			$project: {
+				username: 1,
+				email: 1,
+				firstName: 1,
+				lastName: 1,
+				role: 1,
+				isActive: 1,
+				createdAt: 1,
+				lastLoginAt: 1,
+				profileImage: 1,
+			},
+		});
+		// Facet for pagination and count
+		pipeline.push({
+			$facet: {
+				data: [{ $skip: skip }, { $limit: limitNum }],
+				totalCount: [{ $count: "count" }],
+			},
+		});
+		// 🚀 OPTIMIZATION 3: Execute with proper options
+		const [result] = await User.aggregate(pipeline, {
+			allowDiskUse: false,
+			maxTimeMS: 10000,
+			readConcern: { level: "local" },
+		});
+		const users = result.data || [];
+		const totalCount = result.totalCount[0]?.count || 0;
+		const totalPages = Math.ceil(totalCount / limitNum);
+		const executionTime = Date.now() - startTime;
+		const responseData = {
+			users: users.map((user) => ({
+				id: user._id,
+				username: user.username,
+				email: user.email,
+				firstName: user.firstName,
+				lastName: user.lastName,
+				role: user.role,
+				isActive: user.isActive,
+				createdAt: user.createdAt,
+				lastLoginAt: user.lastLoginAt,
+				profileImage: user.profileImage,
+				daysSinceJoined: Math.floor(
+					(Date.now() - new Date(user.createdAt)) / (24 * 60 * 60 * 1000),
+				),
+			})),
+			pagination: {
+				currentPage: pageNum,
+				totalPages,
+				totalCount,
+				limit: limitNum,
+				hasNextPage: pageNum < totalPages,
+				hasPrevPage: pageNum > 1,
+			},
+			filters: {
+				search: search?.trim() || null,
+				role: role || null,
+				isActive: isActive || null,
+			},
+			meta: {
+				executionTime: `${executionTime}ms`,
+				performanceGrade:
+					executionTime < 100 ? "A++" : executionTime < 200 ? "A+" : "B",
+				cached: false,
+			},
+		};
+		// 🚀 OPTIMIZATION 4: Non-blocking cache set
+		setImmediate(() => {
+			cache
+				.setex(cacheKey, 120, responseData)
+				.catch((err) => console.warn("Cache set failed:", err.message));
+		});
+		return res
+			.status(200)
+			.json(new ApiResponse(200, responseData, "Users fetched successfully"));
+	} catch (error) {
+		console.error("❌ Get all users error:", error);
+		throw new ApiError(500, `Failed to fetch users: ${error.message}`);
 	}
-	if (role) matchStage.role = role;
-	if (isActive !== undefined) matchStage.isActive = isActive === "true";
-
-	pipeline.push({ $match: matchStage });
-	pipeline.push({
-		$project: {
-			password: 0,
-			refreshToken: 0,
-			__v: 0,
-		},
-	});
-
-	const sortObj = {};
-	sortObj[sortBy] = sortOrder === "desc" ? -1 : 1;
-	pipeline.push({ $sort: sortObj });
-
-	const skip = (parseInt(page) - 1) * parseInt(limit);
-	pipeline.push({
-		$facet: {
-			data: [{ $skip: skip }, { $limit: parseInt(limit) }],
-			count: [{ $count: "total" }],
-		},
-	});
-
-	const [result] = await User.aggregate(pipeline).allowDiskUse(true);
-	const users = result.data;
-	const totalUsers = result.count[0]?.total || 0;
-	const totalPages = Math.ceil(totalUsers / parseInt(limit));
-
-	const responseData = {
-		users,
-		pagination: {
-			currentPage: parseInt(page),
-			totalPages,
-			totalUsers,
-			hasNextPage: parseInt(page) < totalPages,
-			hasPrevPage: parseInt(page) > 1,
-			limit: parseInt(limit),
-		},
-	};
-
-	// Cache the response (optional)
-	try {
-		const cacheKey = `users:list:${Buffer.from(JSON.stringify(req.query)).toString("base64")}`;
-		await cache.setex(cacheKey, 300, JSON.stringify(responseData));
-	} catch (cacheError) {
-		// Cache not available, continue without caching
-	}
-
-	return res
-		.status(200)
-		.json(new ApiResponse(200, responseData, "Users fetched successfully"));
 });
 
 const getUserById = asyncHandler(async (req, res) => {
@@ -1206,6 +1515,7 @@ const updateUserById = asyncHandler(async (req, res) => {
 		.json(new ApiResponse(200, { user }, "User updated successfully"));
 });
 
+// ** 🚀 Delete User by ID with Enhanced Safety Checks tested
 const deleteUserById = asyncHandler(async (req, res) => {
 	const { id } = req.params;
 	if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -1214,22 +1524,50 @@ const deleteUserById = asyncHandler(async (req, res) => {
 	if (req.user._id.toString() === id) {
 		throw new ApiError(400, "You cannot delete your own account");
 	}
-	const user = await User.findByIdAndDelete(id);
+	const user = await User.findById(id).select("username email role");
 	if (!user) {
 		throw new ApiError(404, "User not found");
 	}
-	// Clear cache (optional)
-	try {
-		await cache.del(`user:${id}`);
-		await cache.del("users:list:*");
-	} catch (cacheError) {
-		// Cache not available, continue
+	// Prevent deletion of super_admin by non-super_admin
+	if (user.role === "super_admin" && req.user.role !== "super_admin") {
+		throw new ApiError(403, "Cannot delete super admin account");
 	}
+	await User.findByIdAndDelete(id);
+	// Clear related caches (non-blocking)
+	setImmediate(() => {
+		Promise.allSettled([
+			cache.del(`user:profile:${id}`),
+			cache.del(`users:list:*`),
+			cache.del(`admin:stats:*`),
+		]).catch((err) => console.warn("Cache clear failed:", err.message));
+	});
+	// Log audit (non-blocking)
+	setImmediate(() => {
+		safeAsyncOperation(
+			() =>
+				auditService.logAdminActivity({
+					adminId: req.user._id,
+					action: "DELETE_USER",
+					targetUserId: id,
+					details: {
+						deletedUser: {
+							username: user.username,
+							email: user.email,
+							role: user.role,
+						},
+					},
+					criticality: "HIGH",
+				}),
+			null,
+			false,
+		);
+	});
 	return res
 		.status(200)
 		.json(new ApiResponse(200, {}, "User deleted successfully"));
 });
 
+// ** 🚀 Suspend User with Reason and Audit Logging tested tested
 const suspendUser = asyncHandler(async (req, res) => {
 	const { id } = req.params;
 	const { reason } = req.body;
@@ -1239,33 +1577,58 @@ const suspendUser = asyncHandler(async (req, res) => {
 	if (req.user._id.toString() === id) {
 		throw new ApiError(400, "You cannot suspend your own account");
 	}
+	if (!reason || reason.trim().length < 5) {
+		throw new ApiError(
+			400,
+			"Suspension reason is required (minimum 5 characters)",
+		);
+	}
 	const user = await User.findByIdAndUpdate(
 		id,
 		{
 			isActive: false,
 			suspendedAt: new Date(),
 			suspendedBy: req.user._id,
-			suspensionReason: reason || "Suspended by admin",
+			suspensionReason: reason.trim(),
+			updatedAt: new Date(),
 		},
 		{ new: true },
 	).select("-password -refreshToken");
 	if (!user) {
 		throw new ApiError(404, "User not found");
 	}
-	// Clear cache (optional)
-	try {
-		await cache.del(`user:${id}`);
-		await cache.del("users:list:*");
-	} catch (cacheError) {
-		// Cache not available, continue
-	}
+	// Clear related caches (non-blocking)
+	setImmediate(() => {
+		Promise.allSettled([
+			cache.del(`user:profile:${id}`),
+			cache.del(`users:list:*`),
+			cache.del(`admin:stats:*`),
+		]).catch((err) => console.warn("Cache clear failed:", err.message));
+	});
+	// Log audit (non-blocking)
+	setImmediate(() => {
+		safeAsyncOperation(
+			() =>
+				auditService.logAdminActivity({
+					adminId: req.user._id,
+					action: "SUSPEND_USER",
+					targetUserId: id,
+					details: { reason: reason.trim() },
+					criticality: "MEDIUM",
+				}),
+			null,
+			false,
+		);
+	});
 	return res
 		.status(200)
 		.json(new ApiResponse(200, { user }, "User suspended successfully"));
 });
 
+// ** 🚀 Activate User with Audit Logging tested
 const activateUser = asyncHandler(async (req, res) => {
 	const { id } = req.params;
+
 	if (!mongoose.Types.ObjectId.isValid(id)) {
 		throw new ApiError(400, "Invalid user ID");
 	}
@@ -1273,27 +1636,50 @@ const activateUser = asyncHandler(async (req, res) => {
 		id,
 		{
 			isActive: true,
-			$unset: { suspendedAt: 1, suspendedBy: 1, suspensionReason: 1 },
+			updatedAt: new Date(),
+			$unset: {
+				suspendedAt: 1,
+				suspendedBy: 1,
+				suspensionReason: 1,
+			},
 		},
 		{ new: true },
 	).select("-password -refreshToken");
 	if (!user) {
 		throw new ApiError(404, "User not found");
 	}
-	// Clear cache (optional)
-	try {
-		await cache.del(`user:${id}`);
-		await cache.del("users:list:*");
-	} catch (cacheError) {
-		// Cache not available, continue
-	}
+	// Clear related caches (non-blocking)
+	setImmediate(() => {
+		Promise.allSettled([
+			cache.del(`user:profile:${id}`),
+			cache.del(`users:list:*`),
+			cache.del(`admin:stats:*`),
+		]).catch((err) => console.warn("Cache clear failed:", err.message));
+	});
+	// Log audit (non-blocking)
+	setImmediate(() => {
+		safeAsyncOperation(
+			() =>
+				auditService.logAdminActivity({
+					adminId: req.user._id,
+					action: "ACTIVATE_USER",
+					targetUserId: id,
+					details: { previousStatus: "suspended" },
+				}),
+			null,
+			false,
+		);
+	});
+
 	return res
 		.status(200)
 		.json(new ApiResponse(200, { user }, "User activated successfully"));
 });
 
+// ** 🚀 Verify User Account with Audit Logging tested
 const verifyUserAccount = asyncHandler(async (req, res) => {
 	const { id } = req.params;
+
 	if (!mongoose.Types.ObjectId.isValid(id)) {
 		throw new ApiError(400, "Invalid user ID");
 	}
@@ -1303,35 +1689,50 @@ const verifyUserAccount = asyncHandler(async (req, res) => {
 			isVerified: true,
 			verifiedAt: new Date(),
 			verifiedBy: req.user._id,
+			updatedAt: new Date(),
 		},
 		{ new: true },
 	).select("-password -refreshToken");
 	if (!user) {
 		throw new ApiError(404, "User not found");
 	}
-	// Clear cache (optional)
-	try {
-		await cache.del(`user:${id}`);
-		await cache.del("users:list:*");
-	} catch (cacheError) {
-		// Cache not available, continue
-	}
+	// Clear related caches (non-blocking)
+	setImmediate(() => {
+		Promise.allSettled([
+			cache.del(`user:profile:${id}`),
+			cache.del(`users:list:*`),
+			cache.del(`admin:stats:*`),
+		]).catch((err) => console.warn("Cache clear failed:", err.message));
+	});
+	// Log audit (non-blocking)
+	setImmediate(() => {
+		safeAsyncOperation(
+			() =>
+				auditService.logAdminActivity({
+					adminId: req.user._id,
+					action: "VERIFY_USER_ACCOUNT",
+					targetUserId: id,
+					details: { email: user.email },
+				}),
+			null,
+			false,
+		);
+	});
 	return res
 		.status(200)
 		.json(new ApiResponse(200, { user }, "User account verified successfully"));
 });
 
-// ============================================================================
-// SEARCH & EXPORT CONTROLLERS
-// ============================================================================
+//**  SEARCH & EXPORT CONTROLLERS ***
 
+// ** 🚀 search users testing pending
 const searchUsers = asyncHandler(async (req, res) => {
 	try {
-		console.log("🔍 Search users called with query:", req.query);
+		const startTime = Date.now();
 		const {
 			q = "",
-			username = "",
 			search = "",
+			username = "",
 			page = 1,
 			limit = 10,
 			role,
@@ -1339,35 +1740,67 @@ const searchUsers = asyncHandler(async (req, res) => {
 			sortBy = "createdAt",
 			sortOrder = "desc",
 		} = req.query;
-		// Input validation and sanitization
+
+		// 🚀 OPTIMIZATION 1: Consolidated search query
 		const searchQuery = (search || q || username || "").toString().trim();
 		const pageNum = Math.max(1, parseInt(page) || 1);
-		const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 10));
+		const limitNum = Math.min(50, Math.max(1, parseInt(limit) || 10)); // Reduced max limit
 		const skip = (pageNum - 1) * limitNum;
-		console.log("📋 Processed search params:", {
-			searchQuery,
-			pageNum,
-			limitNum,
-			role,
-			isActive,
-		});
-		const matchStage = {};
-		// Build search query - allow empty search to return all users
-		if (searchQuery) {
-			matchStage.$or = [
-				{ username: { $regex: searchQuery, $options: "i" } },
-				{ email: { $regex: searchQuery, $options: "i" } },
-				{ firstName: { $regex: searchQuery, $options: "i" } },
-				{ lastName: { $regex: searchQuery, $options: "i" } },
-			];
+		// 🚀 OPTIMIZATION 2: Smart caching for search results
+		const cacheKey = `search:users:v2:${Buffer.from(
+			JSON.stringify({
+				searchQuery,
+				pageNum,
+				limitNum,
+				role,
+				isActive,
+				sortBy,
+				sortOrder,
+			}),
+		)
+			.toString("base64")
+			.slice(0, 32)}`;
+		try {
+			const cached = await cache.get(cacheKey);
+			if (cached) {
+				return res
+					.status(200)
+					.json(new ApiResponse(200, cached, "Search results from cache"));
+			}
+		} catch (cacheError) {
+			console.warn("Search cache failed:", cacheError.message);
 		}
-		// Apply filters
+		// 🚀 OPTIMIZATION 3: Optimized aggregation pipeline
+		const pipeline = [];
+		const matchStage = {};
+		// Build search conditions
+		if (searchQuery) {
+			// Use text index if available, otherwise regex
+			if (searchQuery.length >= 3) {
+				// Only use complex search for 3+ chars
+				matchStage.$or = [
+					{ username: { $regex: searchQuery, $options: "i" } },
+					{ email: { $regex: searchQuery, $options: "i" } },
+					{ firstName: { $regex: searchQuery, $options: "i" } },
+					{ lastName: { $regex: searchQuery, $options: "i" } },
+				];
+			} else {
+				// For short queries, use prefix matching (faster)
+				matchStage.$or = [
+					{ username: { $regex: `^${searchQuery}`, $options: "i" } },
+					{ email: { $regex: `^${searchQuery}`, $options: "i" } },
+				];
+			}
+		}
 		if (role) matchStage.role = role;
 		if (isActive !== undefined) {
 			matchStage.isActive = isActive === "true" || isActive === true;
 		}
-		console.log("🎯 MongoDB match stage:", JSON.stringify(matchStage, null, 2));
-		// Build sort object
+		// Add match stage
+		if (Object.keys(matchStage).length > 0) {
+			pipeline.push({ $match: matchStage });
+		}
+		// Sort
 		const sortObj = {};
 		const validSortFields = [
 			"createdAt",
@@ -1377,52 +1810,79 @@ const searchUsers = asyncHandler(async (req, res) => {
 			"lastName",
 		];
 		const validSortBy = validSortFields.includes(sortBy) ? sortBy : "createdAt";
-		const validSortOrder = sortOrder === "asc" ? 1 : -1;
-		sortObj[validSortBy] = validSortOrder;
-		// Execute query
-		const users = await User.find(matchStage)
-			.select("-password -refreshToken -__v")
-			.sort(sortObj)
-			.skip(skip)
-			.limit(limitNum)
-			.lean();
-		const totalUsers = await User.countDocuments(matchStage);
-		const totalPages = Math.ceil(totalUsers / limitNum);
-		console.log(
-			`✅ Search completed: ${users.length} users found, ${totalUsers} total`,
-		);
-		return res.status(200).json(
-			new ApiResponse(
-				200,
-				{
-					users,
-					search: {
-						query: searchQuery,
-						filters: { role, isActive },
-						resultsCount: users.length,
-					},
-					pagination: {
-						currentPage: pageNum,
-						totalPages,
-						totalUsers,
-						hasNextPage: pageNum < totalPages,
-						hasPrevPage: pageNum > 1,
-						limit: limitNum,
-					},
-					sorting: {
-						sortBy: validSortBy,
-						sortOrder: sortOrder,
-					},
-				},
-				"User search completed successfully",
-			),
-		);
+		sortObj[validSortBy] = sortOrder === "asc" ? 1 : -1;
+		pipeline.push({ $sort: sortObj });
+
+		// Project only needed fields
+		pipeline.push({
+			$project: {
+				username: 1,
+				email: 1,
+				firstName: 1,
+				lastName: 1,
+				role: 1,
+				isActive: 1,
+				createdAt: 1,
+				profileImage: 1,
+			},
+		});
+		// Pagination with count
+		pipeline.push({
+			$facet: {
+				data: [{ $skip: skip }, { $limit: limitNum }],
+				totalCount: [{ $count: "count" }],
+			},
+		});
+		// Execute optimized aggregation
+		const [result] = await User.aggregate(pipeline, {
+			allowDiskUse: false,
+			maxTimeMS: 8000,
+			readConcern: { level: "local" },
+		});
+		const users = result.data || [];
+		const totalCount = result.totalCount[0]?.count || 0;
+		const totalPages = Math.ceil(totalCount / limitNum);
+		const executionTime = Date.now() - startTime;
+		const responseData = {
+			users,
+			search: {
+				query: searchQuery,
+				filters: { role, isActive },
+				resultsCount: users.length,
+			},
+			pagination: {
+				currentPage: pageNum,
+				totalPages,
+				totalCount,
+				hasNextPage: pageNum < totalPages,
+				hasPrevPage: pageNum > 1,
+				limit: limitNum,
+			},
+			meta: {
+				executionTime: `${executionTime}ms`,
+				performanceGrade:
+					executionTime < 100 ? "A++" : executionTime < 300 ? "A+" : "B",
+				cached: false,
+				optimized: true,
+			},
+		};
+		// 🚀 OPTIMIZATION 4: Cache results (shorter TTL for search)
+		setImmediate(() => {
+			const cacheTTL = searchQuery ? 60 : 180; // Shorter cache for search results
+			cache
+				.setex(cacheKey, cacheTTL, responseData)
+				.catch((err) => console.warn("Search cache set failed:", err.message));
+		});
+		return res
+			.status(200)
+			.json(new ApiResponse(200, responseData, "Optimized search completed"));
 	} catch (error) {
 		console.error("❌ Search users error:", error);
 		throw new ApiError(500, `Search failed: ${error.message}`);
 	}
 });
 
+// ** 🚀BULK EXPORT USERS
 const bulkExportUsers = asyncHandler(async (req, res) => {
 	try {
 		console.log("📤 Bulk export users called with query:", req.query);
@@ -1513,7 +1973,6 @@ const bulkExportUsers = asyncHandler(async (req, res) => {
 				});
 			}
 		}
-
 		const timestamp = new Date().toISOString().split("T")[0];
 		const filename = `users_export_${timestamp}.${normalizedFormat}`;
 		if (normalizedFormat === "csv") {
@@ -1623,6 +2082,7 @@ const bulkExportUsers = asyncHandler(async (req, res) => {
 	}
 });
 
+// ** 🚀 BULK IMPORT USERS
 const bulkImportUsers = asyncHandler(async (req, res) => {
 	if (!req.file) {
 		throw new ApiError(400, "Please upload a CSV file");
@@ -1699,6 +2159,7 @@ const bulkImportUsers = asyncHandler(async (req, res) => {
 	}
 });
 
+// ** 🚀 BULK ACTIONS CONTROLLER
 const bulkActions = asyncHandler(async (req, res) => {
 	const {
 		action,
@@ -1837,10 +2298,9 @@ const bulkActions = asyncHandler(async (req, res) => {
 	}
 });
 
-// ============================================================================
-// SECURITY & MONITORING CONTROLLERS
-// ============================================================================
+// ** SECURITY & MONITORING CONTROLLERS ***
 
+// ** 🚀 Get User Security Analysis with Mock Data
 const getUserSecurityAnalysis = asyncHandler(async (req, res) => {
 	const { id } = req.params;
 	const { includeDevices = true, includeSessions = true } = req.query;
@@ -1935,6 +2395,7 @@ const getUserSecurityAnalysis = asyncHandler(async (req, res) => {
 	);
 });
 
+// ** 🚀 Send Notification to User with Mock Result
 const sendNotificationToUser = asyncHandler(async (req, res) => {
 	const { id } = req.params;
 	const {
@@ -2006,6 +2467,7 @@ const sendNotificationToUser = asyncHandler(async (req, res) => {
 		.json(new ApiResponse(200, result, "Notification sent successfully"));
 });
 
+// ** 🚀 Force Password Reset with Audit Logging
 const forcePasswordReset = asyncHandler(async (req, res) => {
 	const { id } = req.params;
 	const {
@@ -2117,10 +2579,9 @@ const forcePasswordReset = asyncHandler(async (req, res) => {
 	}
 });
 
-// ============================================================================
-// LEGACY CONTROLLERS (for backward compatibility)
-// ============================================================================
+// ** LEGACY CONTROLLERS (for backward compatibility) ***
 
+// ** 🚀 Get User Activity Log with Mock Data
 const getUserActivityLog = asyncHandler(async (req, res) => {
 	const { id } = req.params;
 	if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -2158,7 +2619,7 @@ const getUserActivityLog = asyncHandler(async (req, res) => {
 		.json(new ApiResponse(200, { activityLog }, "User activity log fetched"));
 });
 
-//
+// ** 🚀 Get User Login History with Mock Data
 const getUserLoginHistory = asyncHandler(async (req, res) => {
 	const { id } = req.params;
 	if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -2189,6 +2650,7 @@ const getUserLoginHistory = asyncHandler(async (req, res) => {
 		.json(new ApiResponse(200, { loginHistory }, "User login history fetched"));
 });
 
+// ** 🚀 Get User Device Info with Mock Data
 const getUserDeviceInfo = asyncHandler(async (req, res) => {
 	const { id } = req.params;
 	if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -2219,10 +2681,9 @@ const getUserDeviceInfo = asyncHandler(async (req, res) => {
 		.json(new ApiResponse(200, { deviceInfo }, "User device info fetched"));
 });
 
-// ============================================================================
-// HELPER FUNCTIONS
-// ============================================================================
+// ** HELPER FUNCTIONS ***
 
+// ** Generate Bulk Action Preview for Dry Run or Preview
 async function generateBulkActionPreview(action, userIds, data) {
 	const users = await User.find(
 		{ _id: { $in: userIds } },
@@ -2246,7 +2707,7 @@ async function generateBulkActionPreview(action, userIds, data) {
 	};
 	return preview;
 }
-
+// ** Generate Action Estimate for Bulk Actions Preview
 function generateActionEstimate(action, users, data) {
 	switch (action) {
 		case "suspend":
@@ -2269,7 +2730,7 @@ function generateActionEstimate(action, users, data) {
 			return { message: `Will ${action} ${users.length} users` };
 	}
 }
-
+// ** Process Bulk Action Batch with Transaction Support
 async function processBulkActionBatch(action, userIds, data, adminId, session) {
 	const results = {
 		successful: 0,

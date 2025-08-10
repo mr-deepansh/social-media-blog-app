@@ -36,7 +36,6 @@ const getAllUsers = asyncHandler(async (req, res) => {
 	} = req.query;
 
 	const query = {};
-
 	// Add search filter
 	if (search) {
 		query.$or = [
@@ -46,30 +45,23 @@ const getAllUsers = asyncHandler(async (req, res) => {
 			{ lastName: { $regex: search, $options: "i" } },
 		];
 	}
-
 	// Add role filter
 	if (role) {
 		query.role = role;
 	}
-
 	// Add active status filter
 	if (isActive !== undefined) {
 		query.isActive = isActive === "true";
 	}
-
 	const sortOptions = {};
 	sortOptions[sortBy] = sortOrder === "desc" ? -1 : 1;
-
 	const skip = (page - 1) * limit;
-
 	const users = await User.find(query)
 		.select("-password -refreshToken")
 		.sort(sortOptions)
 		.skip(skip)
 		.limit(parseInt(limit));
-
 	const totalUsers = await User.countDocuments(query);
-
 	return res.status(200).json(
 		new ApiResponse(
 			200,
@@ -96,13 +88,10 @@ const getUserById = asyncHandler(async (req, res) => {
 	if (req.user.role !== "admin" && req.user._id.toString() !== id) {
 		throw new ApiError(403, "You can only access your own profile");
 	}
-
 	const user = await User.findById(id).select("-password -refreshToken");
-
 	if (!user) {
 		throw new ApiError(404, "User not found");
 	}
-
 	return res
 		.status(200)
 		.json(new ApiResponse(200, user, "User fetched successfully"));
@@ -116,20 +105,16 @@ const createUser = asyncHandler(async (req, res) => {
 	if (!username || !email || !password) {
 		throw new ApiError(400, "Username, email, and password are required");
 	}
-
 	if (password.length < 8) {
 		throw new ApiError(400, "Password must be at least 8 characters long");
 	}
-
 	const existingUser = await User.findOne({
 		$or: [{ username: username.toLowerCase() }, { email: email.toLowerCase() }],
 	});
 	if (existingUser) {
 		throw new ApiError(409, "Username or email already exists");
 	}
-
 	const hashedPassword = await bcrypt.hash(password, 10);
-
 	const user = await User.create({
 		username: username.toLowerCase(),
 		email: email.toLowerCase(),
@@ -141,11 +126,9 @@ const createUser = asyncHandler(async (req, res) => {
 		role: "user",
 		isActive: true,
 	});
-
 	const createdUser = await User.findById(user._id).select(
 		"-password -refreshToken",
 	);
-
 	return res
 		.status(201)
 		.json(new ApiResponse(201, createdUser, "User created successfully"));
@@ -160,22 +143,18 @@ const updateUser = asyncHandler(async (req, res) => {
 	if (req.user.role !== "admin" && req.user._id.toString() !== id) {
 		throw new ApiError(403, "You can only update your own profile");
 	}
-
 	// Remove sensitive fields that shouldn't be updated directly
 	delete updateData.password;
 	delete updateData.refreshToken;
 	delete updateData.role; // Only admins should be able to change roles
-
 	const user = await User.findByIdAndUpdate(
 		id,
 		{ $set: updateData },
 		{ new: true, runValidators: true },
 	).select("-password -refreshToken");
-
 	if (!user) {
 		throw new ApiError(404, "User not found");
 	}
-
 	return res
 		.status(200)
 		.json(new ApiResponse(200, user, "User updated successfully"));
@@ -189,13 +168,10 @@ const deleteUser = asyncHandler(async (req, res) => {
 	if (req.user.role !== "admin" && req.user._id.toString() !== id) {
 		throw new ApiError(403, "You can only delete your own account");
 	}
-
 	const user = await User.findByIdAndDelete(id);
-
 	if (!user) {
 		throw new ApiError(404, "User not found");
 	}
-
 	return res
 		.status(200)
 		.json(new ApiResponse(200, {}, "User deleted successfully"));
@@ -206,7 +182,6 @@ const getCurrentUserProfile = asyncHandler(async (req, res) => {
 	const user = await User.findById(req.user._id).select(
 		"-password -refreshToken",
 	);
-
 	return res
 		.status(200)
 		.json(
@@ -223,13 +198,11 @@ const updateCurrentUserProfile = asyncHandler(async (req, res) => {
 	delete updateData.refreshToken;
 	delete updateData.role;
 	delete updateData.isActive;
-
 	const user = await User.findByIdAndUpdate(
 		req.user._id,
 		{ $set: updateData },
 		{ new: true, runValidators: true },
 	).select("-password -refreshToken");
-
 	return res
 		.status(200)
 		.json(new ApiResponse(200, user, "Profile updated successfully"));
@@ -238,31 +211,25 @@ const updateCurrentUserProfile = asyncHandler(async (req, res) => {
 // Change user password
 const changePassword = asyncHandler(async (req, res) => {
 	const { currentPassword, newPassword } = req.body;
+
 	if (!currentPassword || !newPassword) {
 		throw new ApiError(400, "Current password and new password are required");
 	}
-
 	if (newPassword.length < 8) {
 		throw new ApiError(400, "Password must be at least 8 characters long");
 	}
-
 	const user = await User.findById(req.user._id);
-
 	if (!user) {
 		throw new ApiError(404, "User not found");
 	}
-
 	// Verify current password
 	const isPasswordCorrect = await user.isPasswordCorrect(currentPassword);
-
 	if (!isPasswordCorrect) {
 		throw new ApiError(400, "Current password is incorrect");
 	}
-
 	// Update password
 	user.password = newPassword;
 	await user.save({ validateBeforeSave: false });
-
 	return res
 		.status(200)
 		.json(new ApiResponse(200, {}, "Password changed successfully"));
@@ -271,17 +238,14 @@ const changePassword = asyncHandler(async (req, res) => {
 // Upload user avatar
 const uploadAvatar = asyncHandler(async (req, res) => {
 	const { avatarUrl } = req.body;
-
 	if (!avatarUrl) {
 		throw new ApiError(400, "Avatar URL is required");
 	}
-
 	const user = await User.findByIdAndUpdate(
 		req.user._id,
 		{ $set: { avatar: avatarUrl } },
 		{ new: true },
 	).select("-password -refreshToken");
-
 	return res
 		.status(200)
 		.json(new ApiResponse(200, user, "Avatar uploaded successfully"));
@@ -309,15 +273,12 @@ const registerUser = asyncHandler(async (req, res) => {
 	if (password.length < 8) {
 		throw new ApiError(400, "Password must be at least 8 characters long");
 	}
-
 	const existingUser = await User.findOne({
 		$or: [{ username: username.toLowerCase() }, { email: email.toLowerCase() }],
 	});
-
 	if (existingUser) {
 		throw new ApiError(409, "User with this username or email already exists");
 	}
-
 	const user = await User.create({
 		username: username.toLowerCase(),
 		email: email.toLowerCase(),
@@ -329,11 +290,9 @@ const registerUser = asyncHandler(async (req, res) => {
 		role: "user",
 		isActive: true,
 	});
-
 	const createdUser = await User.findById(user._id).select(
 		"-password -refreshToken",
 	);
-
 	return res
 		.status(201)
 		.json(new ApiResponse(201, createdUser, "User registered successfully"));

@@ -16,64 +16,199 @@ import {
 	activateUser,
 	searchUsers,
 	bulkExportUsers,
-	bulkImportUsers,
 	bulkActions,
 	getUserActivityLog,
-	getUserLoginHistory,
-	getUserDeviceInfo,
 	sendNotificationToUser,
 	verifyUserAccount,
 	forcePasswordReset,
 	getUserSecurityAnalysis,
 } from "../controllers/admin.controller.js";
 
+// Import analytics controllers
+import {
+	getAnalyticsOverview,
+	getUserGrowthAnalytics,
+	getUserRetentionAnalytics,
+	getUserDemographics,
+	getEngagementMetrics,
+} from "../controllers/analytics.controller.js";
+
+// Import advanced controllers
+import {
+	getSuspiciousAccounts,
+	getLoginAttempts,
+	blockIpAddress,
+	getBlockedIps,
+	getAllPosts,
+	togglePostVisibility,
+	getAppSettings,
+	updateAppSettings,
+	getNotificationTemplates,
+	sendBulkNotification,
+	getServerHealth,
+	getDatabaseStats,
+	getAutomationRules,
+	createAutomationRule,
+	getExperiments,
+	createExperiment,
+	getThreatDetection,
+	getRevenueAnalytics,
+	getUserLifetimeValue,
+} from "../controllers/advanced.controller.js";
+
 const router = Router();
 router.use(verifyJWT);
 router.use(isAdmin);
 
-// 📊 Dashboard & Stats
-router.route("/stats").get(getAdminStats); //* ✅ [TESTED] ⚠️ Needs Optimization (~1078ms)
-router.route("/stats/live").get(getAdminStatsLive); // * ✅ [TESTED]
+// ============================================================================
+// 📊 DASHBOARD & ANALYTICS ROUTES
+// ============================================================================
 
-// 👤 Admin Management
-router.route("/admins").get(getAllAdmins); // * ✅ [TESTED]
-router.route("/admins/:id").get(getAdminById); // !TODO: Not tested
+// Basic Stats
+router.route("/stats").get(getAdminStats);
+router.route("/stats/live").get(getAdminStatsLive);
 
-// 🔍 Advanced Search & Export (must come before :id routes)
-router.route("/users/search").get(searchUsers); //* ✅ [TESTED]
-router.route("/users/export").get(bulkExportUsers); // * ✅ [TESTED]
+// Advanced Analytics
+router.route("/analytics/overview").get(getAnalyticsOverview);
+router.route("/analytics/users/growth").get(getUserGrowthAnalytics);
+router.route("/analytics/users/retention").get(getUserRetentionAnalytics);
+router.route("/analytics/users/demographics").get(getUserDemographics);
+router.route("/analytics/engagement/metrics").get(getEngagementMetrics);
 
-// 👥 User Management
-router.route("/users").get(getAllUsers); // * ✅ [TESTED]
+// ============================================================================
+// 🛡️ SECURITY & MODERATION ROUTES
+// ============================================================================
+
+// Security Monitoring
+router.route("/security/suspicious-accounts").get(getSuspiciousAccounts);
+router.route("/security/login-attempts").get(getLoginAttempts);
+router.route("/security/blocked-ips").get(getBlockedIps).post(blockIpAddress);
+router.route("/security/threat-detection").get(getThreatDetection);
+
+// ============================================================================
+// 🚨 CONTENT MANAGEMENT ROUTES
+// ============================================================================
+
+// Content Management
+router.route("/content/posts").get(getAllPosts);
+router
+	.route("/content/posts/:postId/toggle-visibility")
+	.patch(togglePostVisibility);
+
+// ============================================================================
+// 🎛️ SYSTEM CONFIGURATION ROUTES
+// ============================================================================
+
+// App Settings
+router.route("/config/app-settings").get(getAppSettings).put(updateAppSettings);
+
+// ============================================================================
+// 📢 COMMUNICATION & NOTIFICATIONS ROUTES
+// ============================================================================
+
+// Notification Management
+router.route("/notifications/templates").get(getNotificationTemplates);
+router.route("/notifications/send-bulk").post(sendBulkNotification);
+
+// ============================================================================
+// 📈 PERFORMANCE MONITORING ROUTES
+// ============================================================================
+
+// System Health
+router.route("/monitoring/server-health").get(getServerHealth);
+router.route("/monitoring/database-stats").get(getDatabaseStats);
+
+// ============================================================================
+// 🔄 AUTOMATION & WORKFLOWS ROUTES
+// ============================================================================
+
+// Automation Rules
+router
+	.route("/automation/rules")
+	.get(getAutomationRules)
+	.post(createAutomationRule);
+
+// ============================================================================
+// 🎯 A/B TESTING & EXPERIMENTS ROUTES
+// ============================================================================
+
+// Experiments
+router.route("/experiments").get(getExperiments).post(createExperiment);
+
+// ============================================================================
+// 🌟 ENTERPRISE FEATURES ROUTES
+// ============================================================================
+
+// Business Intelligence
+router.route("/bi/revenue-analytics").get(getRevenueAnalytics);
+router.route("/bi/user-lifetime-value").get(getUserLifetimeValue);
+
+// ============================================================================
+// 👤 ADMIN MANAGEMENT ROUTES
+// ============================================================================
+
+// Admin Management
+router.route("/admins").get(getAllAdmins);
+router.route("/admins/:adminId").get(getAdminById);
+
+// ============================================================================
+// 👥 USER MANAGEMENT ROUTES
+// ============================================================================
+
+// Advanced Search & Export (must come before :id routes)
+router.route("/users/search").get(searchUsers);
+router.route("/users/export").get(bulkExportUsers);
+// router.route("/users/import").post(upload.single("csvFile"), bulkImportUsers); // TODO: Implement
+router.route("/users/bulk-actions").post(bulkActions);
+
+// Basic User Management
+router.route("/users").get(getAllUsers);
 router
 	.route("/users/:id")
-	.get(getUserById) // * ✅ [TESTED]
-	.put(updateUserById) // * ✅ [TESTED]
+	.get(getUserById)
+	.put(updateUserById)
 	.delete(deleteUserById);
 
-// 🔄 User Status Management
-router.route("/users/:id/suspend").patch(suspendUser); // * ✅ [TESTED]
-router.route("/users/:id/activate").patch(activateUser); // * ✅ [TESTED]
-
-// 📥 Bulk Import (with file upload)
-router.route("/users/import").post(upload.single("csvFile"), bulkImportUsers); // * ✅ [TESTED]
-
-// ⚡ Bulk Actions
-router.route("/users/bulk-actions").post(bulkActions); // * ✅ [TESTED]
-
-// 📊 User Analytics & Monitoring
-router.route("/users/:id/activity-log").get(getUserActivityLog);
-router.route("/users/:id/login-history").get(getUserLoginHistory);
-router.route("/users/:id/devices").get(getUserDeviceInfo);
-
-// 📧 Communication & Notifications
-router.route("/users/:id/notify").post(sendNotificationToUser);
-
-// 🔒 Security & Verification
+// User Status Management
+router.route("/users/:id/suspend").patch(suspendUser);
+router.route("/users/:id/activate").patch(activateUser);
 router.route("/users/:id/verify").patch(verifyUserAccount);
+
+// User Analytics & Monitoring
+router.route("/users/:id/activity-log").get(getUserActivityLog);
+// router.route("/users/:id/login-history").get(getUserLoginHistory); // TODO: Implement
+// router.route("/users/:id/devices").get(getUserDeviceInfo); // TODO: Implement
+router.route("/users/:id/security-analysis").get(getUserSecurityAnalysis);
+
+// Communication & Security
+router.route("/users/:id/notify").post(sendNotificationToUser);
 router.route("/users/:id/force-password-reset").post(forcePasswordReset);
 
-// 🔍 Security Analysis
-router.route("/users/:id/security-analysis").get(getUserSecurityAnalysis);
+// ============================================================================
+// 🔄 SOCIAL FEATURES ROUTES (Future Implementation)
+// ============================================================================
+
+// Posts Management (when Blog model is available)
+// router.route("/posts").get(getAllPosts);
+// router.route("/posts/:postId").get(getPostById).put(updatePost).delete(deletePost);
+// router.route("/posts/:postId/hide").patch(hidePost);
+// router.route("/posts/:postId/feature").patch(featurePost);
+
+// Comments Management
+// router.route("/comments").get(getAllComments);
+// router.route("/comments/:commentId/moderate").patch(moderateComment);
+
+// Trending & Discovery
+// router.route("/trending/posts").get(getTrendingPosts);
+// router.route("/trending/hashtags").get(getTrendingHashtags);
+
+// ============================================================================
+// 📊 REPORTS & EXPORTS (Future Implementation)
+// ============================================================================
+
+// Scheduled Reports
+// router.route("/reports/scheduled").get(getScheduledReports).post(createScheduledReport);
+// router.route("/reports/generate").post(generateReport);
+// router.route("/reports/export").get(exportReport);
 
 export default router;
