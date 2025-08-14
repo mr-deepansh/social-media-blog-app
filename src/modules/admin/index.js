@@ -35,19 +35,19 @@ export const adminConfig = {
 		bulkOperations: true,
 		realTimeStats: true,
 		advancedReporting: true,
-		enterpriseFeatures: true
+		enterpriseFeatures: true,
 	},
 	limits: {
 		maxBulkOperations: 10000,
 		maxExportRecords: 100000,
 		cacheTimeout: 300,
 		rateLimitRequests: 1000,
-		rateLimitWindow: 3600
+		rateLimitWindow: 3600,
 	},
 	security: {
 		requireMFA: false,
 		auditLogging: true,
 		ipWhitelist: false,
-		sessionTimeout: 3600
-	}
+		sessionTimeout: 3600,
+	},
 };

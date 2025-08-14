@@ -5,6 +5,14 @@ import { ApiError } from "../../../shared/utils/ApiError.js";
 import { ApiResponse } from "../../../shared/utils/ApiResponse.js";
 import Jwt from "jsonwebtoken";
 import mongoose from "mongoose";
+import { calculateApiHealth } from "../../../shared/utils/ApiHealth.js";
+import {
+	safeAsyncOperation,
+	handleControllerError,
+} from "../../../shared/utils/ErrorHandler.js";
+import { Logger } from "../../../shared/utils/Logger.js";
+
+const logger = new Logger("UserController");
 
 const generateAccessAndRefreshTokens = async (userId) => {
 	try {
@@ -25,59 +33,105 @@ const generateAccessAndRefreshTokens = async (userId) => {
 
 // Get all users with pagination and filtering
 const getAllUsers = asyncHandler(async (req, res) => {
-	const {
-		page = 1,
-		limit = 10,
-		search,
-		role,
-		isActive,
-		sortBy = "createdAt",
-		sortOrder = "desc",
-	} = req.query;
+	const startTime = Date.now();
+	try {
+		const {
+			page = 1,
+			limit = 10,
+			search,
+			role,
+			isActive,
+			sortBy = "createdAt",
+			sortOrder = "desc",
+		} = req.query;
 
-	const query = {};
-	// Add search filter
-	if (search) {
-		query.$or = [
-			{ username: { $regex: search, $options: "i" } },
-			{ email: { $regex: search, $options: "i" } },
-			{ firstName: { $regex: search, $options: "i" } },
-			{ lastName: { $regex: search, $options: "i" } },
-		];
-	}
-	// Add role filter
-	if (role) {
-		query.role = role;
-	}
-	// Add active status filter
-	if (isActive !== undefined) {
-		query.isActive = isActive === "true";
-	}
-	const sortOptions = {};
-	sortOptions[sortBy] = sortOrder === "desc" ? -1 : 1;
-	const skip = (page - 1) * limit;
-	const users = await User.find(query)
-		.select("-password -refreshToken")
-		.sort(sortOptions)
-		.skip(skip)
-		.limit(parseInt(limit));
-	const totalUsers = await User.countDocuments(query);
-	return res.status(200).json(
-		new ApiResponse(
-			200,
-			{
-				users,
-				pagination: {
-					currentPage: parseInt(page),
-					totalPages: Math.ceil(totalUsers / limit),
-					totalUsers,
-					hasNextPage: page * limit < totalUsers,
-					hasPrevPage: page > 1,
+		const query = {};
+		// Add search filter
+		if (search) {
+			query.$or = [
+				{ username: { $regex: search, $options: "i" } },
+				{ email: { $regex: search, $options: "i" } },
+				{ firstName: { $regex: search, $options: "i" } },
+				{ lastName: { $regex: search, $options: "i" } },
+			];
+		}
+		// Add role filter
+		if (role) {
+			query.role = role;
+		}
+		// Add active status filter
+		if (isActive !== undefined) {
+			query.isActive = isActive === "true";
+		}
+		const sortOptions = {};
+		sortOptions[sortBy] = sortOrder === "desc" ? -1 : 1;
+		const skip = (page - 1) * limit;
+		const [users, totalUsers] = await Promise.all([
+			User.find(query)
+				.select("-password -refreshToken")
+				.sort(sortOptions)
+				.skip(skip)
+				.limit(parseInt(limit)),
+			User.countDocuments(query),
+		]);
+		const executionTime = Date.now() - startTime;
+		return res.status(200).json(
+			new ApiResponse(
+				200,
+				{
+					users,
+					pagination: {
+						currentPage: parseInt(page),
+						totalPages: Math.ceil(totalUsers / limit),
+						totalUsers,
+						hasNextPage: page * limit < totalUsers,
+						hasPrevPage: page > 1,
+					},
+					meta: {
+						executionTime: `${executionTime}ms`,
+						apiHealth: calculateApiHealth(executionTime),
+						filters: { search, role, isActive },
+					},
 				},
-			},
-			"Users fetched successfully",
-		),
-	);
+				"Users fetched successfully",
+			),
+		);
+	} catch (error) {
+		// Enhanced fallback strategy
+		const fallbackData = await safeAsyncOperation(
+			() => ({
+				users: [],
+				pagination: {
+					currentPage: 1,
+					totalPages: 0,
+					totalUsers: 0,
+					hasNextPage: false,
+					hasPrevPage: false,
+				},
+				suggestions: [
+					"Check database connectivity",
+					"Verify query parameters",
+					"Try again with simpler filters",
+				],
+			}),
+			null,
+			false,
+		);
+
+		if (error.message?.includes("timeout") && fallbackData) {
+			return res
+				.status(200)
+				.json(
+					new ApiResponse(
+						200,
+						fallbackData,
+						"Users list temporarily unavailable - using fallback",
+					),
+				);
+		}
+
+		handleControllerError(error, req, res, startTime, logger);
+	}
 });
 
 // Get user by ID
@@ -300,20 +354,23 @@ const registerUser = asyncHandler(async (req, res) => {
 
 // **login for production scalability
 const loginUser = asyncHandler(async (req, res) => {
-	const {
-		identifier,
-		username,
-		email,
-		password,
-		rememberMe = false,
-	} = req.body;
-
-	// Input validation
-	const loginId = (identifier || username || email)?.trim()?.toLowerCase();
-	if (!loginId || !password) {
-		throw new ApiError(400, "Credentials required");
-	}
+	const startTime = Date.now();
+	const clientIP = req.ip || req.connection.remoteAddress;
 	try {
+		const {
+			identifier,
+			username,
+			email,
+			password,
+			rememberMe = false,
+		} = req.body;
+
+		// Input validation
+		const loginId = (identifier || username || email)?.trim()?.toLowerCase();
+		if (!loginId || !password) {
+			throw new ApiError(400, "Credentials required");
+		}
+
 		// Single optimized query with projection
 		const user = await User.findOne(
 			{ $or: [{ username: loginId }, { email: loginId }] },
@@ -353,6 +410,13 @@ const loginUser = asyncHandler(async (req, res) => {
 			sameSite: "strict",
 			maxAge: rememberMe ? 2592000000 : 86400000, // 30d : 1d
 		};
+		const executionTime = Date.now() - startTime;
+		logger.info("User login successful", {
+			userId: user._id,
+			username: user.username,
+			clientIP,
+			executionTime,
+		});
 		return res
 			.status(200)
 			.cookie("accessToken", tokens.accessToken, cookieOptions)
@@ -364,13 +428,57 @@ const loginUser = asyncHandler(async (req, res) => {
 						user: userData,
 						accessToken: tokens.accessToken,
 						refreshToken: tokens.refreshToken,
+						meta: {
+							executionTime: `${executionTime}ms`,
+							apiHealth: calculateApiHealth(executionTime),
+							loginTime: new Date().toISOString(),
+							rememberMe,
+						},
 					},
 					"Login successful",
 				),
 			);
 	} catch (error) {
-		if (error instanceof ApiError) throw error;
-		throw new ApiError(500, "Login failed");
+		// Enhanced fallback strategy for login failures
+		const fallbackResponse = await safeAsyncOperation(
+			() => ({
+				message: "Login temporarily unavailable",
+				status: "retry_later",
+				suggestions: [
+					"Check your credentials",
+					"Verify account is active",
+					"Try again in a few moments",
+					"Contact support if issue persists",
+				],
+			}),
+			null,
+			false,
+		);
+
+		if (error.message?.includes("Invalid credentials") && fallbackResponse) {
+			logger.warn("Login attempt failed", {
+				clientIP,
+				error: error.message,
+				executionTime: Date.now() - startTime,
+			});
+			return res.status(401).json(
+				new ApiResponse(
+					401,
+					{
+						...fallbackResponse,
+						meta: {
+							executionTime: `${Date.now() - startTime}ms`,
+							apiHealth: calculateApiHealth(Date.now() - startTime),
+							dataFreshness: "error_fallback",
+							warning: "Invalid login credentials provided",
+						},
+					},
+					"Login failed - invalid credentials",
+				),
+			);
+		}
+
+		handleControllerError(error, req, res, startTime, logger);
 	}
 });
 

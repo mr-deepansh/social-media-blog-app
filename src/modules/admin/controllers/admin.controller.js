@@ -4,7 +4,8 @@ import { ApiError } from "../../../shared/utils/ApiError.js";
 import { ApiResponse } from "../../../shared/utils/ApiResponse.js";
 import { asyncHandler } from "../../../shared/utils/AsyncHandler.js";
 import mongoose from "mongoose";
-import { CacheService } from "../services/cache.service.js";
+import { CacheService } from "../../../shared/services/cache.service.js";
+import { SessionService } from "../../../shared/services/session.service.js";
 import { ValidationService } from "../services/validation.service.js";
 import { AnalyticsService } from "../services/analytics.service.js";
 import { NotificationService } from "../services/notification.service.js";
@@ -20,6 +21,7 @@ import { promisify } from "util";
 
 // Initialize services
 const cache = new CacheService();
+const sessionService = new SessionService();
 const validator = new ValidationService();
 const analyticsService = new AnalyticsService();
 const notificationService = new NotificationService();
@@ -564,19 +566,16 @@ const bulkActionQueue = new Bull("bulk-actions", {
 // ** 🚀 Get Admin Stats tested
 const getAdminStats = asyncHandler(async (req, res) => {
 	const startTime = process.hrtime.bigint();
-
 	try {
 		// Smart cache key with time bucketing (30-second intervals)
 		const timeSlot = Math.floor(Date.now() / 30000);
 		const cacheKey = `admin:stats:v3:${timeSlot}`;
-
 		// Try cache first
 		const cachedStats = await safeAsyncOperation(
 			() => cache.get(cacheKey),
 			null,
 			false,
 		);
-
 		if (cachedStats) {
 			const responseTime =
 				Number(process.hrtime.bigint() - startTime) / 1000000;
@@ -604,23 +603,19 @@ const getAdminStats = asyncHandler(async (req, res) => {
 				),
 			);
 		}
-
 		// Execute optimized aggregation with timeout protection
 		const aggregationTimeout = new Promise((_, reject) =>
 			setTimeout(() => reject(new Error("Aggregation timeout")), 15000),
 		);
-
 		const aggregationQuery = User.aggregate(OPTIMIZED_ADMIN_STATS_PIPELINE, {
 			allowDiskUse: false,
 			maxTimeMS: 12000,
 			readConcern: { level: "local" },
 		});
-
 		const [aggregationResult] = await Promise.race([
 			aggregationQuery,
 			aggregationTimeout,
 		]);
-
 		// Process results with safe fallbacks
 		const {
 			basicCounts = [{}],
@@ -631,19 +626,15 @@ const getAdminStats = asyncHandler(async (req, res) => {
 			monthlyGrowth = [],
 			dailyGrowth = [],
 		} = aggregationResult;
-
 		const counts = basicCounts[0] || {};
 		const engagement = engagementStats[0] || {};
-
 		const totalUsers = counts.totalUsers || 0;
 		const activeUsers = counts.activeUsers || 0;
 		const adminUsers = counts.adminUsers || 0;
 		const verifiedUsers = counts.verifiedUsers || 0;
 		const suspendedUsers = totalUsers - activeUsers;
-
 		const activePercentage =
 			totalUsers > 0 ? ((activeUsers / totalUsers) * 100).toFixed(1) : "0.0";
-
 		// Calculate current month growth
 		const now = new Date();
 		const currentMonth = now.getMonth() + 1;
@@ -653,7 +644,6 @@ const getAdminStats = asyncHandler(async (req, res) => {
 				(item) =>
 					item._id.month === currentMonth && item._id.year === currentYear,
 			)?.count || 0;
-
 		// Build optimized response structure
 		const stats = {
 			overview: {
@@ -667,7 +657,6 @@ const getAdminStats = asyncHandler(async (req, res) => {
 				userGrowthTrend: currentMonthGrowth > 0 ? "up" : "stable",
 				healthScore: Math.round((activeUsers / Math.max(totalUsers, 1)) * 100),
 			},
-
 			breakdown: {
 				usersByRole: Object.fromEntries(
 					roleDistribution.map((item) => [item._id || "undefined", item.count]),
@@ -691,7 +680,6 @@ const getAdminStats = asyncHandler(async (req, res) => {
 						.split("T")[0],
 				})),
 			},
-
 			activity: {
 				recentUsers: recentUsers.map((user) => ({
 					id: user._id,
@@ -706,13 +694,7 @@ const getAdminStats = asyncHandler(async (req, res) => {
 					),
 				})),
 			},
-
-			engagement: {
-				highly_engaged: engagement.highly_engaged || 0,
-				moderately_engaged: engagement.moderately_engaged || 0,
-				low_engaged: engagement.low_engaged || 0,
-			},
-
+			engagement: await sessionService.getAdminEngagementAnalytics(),
 			metadata: {
 				generatedAt: new Date().toISOString(),
 				fromCache: false,
@@ -720,9 +702,7 @@ const getAdminStats = asyncHandler(async (req, res) => {
 				pipeline: "single_facet_aggregation",
 			},
 		};
-
 		const executionTime = Number(process.hrtime.bigint() - startTime) / 1000000;
-
 		// Background cache operations (non-blocking)
 		setImmediate(() => {
 			Promise.allSettled([
@@ -733,7 +713,6 @@ const getAdminStats = asyncHandler(async (req, res) => {
 				console.warn("Background operations failed:", err.message),
 			);
 		});
-
 		return res.status(200).json(
 			new ApiResponse(
 				200,
@@ -763,7 +742,6 @@ const getAdminStats = asyncHandler(async (req, res) => {
 			null,
 			false,
 		);
-
 		if (fallbackStats) {
 			return res.status(200).json(
 				new ApiResponse(
@@ -780,13 +758,10 @@ const getAdminStats = asyncHandler(async (req, res) => {
 				),
 			);
 		}
-
 		console.error("❌ Admin stats error:", error.message);
-
 		if (error.message === "Aggregation timeout") {
 			throw new ApiError(504, "Database query timeout. Please try again.");
 		}
-
 		throw new ApiError(500, `Admin stats failed: ${error.message}`);
 	}
 });
@@ -912,8 +887,15 @@ const getAdminStatsLive = asyncHandler(async (req, res) => {
 
 //**  ADMIN MANAGEMENT CONTROLLERS ***
 
-//** 🚀 get all admins tested need optimization
+//** 🚀 get all admins tested need optimization - SUPER ADMIN ONLY
 const getAllAdmins = asyncHandler(async (req, res) => {
+	// Restrict to super admin only
+	if (req.user.role !== "super_admin") {
+		throw new ApiError(
+			403,
+			"Access denied. Only super admins can view all admins.",
+		);
+	}
 	try {
 		const startTime = Date.now();
 		const {
@@ -1127,12 +1109,7 @@ const getAdminById = asyncHandler(async (req, res) => {
 	try {
 		const startTime = Date.now();
 		const { adminId } = req.params;
-
 		// Enhanced validation with detailed logging
-		console.log("🔍 Received adminId:", adminId);
-		console.log("🔍 AdminId type:", typeof adminId);
-		console.log("🔍 AdminId length:", adminId?.length);
-
 		if (!mongoose.Types.ObjectId.isValid(adminId)) {
 			throw new ApiError(400, "Invalid admin ID format");
 		}
@@ -1166,13 +1143,19 @@ const getAdminById = asyncHandler(async (req, res) => {
 		if (!adminData) {
 			throw new ApiError(404, "Admin not found");
 		}
-		// Permission check
+		// Permission check - Super admin can view any admin, regular admin can only view themselves
 		const currentUser = req.user;
-		if (
-			currentUser.role !== "super_admin" &&
-			currentUser._id.toString() !== adminId
-		) {
-			throw new ApiError(403, "Access denied. Insufficient permissions");
+		if (currentUser.role !== "super_admin") {
+			if (currentUser._id.toString() !== adminId) {
+				throw new ApiError(
+					403,
+					"Access denied. You can only view your own profile.",
+				);
+			}
+			// Regular admins can only view admin profiles, not other roles
+			if (adminData.role !== "admin" && adminData.role !== "super_admin") {
+				throw new ApiError(403, "Access denied. Invalid profile type.");
+			}
 		}
 		const executionTime = Date.now() - startTime;
 		// Transform and enrich admin data
@@ -1307,7 +1290,6 @@ const getAdminById = asyncHandler(async (req, res) => {
 				false,
 			);
 		});
-
 		throw new ApiError(500, `Failed to fetch admin profile: ${error.message}`);
 	}
 });
@@ -1478,12 +1460,10 @@ const getUserById = asyncHandler(async (req, res) => {
 	if (!mongoose.Types.ObjectId.isValid(id)) {
 		throw new ApiError(400, "Invalid user ID");
 	}
-
 	const user = await User.findById(id).select("-password -refreshToken");
 	if (!user) {
 		throw new ApiError(404, "User not found");
 	}
-
 	return res
 		.status(200)
 		.json(new ApiResponse(200, { user }, "User details fetched successfully"));
@@ -1670,7 +1650,6 @@ const activateUser = asyncHandler(async (req, res) => {
 			false,
 		);
 	});
-
 	return res
 		.status(200)
 		.json(new ApiResponse(200, { user }, "User activated successfully"));

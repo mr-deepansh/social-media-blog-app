@@ -40,7 +40,7 @@ const userSchema = new Schema(
 		},
 		role: {
 			type: String,
-			enum: ["user", "admin"],
+			enum: ["user", "admin", "super_admin"],
 			default: "user",
 		},
 		isActive: {
@@ -97,9 +97,12 @@ const userSchema = new Schema(
 	{ timestamps: true },
 );
 
-userSchema.index({ followers: 1 });
-userSchema.index({ following: 1 });
-userSchema.index({ createdAt: -1 });
+// Only essential indexes (others managed by production index system)
+if (process.env.NODE_ENV !== "production") {
+	userSchema.index({ followers: 1 });
+	userSchema.index({ following: 1 });
+	userSchema.index({ role: 1, isActive: 1 });
+}
 
 // Virtual for full name
 userSchema.virtual("fullName").get(function () {

@@ -2,7 +2,15 @@
 import { Router } from "express";
 import { upload } from "../../../shared/middleware/multer.middleware.js";
 import { verifyJWT } from "../../../shared/middleware/auth.middleware.js";
-import { isAdmin } from "../../../shared/middleware/isAdmin.middleware.js";
+import {
+	isAdmin,
+	isSuperAdmin,
+} from "../../../shared/middleware/isAdmin.middleware.js";
+import {
+	trackAdminSession,
+	updateSessionActivity,
+} from "../../../shared/middleware/sessionTracker.middleware.js";
+import superAdminRoutes from "./super-admin.routes.js";
 import {
 	getAdminStats,
 	getAdminStatsLive,
@@ -24,6 +32,18 @@ import {
 	getUserSecurityAnalysis,
 } from "../controllers/admin.controller.js";
 
+// Import super admin controller
+import { createSuperAdmin } from "../controllers/super-admin.controller.js";
+
+// Import session controllers
+import {
+	getAdminSessionAnalytics,
+	getAdminSessionDetails,
+} from "../controllers/session.controller.js";
+
+// Import dashboard controller
+import { getAdminDashboard } from "../controllers/dashboard.controller.js";
+
 // Import analytics controllers
 import {
 	getAnalyticsOverview,
@@ -33,12 +53,18 @@ import {
 	getEngagementMetrics,
 } from "../controllers/analytics.controller.js";
 
-// Import advanced controllers
+// Import security controllers
 import {
 	getSuspiciousAccounts,
 	getLoginAttempts,
 	blockIpAddress,
 	getBlockedIps,
+	getThreatDetection,
+	unblockIpAddress,
+} from "../controllers/security.controller.js";
+
+// Import advanced controllers
+import {
 	getAllPosts,
 	togglePostVisibility,
 	getAppSettings,
@@ -51,22 +77,41 @@ import {
 	createAutomationRule,
 	getExperiments,
 	createExperiment,
-	getThreatDetection,
 	getRevenueAnalytics,
 	getUserLifetimeValue,
 } from "../controllers/advanced.controller.js";
 
 const router = Router();
+
+// ============================================================================
+// 🔐 SUPER ADMIN CREATION (PUBLIC - ONE TIME SETUP)
+// ============================================================================
+router.route("/create-super-admin").post(createSuperAdmin);
+
 router.use(verifyJWT);
+router.use(trackAdminSession);
+router.use(updateSessionActivity);
+
+// Super Admin routes (must come before isAdmin middleware)
+router.use("/super-admin", superAdminRoutes);
+
+// Admin routes (admin and super_admin can access)
 router.use(isAdmin);
 
 // ============================================================================
 // 📊 DASHBOARD & ANALYTICS ROUTES
 // ============================================================================
 
+// Dashboard
+router.route("/dashboard").get(getAdminDashboard);
+
 // Basic Stats
 router.route("/stats").get(getAdminStats);
 router.route("/stats/live").get(getAdminStatsLive);
+
+// Session Analytics
+router.route("/sessions/analytics").get(getAdminSessionAnalytics);
+router.route("/sessions/:adminId").get(getAdminSessionDetails);
 
 // Advanced Analytics
 router.route("/analytics/overview").get(getAnalyticsOverview);
@@ -83,6 +128,7 @@ router.route("/analytics/engagement/metrics").get(getEngagementMetrics);
 router.route("/security/suspicious-accounts").get(getSuspiciousAccounts);
 router.route("/security/login-attempts").get(getLoginAttempts);
 router.route("/security/blocked-ips").get(getBlockedIps).post(blockIpAddress);
+router.route("/security/blocked-ips/:ipId").delete(unblockIpAddress);
 router.route("/security/threat-detection").get(getThreatDetection);
 
 // ============================================================================
