@@ -69,7 +69,6 @@ const createSuperAdmin = asyncHandler(async (req, res) => {
 		// Validate request body
 		const validatedData = createSuperAdminSchema.parse(req.body);
 		const { username, email, password, secretKey } = validatedData;
-
 		// Security: Check secret key in production
 		if (process.env.NODE_ENV === "production") {
 			const requiredSecretKey = process.env.SUPER_ADMIN_SECRET_KEY;
@@ -286,12 +285,10 @@ const deleteAdmin = asyncHandler(async (req, res) => {
 		if (!confirmPassword || typeof confirmPassword !== "string") {
 			throw new ApiError(400, "Valid password confirmation is required");
 		}
-
 		const currentUser = await User.findById(req.user._id).select("+password");
 		if (!currentUser) {
 			throw new ApiError(401, "Authentication required. Please login again.");
 		}
-
 		try {
 			const isPasswordValid =
 				await currentUser.isPasswordCorrect(confirmPassword);
@@ -374,7 +371,6 @@ const deleteAdmin = asyncHandler(async (req, res) => {
 			deletedBy,
 			executionTime: Date.now() - startTime,
 		});
-
 		if (error instanceof ApiError) {
 			return res
 				.status(error.statusCode)
@@ -537,7 +533,6 @@ const changeUserRole = asyncHandler(async (req, res) => {
 		user.updatedAt = new Date();
 		// Save with immediate write concern for instant consistency
 		await user.save({ writeConcern: { w: "majority", j: true } });
-
 		// Force immediate database sync verification
 		const verifyUser = await User.findById(userId, null, {
 			readPreference: "primary",
@@ -628,7 +623,6 @@ const getSystemConfig = asyncHandler(async (req, res) => {
 				auditLogs: true,
 			},
 		};
-
 		const executionTime = Date.now() - startTime;
 		return res.status(200).json(
 			new ApiResponse(
@@ -681,7 +675,6 @@ const getAuditLogs = asyncHandler(async (req, res) => {
 			if (dateFrom) filter.createdAt.$gte = new Date(dateFrom);
 			if (dateTo) filter.createdAt.$lte = new Date(dateTo);
 		}
-
 		// Mock audit logs - replace with actual AuditLog model
 		const mockAuditLogs = Array.from({ length: parseInt(limit) }, (_, i) => ({
 			_id: `audit_${Date.now()}_${i}`,
@@ -708,12 +701,9 @@ const getAuditLogs = asyncHandler(async (req, res) => {
 			),
 			executionTime: Math.floor(Math.random() * 500) + 50,
 		}));
-
 		const totalCount = 1000; // Mock total
 		const totalPages = Math.ceil(totalCount / parseInt(limit));
-
 		const executionTime = Date.now() - startTime;
-
 		return res.status(200).json(
 			new ApiResponse(
 				200,
@@ -792,9 +782,7 @@ const getSystemHealth = asyncHandler(async (req, res) => {
 			},
 			alerts: [],
 		};
-
 		const executionTime = Date.now() - startTime;
-
 		return res.status(200).json(
 			new ApiResponse(
 				200,
@@ -838,7 +826,6 @@ const emergencyLockdown = asyncHandler(async (req, res) => {
 				"Detailed reason is required (minimum 20 characters)",
 			);
 		}
-
 		// Mock lockdown implementation
 		const lockdownId = `lockdown_${Date.now()}`;
 		const lockdown = {
@@ -851,7 +838,6 @@ const emergencyLockdown = asyncHandler(async (req, res) => {
 			expiresAt: new Date(Date.now() + duration * 1000),
 			affectedServices: ["user_registration", "password_reset", "api_access"],
 		};
-
 		// Log critical action
 		logger.warn("EMERGENCY LOCKDOWN INITIATED", {
 			lockdownId,
@@ -860,9 +846,7 @@ const emergencyLockdown = asyncHandler(async (req, res) => {
 			initiatedBy: req.user._id,
 			clientIP: req.ip,
 		});
-
 		const executionTime = Date.now() - startTime;
-
 		return res.status(200).json(
 			new ApiResponse(
 				200,
