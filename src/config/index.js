@@ -58,7 +58,7 @@ export const emailConfig = {
 	},
 	from: {
 		email: process.env.EMAIL_FROM || process.env.EMAIL_USERNAME,
-		name: process.env.EMAIL_FROM_NAME || "Social Media Blog App",
+		name: process.env.EMAIL_FROM_NAME || "endlessChatt",
 	},
 };
 

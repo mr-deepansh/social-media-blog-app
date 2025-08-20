@@ -37,12 +37,15 @@ async function testDashboardAPI() {
 					if (data.data.engagement) {
 						console.log(
 							"   - Engagement:",
-							JSON.stringify(data.data.engagement, null, 2)
+							JSON.stringify(data.data.engagement, null, 2),
 						);
 					}
 
 					if (data.data.metadata) {
-						console.log("   - Metadata:", JSON.stringify(data.data.metadata, null, 2));
+						console.log(
+							"   - Metadata:",
+							JSON.stringify(data.data.metadata, null, 2),
+						);
 					}
 
 					if (data.data.meta) {
@@ -52,7 +55,7 @@ async function testDashboardAPI() {
 
 				console.log(
 					"📊 Sample Response:",
-					`${JSON.stringify(data, null, 2).substring(0, 500)  }...\n`
+					`${JSON.stringify(data, null, 2).substring(0, 500)}...\n`,
 				);
 			} else {
 				console.log("❌ Error:", response.status, data.message);
@@ -80,26 +83,33 @@ async function testSessionTracking() {
 					Authorization: `Bearer ${testConfig.adminToken}`,
 					"Content-Type": "application/json",
 					"x-session-id": sessionId,
-					"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+					"User-Agent":
+						"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
 				},
 			});
 
 			console.log(`Request ${i + 1}: ${response.status}`);
-			await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+			await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait 1 second
 		}
 
 		// Check session analytics
-		const sessionResponse = await fetch(`${BASE_URL}/admin/sessions/analytics`, {
-			method: "GET",
-			headers: {
-				Authorization: `Bearer ${testConfig.adminToken}`,
-				"Content-Type": "application/json",
+		const sessionResponse = await fetch(
+			`${BASE_URL}/admin/sessions/analytics`,
+			{
+				method: "GET",
+				headers: {
+					Authorization: `Bearer ${testConfig.adminToken}`,
+					"Content-Type": "application/json",
+				},
 			},
-		});
+		);
 
 		if (sessionResponse.ok) {
 			const sessionData = await sessionResponse.json();
-			console.log("📊 Session Analytics:", JSON.stringify(sessionData.data, null, 2));
+			console.log(
+				"📊 Session Analytics:",
+				JSON.stringify(sessionData.data, null, 2),
+			);
 		}
 	} catch (error) {
 		console.log("❌ Session tracking test failed:", error.message);
@@ -129,7 +139,9 @@ function validateResponseFormat(data) {
 
 			for (const field of fields) {
 				if (data[section][field] !== undefined) {
-					console.log(`   ✅ ${field}: ${JSON.stringify(data[section][field])}`);
+					console.log(
+						`   ✅ ${field}: ${JSON.stringify(data[section][field])}`,
+					);
 				} else {
 					console.log(`   ❌ Missing field: ${field}`);
 				}
@@ -178,7 +190,9 @@ async function performanceTest() {
 		console.log(`   Average: ${avgTime.toFixed(2)}ms`);
 		console.log(`   Min: ${minTime}ms`);
 		console.log(`   Max: ${maxTime}ms`);
-		console.log(`   Grade: ${avgTime < 100 ? "A++" : avgTime < 200 ? "A+" : "A"}`);
+		console.log(
+			`   Grade: ${avgTime < 100 ? "A++" : avgTime < 200 ? "A+" : "A"}`,
+		);
 	}
 }
 
@@ -189,8 +203,12 @@ async function runTests() {
 
 	// Check if token is configured
 	if (testConfig.adminToken === "your_admin_jwt_token_here") {
-		console.log("⚠️  Please configure adminToken in testConfig before running tests");
-		console.log("   You can get a token by logging in as admin and copying the JWT token\n");
+		console.log(
+			"⚠️  Please configure adminToken in testConfig before running tests",
+		);
+		console.log(
+			"   You can get a token by logging in as admin and copying the JWT token\n",
+		);
 	}
 
 	await testDashboardAPI();

@@ -74,7 +74,7 @@ app.get(`/api/${serverConfig.apiVersion}`, (req, res) => {
 	// console.log("❤️ Health check hit");
 	res.status(200).json({
 		success: true,
-		message: `API version ${serverConfig.apiVersion} is Running Successfully`,
+		message: `API version ${serverConfig.apiVersion} is Running Successfully...`,
 		timestamp: new Date().toISOString(),
 	});
 });

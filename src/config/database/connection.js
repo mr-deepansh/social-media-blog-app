@@ -5,14 +5,14 @@ import { DB_NAME } from "../../shared/constants/app.constants.js";
 const connectDB = async () => {
 	try {
 		// Production-grade mongoose settings
-		mongoose.set('strictQuery', false);
-		mongoose.set('debug', false);
-		mongoose.set('bufferCommands', false);
-		
+		mongoose.set("strictQuery", false);
+		mongoose.set("debug", false);
+		mongoose.set("bufferCommands", false);
+
 		if (!process.env.MONGODB_URI) {
-			throw new Error('MONGODB_URI environment variable is required');
+			throw new Error("MONGODB_URI environment variable is required");
 		}
-		
+
 		const conn = await mongoose.connect(
 			`${process.env.MONGODB_URI}/${DB_NAME}`,
 			{
@@ -25,13 +25,15 @@ const connectDB = async () => {
 				connectTimeoutMS: 15000,
 				heartbeatFrequencyMS: 10000,
 				retryWrites: true,
-				w: 'majority',
-			}
+				w: "majority",
+			},
 		);
 		console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
 	} catch (error) {
 		console.error(`❌ MongoDB Connection Error: ${error.message}`);
-		console.log('⚠️ Please check your MongoDB Atlas connection and IP whitelist');
+		console.log(
+			"⚠️ Please check your MongoDB Atlas connection and IP whitelist",
+		);
 		process.exit(1);
 	}
 };

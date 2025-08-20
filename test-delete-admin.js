@@ -17,7 +17,7 @@ async function testDeleteAdmin() {
 		console.log("📤 Sending DELETE request...");
 		console.log(
 			"URL:",
-			`${BASE_URL}/admin/super-admin/delete-admin/${testData.adminIdToDelete}`
+			`${BASE_URL}/admin/super-admin/delete-admin/${testData.adminIdToDelete}`,
 		);
 		console.log("Body:", {
 			confirmPassword: "***hidden***",
@@ -36,7 +36,7 @@ async function testDeleteAdmin() {
 					confirmPassword: testData.confirmPassword,
 					reason: testData.reason,
 				}),
-			}
+			},
 		);
 
 		console.log("\n📥 Response Status:", response.status);
@@ -47,7 +47,10 @@ async function testDeleteAdmin() {
 		if (response.ok) {
 			console.log("\n✅ SUCCESS: Admin deleted successfully");
 			console.log("🔍 Verification Details:");
-			console.log("   - Password was verified:", responseData.data?.meta?.passwordVerified);
+			console.log(
+				"   - Password was verified:",
+				responseData.data?.meta?.passwordVerified,
+			);
 			console.log("   - Deleted by:", responseData.data?.meta?.deletedBy);
 			console.log("   - Reason logged:", responseData.data?.reason);
 		} else {
@@ -56,7 +59,9 @@ async function testDeleteAdmin() {
 			console.log("   - Message:", responseData.message);
 
 			if (response.status === 400) {
-				console.log("   - This is likely due to missing confirmPassword or reason");
+				console.log(
+					"   - This is likely due to missing confirmPassword or reason",
+				);
 			} else if (response.status === 401) {
 				console.log("   - This is likely due to invalid password confirmation");
 			} else if (response.status === 403) {
@@ -86,7 +91,7 @@ async function testMissingPassword() {
 				body: JSON.stringify({
 					reason: "Test deletion without password",
 				}),
-			}
+			},
 		);
 
 		const responseData = await response.json();
