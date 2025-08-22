@@ -3,14 +3,16 @@ import { User } from "../models/user.model.js";
 import { asyncHandler } from "../../../shared/utils/AsyncHandler.js";
 import { ApiError } from "../../../shared/utils/ApiError.js";
 import { ApiResponse } from "../../../shared/utils/ApiResponse.js";
-import Jwt from "jsonwebtoken";
-import mongoose from "mongoose";
-import { calculateApiHealth } from "../../../shared/utils/ApiHealth.js";
+import { Validator } from "../../../shared/utils/Validator.js";
+import { Logger } from "../../../shared/utils/Logger.js";
 import {
 	safeAsyncOperation,
 	handleControllerError,
 } from "../../../shared/utils/ErrorHandler.js";
-import { Logger } from "../../../shared/utils/Logger.js";
+import { AuthService } from "../../auth/services/auth.service.js";
+import Jwt from "jsonwebtoken";
+import mongoose from "mongoose";
+import { calculateApiHealth } from "../../../shared/utils/ApiHealth.js";
 
 const logger = new Logger("UserController");
 
@@ -117,7 +119,6 @@ const getAllUsers = asyncHandler(async (req, res) => {
 			null,
 			false,
 		);
-
 		if (error.message?.includes("timeout") && fallbackData) {
 			return res
 				.status(200)
@@ -129,7 +130,6 @@ const getAllUsers = asyncHandler(async (req, res) => {
 					),
 				);
 		}
-
 		handleControllerError(error, req, res, startTime, logger);
 	}
 });
@@ -305,51 +305,44 @@ const uploadAvatar = asyncHandler(async (req, res) => {
 		.json(new ApiResponse(200, user, "Avatar uploaded successfully"));
 });
 
-// Register a new user
+// Enterprise-grade user registration with optimized performance
 const registerUser = asyncHandler(async (req, res) => {
-	const {
-		username,
-		email,
-		password,
-		confirmPassword,
-		firstName,
-		lastName,
-		bio = "",
-		avatar = "",
-	} = req.body;
+	const startTime = Date.now();
 
-	if (!username || !email || !password || !firstName || !lastName) {
-		throw new ApiError(400, "All required fields must be provided");
+	try {
+		// Input validation and sanitization
+		const validatedData = Validator.validateRegistration(req.body);
+		const sanitizedBio = Validator.sanitizeString(req.body.bio || "");
+		const sanitizedAvatar = Validator.sanitizeString(req.body.avatar || "");
+		// Enhanced registration via AuthService
+		const user = await AuthService.registerUser(
+			{ ...validatedData, bio: sanitizedBio, avatar: sanitizedAvatar },
+			req,
+		);
+		// Fetch clean user data
+		const createdUser = await User.findById(user._id)
+			.select("-password -refreshToken -security -activityLog")
+			.lean();
+		// Performance tracking
+		const executionTime = Date.now() - startTime;
+		logger.success("User registration completed", {
+			userId: user._id,
+			username: user.username,
+			executionTime: `${executionTime}ms`,
+		});
+		return res.status(201).json(
+			new ApiResponse(
+				201,
+				{
+					user: createdUser,
+					message: "Registration successful! Please verify your email.",
+				},
+				"User registered successfully",
+			),
+		);
+	} catch (error) {
+		handleControllerError(error, req, res, startTime, logger);
 	}
-	if (password !== confirmPassword) {
-		throw new ApiError(400, "Passwords do not match");
-	}
-	if (password.length < 8) {
-		throw new ApiError(400, "Password must be at least 8 characters long");
-	}
-	const existingUser = await User.findOne({
-		$or: [{ username: username.toLowerCase() }, { email: email.toLowerCase() }],
-	});
-	if (existingUser) {
-		throw new ApiError(409, "User with this username or email already exists");
-	}
-	const user = await User.create({
-		username: username.toLowerCase(),
-		email: email.toLowerCase(),
-		password,
-		firstName,
-		lastName,
-		bio,
-		avatar,
-		role: "user",
-		isActive: true,
-	});
-	const createdUser = await User.findById(user._id).select(
-		"-password -refreshToken",
-	);
-	return res
-		.status(201)
-		.json(new ApiResponse(201, createdUser, "User registered successfully"));
 });
 
 // **login for production scalability
@@ -365,45 +358,13 @@ const loginUser = asyncHandler(async (req, res) => {
 			rememberMe = false,
 		} = req.body;
 
-		// Input validation
-		const loginId = (identifier || username || email)?.trim()?.toLowerCase();
-		if (!loginId || !password) {
-			throw new ApiError(400, "Credentials required");
-		}
-
-		// Single optimized query with projection
-		const user = await User.findOne(
-			{ $or: [{ username: loginId }, { email: loginId }] },
-			{
-				password: 1,
-				username: 1,
-				email: 1,
-				firstName: 1,
-				lastName: 1,
-				avatar: 1,
-				isActive: 1,
-			},
-		).lean();
-		if (!user || user.isActive === false) {
-			throw new ApiError(401, "Invalid credentials");
-		}
-		// Parallel password check and token generation
-		const [isValidPassword, tokens] = await Promise.all([
-			User.findById(user._id).then((u) => u.isPasswordCorrect(password)),
-			generateAccessAndRefreshTokens(user._id),
-		]);
-		if (!isValidPassword) {
-			throw new ApiError(401, "Invalid credentials");
-		}
-		// Prepare response data
-		const userData = {
-			_id: user._id,
-			username: user.username,
-			email: user.email,
-			firstName: user.firstName,
-			lastName: user.lastName,
-			avatar: user.avatar,
-		};
+		// Validate and sanitize input
+		const validatedData = Validator.validateLogin({
+			identifier: identifier || username || email,
+			password,
+		});
+		// Use AuthService for enhanced login
+		const loginResult = await AuthService.loginUser(validatedData, req);
 		const cookieOptions = {
 			httpOnly: true,
 			secure: process.env.NODE_ENV === "production",
@@ -412,22 +373,21 @@ const loginUser = asyncHandler(async (req, res) => {
 		};
 		const executionTime = Date.now() - startTime;
 		logger.info("User login successful", {
-			userId: user._id,
-			username: user.username,
-			clientIP,
+			userId: loginResult.user._id,
+			username: loginResult.user.username,
 			executionTime,
 		});
 		return res
 			.status(200)
-			.cookie("accessToken", tokens.accessToken, cookieOptions)
-			.cookie("refreshToken", tokens.refreshToken, cookieOptions)
+			.cookie("accessToken", loginResult.accessToken, cookieOptions)
+			.cookie("refreshToken", loginResult.refreshToken, cookieOptions)
 			.json(
 				new ApiResponse(
 					200,
 					{
-						user: userData,
-						accessToken: tokens.accessToken,
-						refreshToken: tokens.refreshToken,
+						user: loginResult.user,
+						accessToken: loginResult.accessToken,
+						refreshToken: loginResult.refreshToken,
 						meta: {
 							executionTime: `${executionTime}ms`,
 							apiHealth: calculateApiHealth(executionTime),
@@ -454,7 +414,6 @@ const loginUser = asyncHandler(async (req, res) => {
 			null,
 			false,
 		);
-
 		if (error.message?.includes("Invalid credentials") && fallbackResponse) {
 			logger.warn("Login attempt failed", {
 				clientIP,
@@ -477,18 +436,15 @@ const loginUser = asyncHandler(async (req, res) => {
 				),
 			);
 		}
-
 		handleControllerError(error, req, res, startTime, logger);
 	}
 });
 
 const logoutUser = asyncHandler(async (req, res) => {
-	const userId = req.user?._id;
-	await User.findByIdAndUpdate(
-		userId,
-		{ $unset: { refreshToken: 1 } },
-		{ new: true },
-	);
+	const user = req.user;
+
+	// Use AuthService for enhanced logout
+	await AuthService.logoutUser(user, req);
 	const cookieOptions = {
 		httpOnly: true,
 		secure: process.env.NODE_ENV === "production",
@@ -512,25 +468,19 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 			incomingRefreshToken,
 			process.env.REFRESH_TOKEN_SECRET,
 		);
-
 		const user = await User.findById(decodedToken?._id);
-
 		if (!user) {
 			throw new ApiError(401, "Invalid refresh token");
 		}
-
 		if (incomingRefreshToken !== user?.refreshToken) {
 			throw new ApiError(401, "Refresh token is expired or used");
 		}
-
 		const options = {
 			httpOnly: true,
 			secure: process.env.NODE_ENV === "production",
 		};
-
 		const { accessToken, newRefreshToken } =
 			await generateAccessAndRefreshTokens(user._id);
-
 		return res
 			.status(200)
 			.cookie("accessToken", accessToken, options)
@@ -554,14 +504,11 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 	}
 	const user = await User.findById(req.user?._id);
 	const isPasswordCorrect = await user.isPasswordCorrect(currentPassword);
-
 	if (!isPasswordCorrect) {
 		throw new ApiError(400, "Invalid old password");
 	}
-
 	user.password = newPassword;
 	await user.save({ validateBeforeSave: false });
-
 	return res
 		.status(200)
 		.json(new ApiResponse(200, {}, "Password changed successfully"));
@@ -579,7 +526,6 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
 	if (!fullName || !email) {
 		throw new ApiError(400, "All fields are required");
 	}
-
 	const user = await User.findByIdAndUpdate(
 		req.user?._id,
 		{
@@ -590,7 +536,6 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
 		},
 		{ new: true },
 	).select("-password");
-
 	return res
 		.status(200)
 		.json(new ApiResponse(200, user, "Account details updated successfully"));
@@ -602,7 +547,6 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
 	if (!username?.trim()) {
 		throw new ApiError(400, "username is missing");
 	}
-
 	const channel = await User.aggregate([
 		{
 			$match: {
@@ -653,11 +597,9 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
 			},
 		},
 	]);
-
 	if (!channel?.length) {
 		throw new ApiError(404, "channel does not exists");
 	}
-
 	return res
 		.status(200)
 		.json(

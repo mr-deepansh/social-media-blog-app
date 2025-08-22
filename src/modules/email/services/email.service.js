@@ -1,149 +1,86 @@
-import { sendEmail } from "../utils/sendEmail.js";
-import {
-	generateForgotPasswordEmail,
-	generatePasswordResetSuccessEmail,
-	generatePlainTextEmail,
-} from "../templates/email.templates.js";
+// src/modules/email/services/email.service.js
+import nodemailer from "nodemailer";
+import ejs from "ejs";
+import path from "path";
+import { fileURLToPath } from "url";
+import { emailConfig } from "../../../config/index.js";
+import { ApiError } from "../../../shared/utils/ApiError.js";
 
-/**
- * Email Service Class
- * Handles all email operations with proper error handling and logging
- */
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 class EmailService {
-	/**
-	 * Send forgot password email
-	 * @param {Object} userData - User data
-	 * @param {string} userData.email - User email
-	 * @param {string} userData.name - User name
-	 * @param {string} resetUrl - Password reset URL
-	 * @returns {Promise<Object>} - Email result
-	 */
-	static async sendForgotPasswordEmail(userData, resetUrl) {
+	constructor() {
+		this.transporter = this.createTransporter();
+		this.templatesPath = path.join(__dirname, "../templates");
+	}
+
+	createTransporter() {
+		return nodemailer.createTransporter({
+			service: emailConfig.service,
+			host: emailConfig.host,
+			port: emailConfig.port,
+			secure: emailConfig.secure,
+			auth: emailConfig.auth,
+			tls: {
+				rejectUnauthorized: false,
+			},
+		});
+	}
+
+	async sendEmail({ to, subject, template, context, html, text }) {
 		try {
-			// Generate HTML email
-			const htmlContent = await generateForgotPasswordEmail({
-				name: userData.name,
-				resetUrl: resetUrl,
-			});
+			let emailHtml = html;
+			let emailText = text;
 
-			// Generate plain text fallback
-			const textContent = generatePlainTextEmail("forgot-password", {
-				name: userData.name,
-				resetUrl: resetUrl,
-			});
+			// If template is provided, render it
+			if (template) {
+				const templatePath = path.join(this.templatesPath, `${template}.ejs`);
+				emailHtml = await ejs.renderFile(templatePath, context);
+				emailText = this.htmlToText(emailHtml);
+			}
 
-			// Send email
-			const result = await sendEmail({
-				email: userData.email,
-				subject: "Password Reset Request - Social Media App",
-				html: htmlContent,
-				text: textContent,
-			});
+			const mailOptions = {
+				from: {
+					name: emailConfig.from.name,
+					address: emailConfig.from.email,
+				},
+				to,
+				subject,
+				html: emailHtml,
+				text: emailText,
+			};
 
-			console.log(`✅ Forgot password email sent to ${userData.email}`);
-			return { success: true, result };
+			const result = await this.transporter.sendMail(mailOptions);
+			console.log(`✅ Email sent successfully to ${to}: ${subject}`);
+			return result;
 		} catch (error) {
-			console.error(
-				`❌ Failed to send forgot password email to ${userData.email}:`,
-				error,
-			);
-			throw new Error(`Failed to send forgot password email: ${error.message}`);
+			console.error(`❌ Failed to send email to ${to}:`, error);
+			throw new ApiError(500, `Failed to send email: ${error.message}`);
 		}
 	}
 
-	/**
-	 * Send password reset success email
-	 * @param {Object} userData - User data
-	 * @param {string} userData.email - User email
-	 * @param {string} userData.name - User name
-	 * @param {string} userData.username - User username
-	 * @param {string} loginUrl - Login URL
-	 * @returns {Promise<Object>} - Email result
-	 */
-	static async sendPasswordResetSuccessEmail(userData, loginUrl) {
+	htmlToText(html) {
+		return html
+			.replace(/<[^>]*>/g, "")
+			.replace(/&nbsp;/g, " ")
+			.replace(/&amp;/g, "&")
+			.replace(/&lt;/g, "<")
+			.replace(/&gt;/g, ">")
+			.replace(/&quot;/g, '"')
+			.trim();
+	}
+
+	async verifyConnection() {
 		try {
-			const resetTime = new Date().toLocaleString();
-
-			// Generate HTML email
-			const htmlContent = await generatePasswordResetSuccessEmail({
-				name: userData.name,
-				username: userData.username,
-				email: userData.email,
-				loginUrl: loginUrl,
-				resetTime: resetTime,
-			});
-
-			// Generate plain text fallback
-			const textContent = generatePlainTextEmail("password-reset-success", {
-				name: userData.name,
-				username: userData.username,
-				email: userData.email,
-				loginUrl: loginUrl,
-				resetTime: resetTime,
-			});
-
-			// Send email
-			const result = await sendEmail({
-				email: userData.email,
-				subject: "Password Reset Successful - Social Media App",
-				html: htmlContent,
-				text: textContent,
-			});
-
-			console.log(`✅ Password reset success email sent to ${userData.email}`);
-			return { success: true, result };
+			await this.transporter.verify();
+			console.log("✅ Email service connection verified");
+			return true;
 		} catch (error) {
-			console.error(
-				`❌ Failed to send password reset success email to ${userData.email}:`,
-				error,
-			);
-			throw new Error(
-				`Failed to send password reset success email: ${error.message}`,
-			);
+			console.error("❌ Email service connection failed:", error);
+			return false;
 		}
-	}
-
-	/**
-	 * Validate email format
-	 * @param {string} email - Email to validate
-	 * @returns {boolean} - Is valid email
-	 */
-	static isValidEmail(email) {
-		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-		return emailRegex.test(email);
-	}
-
-	/**
-	 * Sanitize email address
-	 * @param {string} email - Email to sanitize
-	 * @returns {string} - Sanitized email
-	 */
-	static sanitizeEmail(email) {
-		return email.toLowerCase().trim();
-	}
-
-	/**
-	 * Generate reset URL
-	 * @param {string} token - Reset token
-	 * @param {string} frontendUrl - Frontend URL
-	 * @returns {string} - Complete reset URL
-	 */
-	static generateResetUrl(token, frontendUrl) {
-		const baseUrl =
-			frontendUrl || process.env.FRONTEND_URL || "http://localhost:3000";
-		return `${baseUrl}/reset-password/${token}`;
-	}
-
-	/**
-	 * Generate login URL
-	 * @param {string} frontendUrl - Frontend URL
-	 * @returns {string} - Complete login URL
-	 */
-	static generateLoginUrl(frontendUrl) {
-		const baseUrl =
-			frontendUrl || process.env.FRONTEND_URL || "http://localhost:3000";
-		return `${baseUrl}/login`;
 	}
 }
 
-export default EmailService;
+export const emailService = new EmailService();

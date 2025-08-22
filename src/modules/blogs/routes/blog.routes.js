@@ -10,10 +10,13 @@ import { verifyJWT } from "../../../shared/middleware/auth.middleware.js";
 
 const router = express.Router();
 
-router.use(verifyJWT);
+// Public routes
+router.get("/", getAllBlogs);
+router.get("/:id", getBlogById);
 
-router.route("/").post(createBlog).get(getAllBlogs);
-
-router.route("/:id").get(getBlogById).patch(updateBlog).delete(deleteBlog);
+// Protected routes
+router.post("/", verifyJWT, createBlog);
+router.patch("/:id", verifyJWT, updateBlog);
+router.delete("/:id", verifyJWT, deleteBlog);
 
 export default router;

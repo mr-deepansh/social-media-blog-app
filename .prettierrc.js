@@ -6,22 +6,17 @@ export default {
 	semi: true,
 	singleQuote: false,
 	quoteProps: "as-needed",
-
 	// Object and array formatting
 	bracketSpacing: true,
 	bracketSameLine: false,
 	trailingComma: "all",
-
 	// Function formatting
 	arrowParens: "always",
-
 	// Line formatting
 	printWidth: 100,
 	endOfLine: "lf",
-
 	// HTML/JSX (if needed in future)
 	htmlWhitespaceSensitivity: "css",
-
 	// Overrides for specific file types
 	overrides: [
 		{

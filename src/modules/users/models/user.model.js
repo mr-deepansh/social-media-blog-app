@@ -47,9 +47,15 @@ const userSchema = new Schema(
 			type: Boolean,
 			default: true,
 		},
+		isEmailVerified: {
+			type: Boolean,
+			default: false,
+		},
 		refreshToken: String,
 		forgotPasswordToken: String,
 		forgotPasswordExpiry: Date,
+		emailVerificationToken: String,
+		emailVerificationExpiry: Date,
 		avatar: {
 			type: String,
 			default: "",
@@ -93,15 +99,88 @@ const userSchema = new Schema(
 				default: true,
 			},
 		},
+		// Enterprise Security & Tracking
+		security: {
+			lastPasswordChange: {
+				type: Date,
+				default: Date.now,
+			},
+			passwordHistory: [
+				{
+					password: String,
+					createdAt: { type: Date, default: Date.now },
+				},
+			],
+			failedLoginAttempts: {
+				type: Number,
+				default: 0,
+			},
+			lockUntil: Date,
+			lastLoginIP: String,
+			lastLoginLocation: String,
+			twoFactorEnabled: {
+				type: Boolean,
+				default: false,
+			},
+			twoFactorSecret: String,
+		},
+		// Activity Tracking
+		activityLog: [
+			{
+				action: {
+					type: String,
+					enum: [
+						"login",
+						"logout",
+						"register",
+						"password_reset",
+						"profile_update",
+						"email_change",
+					],
+					required: true,
+				},
+				timestamp: {
+					type: Date,
+					default: Date.now,
+				},
+				deviceInfo: {
+					userAgent: String,
+					os: String,
+					platform: String,
+					browser: String,
+					device: String,
+				},
+				location: {
+					ip: String,
+					country: String,
+					region: String,
+					city: String,
+					timezone: String,
+				},
+				success: {
+					type: Boolean,
+					default: true,
+				},
+				errorMessage: String,
+			},
+		],
+		lastActive: {
+			type: Date,
+			default: Date.now,
+		},
 	},
 	{ timestamps: true },
 );
 
-// Only essential indexes (others managed by production index system)
+// Enterprise indexes for performance and security
 if (process.env.NODE_ENV !== "production") {
 	userSchema.index({ followers: 1 });
 	userSchema.index({ following: 1 });
 	userSchema.index({ role: 1, isActive: 1 });
+	userSchema.index({ "security.lastLoginIP": 1 });
+	userSchema.index({ "activityLog.timestamp": -1 });
+	userSchema.index({ lastActive: -1 });
+	userSchema.index({ isEmailVerified: 1 });
 }
 
 // Virtual for full name
@@ -166,8 +245,68 @@ userSchema.methods.generateForgotPasswordToken = function () {
 		.createHash("sha256")
 		.update(resetToken)
 		.digest("hex");
-	this.forgotPasswordExpiry = Date.now() + 10 * 60 * 1000; // 10 minutes
+	this.forgotPasswordExpiry = Date.now() + 15 * 60 * 1000; // 15 minutes
 	return resetToken;
+};
+
+userSchema.methods.generateEmailVerificationToken = function () {
+	const verificationToken = crypto.randomBytes(32).toString("hex");
+	this.emailVerificationToken = crypto
+		.createHash("sha256")
+		.update(verificationToken)
+		.digest("hex");
+	this.emailVerificationExpiry = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+	return verificationToken;
+};
+
+userSchema.methods.addActivityLog = function (
+	action,
+	deviceInfo,
+	location,
+	success = true,
+	errorMessage = null,
+) {
+	this.activityLog.push({
+		action,
+		deviceInfo,
+		location,
+		success,
+		errorMessage,
+	});
+
+	// Keep only last 50 activity logs
+	if (this.activityLog.length > 50) {
+		this.activityLog = this.activityLog.slice(-50);
+	}
+
+	this.lastActive = new Date();
+};
+
+userSchema.methods.isAccountLocked = function () {
+	return !!(this.security.lockUntil && this.security.lockUntil > Date.now());
+};
+
+userSchema.methods.incrementFailedLoginAttempts = function () {
+	if (this.security.lockUntil && this.security.lockUntil < Date.now()) {
+		return this.updateOne({
+			$unset: { "security.lockUntil": 1, "security.failedLoginAttempts": 1 },
+		});
+	}
+
+	const updates = { $inc: { "security.failedLoginAttempts": 1 } };
+
+	// Lock account after 5 failed attempts for 30 minutes
+	if (this.security.failedLoginAttempts + 1 >= 5 && !this.security.lockUntil) {
+		updates.$set = { "security.lockUntil": Date.now() + 30 * 60 * 1000 };
+	}
+
+	return this.updateOne(updates);
+};
+
+userSchema.methods.resetFailedLoginAttempts = function () {
+	return this.updateOne({
+		$unset: { "security.lockUntil": 1, "security.failedLoginAttempts": 1 },
+	});
 };
 
 export const User = mongoose.model("User", userSchema);

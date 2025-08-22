@@ -30,9 +30,20 @@ router.post("/refresh-token", asyncHandler(userController.refreshAccessToken));
 
 // ✅ Current user profile routes
 router.get(
+	"/profile",
+	verifyJWT,
+	asyncHandler(userController.getCurrentUserProfile),
+);
+router.get(
 	"/profile/me",
 	verifyJWT,
 	asyncHandler(userController.getCurrentUserProfile),
+);
+router.put(
+	"/profile",
+	verifyJWT,
+	validateRequest(zodValidation.updateProfile),
+	asyncHandler(userController.updateCurrentUserProfile),
 );
 router.put(
 	"/profile/me",

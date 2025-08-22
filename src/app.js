@@ -19,6 +19,7 @@ import { ApiError } from "./shared/index.js";
 
 // Route imports
 import adminRoutes from "./modules/admin/routes/admin.routes.js";
+import authRoutes from "./modules/auth/routes/auth.routes.js";
 import forgotPasswordRoutes from "./modules/auth/routes/forgotPassword.routes.js";
 import resetPasswordRoutes from "./modules/auth/routes/resetPassword.routes.js";
 import userRoutes from "./modules/users/routes/user.routes.js";
@@ -69,13 +70,21 @@ app.use(
 	express.static(path.join(__dirname, "../Public/favicon.ico")),
 );
 
-// Health check route
+// Health check routes
+app.get('/health', (req, res) => {
+	res.status(200).json({
+		status: 'healthy',
+		version: serverConfig.apiVersion,
+		timestamp: new Date().toISOString(),
+		uptime: process.uptime()
+	});
+});
+
 app.get(`/api/${serverConfig.apiVersion}`, (req, res) => {
-	// console.log("❤️ Health check hit");
 	res.status(200).json({
 		success: true,
-		message: `API version ${serverConfig.apiVersion} is Running Successfully...`,
-		timestamp: new Date().toISOString(),
+		message: `API version ${serverConfig.apiVersion} is running successfully`,
+		timestamp: new Date().toISOString()
 	});
 });
 
@@ -83,6 +92,7 @@ app.get(`/api/${serverConfig.apiVersion}`, (req, res) => {
 const apiRouter = express.Router();
 
 apiRouter.use("/admin", adminRoutes);
+apiRouter.use("/auth", authRoutes);
 apiRouter.use("/auth", forgotPasswordRoutes);
 apiRouter.use("/auth", resetPasswordRoutes);
 apiRouter.use("/users", userRoutes);
@@ -115,17 +125,9 @@ app.use("*", (req, res) => {
 });
 
 // Global error handler
-app.use((err, req, res, next) => {
-	// console.error("🚨 Error:", err);
-	const statusCode = err.statusCode || 500;
-	const message = err.message || "Internal Server Error";
-
-	res.status(statusCode).json({
-		success: false,
-		message,
-		...(process.env.NODE_ENV === "development" && { stack: err.stack }),
-	});
-});
+import { globalErrorHandler, notFound } from "./shared/utils/ErrorHandler.js";
+app.use(notFound);
+app.use(globalErrorHandler);
 
 // Graceful shutdown handlers
 process.on("SIGTERM", () => {
