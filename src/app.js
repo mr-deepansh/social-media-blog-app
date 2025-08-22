@@ -71,12 +71,12 @@ app.use(
 );
 
 // Health check routes
-app.get('/health', (req, res) => {
+app.get("/health", (req, res) => {
 	res.status(200).json({
-		status: 'healthy',
+		status: "healthy",
 		version: serverConfig.apiVersion,
 		timestamp: new Date().toISOString(),
-		uptime: process.uptime()
+		uptime: process.uptime(),
 	});
 });
 
@@ -84,7 +84,7 @@ app.get(`/api/${serverConfig.apiVersion}`, (req, res) => {
 	res.status(200).json({
 		success: true,
 		message: `API version ${serverConfig.apiVersion} is running successfully`,
-		timestamp: new Date().toISOString()
+		timestamp: new Date().toISOString(),
 	});
 });
 

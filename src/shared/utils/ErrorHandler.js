@@ -131,7 +131,9 @@ export const handleControllerError = (error, req, res, startTime, logger) => {
 	if (error instanceof ApiError) {
 		return res
 			.status(error.statusCode)
-			.json(new ApiResponse(error.statusCode, error.data, error.message, false));
+			.json(
+				new ApiResponse(error.statusCode, error.data, error.message, false),
+			);
 	}
 	return res
 		.status(500)

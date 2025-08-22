@@ -1505,122 +1505,123 @@ const deleteUserById = asyncHandler(async (req, res) => {
 	if (!mongoose.Types.ObjectId.isValid(id)) {
 		throw new ApiError(400, "Invalid user ID format", {
 			field: "userId",
-			provided: id
+			provided: id,
 		});
 	}
-
 	if (req.user._id.toString() === id) {
 		throw new ApiError(400, "Self-deletion not permitted", {
 			reason: "security_policy",
-			suggestions: ["Contact another admin to delete your account"]
+			suggestions: ["Contact another admin to delete your account"],
 		});
 	}
-
 	// Require reason for enterprise audit compliance
 	if (!reason || reason.trim().length < 10) {
-		throw new ApiError(400, "Deletion reason required (minimum 10 characters)", {
-			field: "reason",
-			minLength: 10,
-			suggestions: ["Provide detailed reason for account deletion"]
-		});
+		throw new ApiError(
+			400,
+			"Deletion reason required (minimum 10 characters)",
+			{
+				field: "reason",
+				minLength: 10,
+				suggestions: ["Provide detailed reason for account deletion"],
+			},
+		);
 	}
-
 	// Production safety: require password confirmation
 	if (process.env.NODE_ENV === "production" && !confirmPassword) {
-		throw new ApiError(400, "Password confirmation required for user deletion", {
-			field: "confirmPassword",
-			security: "destructive_action_protection"
-		});
+		throw new ApiError(
+			400,
+			"Password confirmation required for user deletion",
+			{
+				field: "confirmPassword",
+				security: "destructive_action_protection",
+			},
+		);
 	}
-
 	const user = await User.findById(id).select(
-		"username email role firstName lastName isActive createdAt lastActive"
+		"username email role firstName lastName isActive createdAt lastActive",
 	);
-	
 	if (!user) {
 		throw new ApiError(404, "User not found or already deleted", {
 			userId: id,
-			suggestions: ["Verify user ID", "Check if user was previously deleted"]
+			suggestions: ["Verify user ID", "Check if user was previously deleted"],
 		});
 	}
-
 	// Enhanced role-based security
 	if (user.role === "super_admin" && req.user.role !== "super_admin") {
 		throw new ApiError(403, "Insufficient privileges to delete super admin", {
 			requiredRole: "super_admin",
 			currentRole: req.user.role,
-			policy: "super_admin_protection"
+			policy: "super_admin_protection",
 		});
 	}
-
 	if (user.role === "admin" && req.user.role === "admin") {
 		throw new ApiError(403, "Admin users cannot delete other admin users", {
 			requiredRole: "super_admin",
-			policy: "admin_peer_protection"
+			policy: "admin_peer_protection",
 		});
 	}
-
 	// Execute deletion with transaction for data integrity
 	const session = await mongoose.startSession();
 	try {
 		await session.withTransaction(async () => {
 			// Delete user
 			await User.findByIdAndDelete(id, { session });
-			
 			// Log critical audit event
-			await auditService.logAdminActivity({
-				adminId: req.user._id,
-				action: "DELETE_USER",
-				targetUserId: id,
-				details: {
-					deletedUser: {
-						username: user.username,
-						email: user.email,
-						role: user.role,
-						fullName: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
-						accountAge: Math.floor((Date.now() - new Date(user.createdAt)) / (24 * 60 * 60 * 1000)),
-						lastActive: user.lastActive
+			await auditService.logAdminActivity(
+				{
+					adminId: req.user._id,
+					action: "DELETE_USER",
+					targetUserId: id,
+					details: {
+						deletedUser: {
+							username: user.username,
+							email: user.email,
+							role: user.role,
+							fullName: `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+							accountAge: Math.floor(
+								(Date.now() - new Date(user.createdAt)) / (24 * 60 * 60 * 1000),
+							),
+							lastActive: user.lastActive,
+						},
+						reason: reason.trim(),
+						notifyUser,
+						confirmationProvided: !!confirmPassword,
 					},
-					reason: reason.trim(),
-					notifyUser,
-					confirmationProvided: !!confirmPassword
+					criticality: "HIGH",
+					complianceFlags: ["data_deletion", "user_removal"],
 				},
-				criticality: "HIGH",
-				complianceFlags: ["data_deletion", "user_removal"]
-			}, session);
+				session,
+			);
 		});
 	} finally {
 		await session.endSession();
 	}
-
 	// Clear related caches (non-blocking)
 	setImmediate(() => {
 		Promise.allSettled([
 			cache.del(`user:profile:${id}`),
 			cache.del(`users:list:*`),
 			cache.del(`admin:stats:*`),
-			EnhancedCacheManager.invalidatePattern(`user:${id}:*`)
+			EnhancedCacheManager.invalidatePattern(`user:${id}:*`),
 		]).catch((err) => console.warn("Cache invalidation failed:", err.message));
 	});
-
 	// Send notification if requested (non-blocking)
 	if (notifyUser && user.email) {
 		setImmediate(() => {
 			safeAsyncOperation(
-				() => notificationService.sendAccountDeletionNotification({
-					email: user.email,
-					username: user.username,
-					reason: reason.trim(),
-					deletedBy: req.user.username
-				}),
+				() =>
+					notificationService.sendAccountDeletionNotification({
+						email: user.email,
+						username: user.username,
+						reason: reason.trim(),
+						deletedBy: req.user.username,
+					}),
 				null,
-				false
+				false,
 			);
 		});
 	}
-
 	const executionTime = Date.now() - startTime;
-	
 	return res.status(200).json(
 		new ApiResponse(
 			200,
@@ -1634,26 +1635,26 @@ const deleteUserById = asyncHandler(async (req, res) => {
 					deletedBy: {
 						id: req.user._id,
 						username: req.user.username,
-						role: req.user.role
+						role: req.user.role,
 					},
 					reason: reason.trim(),
-					notificationSent: notifyUser
+					notificationSent: notifyUser,
 				},
 				audit: {
 					actionId: `delete_${id}_${Date.now()}`,
 					timestamp: new Date().toISOString(),
 					compliance: "logged",
-					retentionPolicy: "90_days"
+					retentionPolicy: "90_days",
 				},
 				meta: {
 					executionTime: `${executionTime}ms`,
 					performanceGrade: executionTime < 100 ? "A++" : "A+",
 					security: "enhanced",
-					complianceLevel: "enterprise"
-				}
+					complianceLevel: "enterprise",
+				},
 			},
-			"User account deleted successfully with full audit trail"
-		)
+			"User account deleted successfully with full audit trail",
+		),
 	);
 });
 

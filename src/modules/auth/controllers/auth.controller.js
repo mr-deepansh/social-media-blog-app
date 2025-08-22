@@ -13,9 +13,7 @@ const verifyEmail = asyncHandler(async (req, res) => {
 	if (!token) {
 		throw new ApiError(400, "Verification token is required");
 	}
-
 	const result = await AuthService.verifyEmail(token);
-
 	res.status(200).json(new ApiResponse(200, {}, result.message));
 });
 
@@ -28,14 +26,11 @@ const resendEmailVerification = asyncHandler(async (req, res) => {
 	if (user.isEmailVerified) {
 		throw new ApiError(400, "Email is already verified");
 	}
-
 	// Generate new verification token
 	const verificationToken = user.generateEmailVerificationToken();
 	await user.save({ validateBeforeSave: false });
-
 	// Send verification email
 	await AuthService.sendWelcomeEmail(user, verificationToken, req);
-
 	res
 		.status(200)
 		.json(new ApiResponse(200, {}, "Verification email sent successfully"));
@@ -72,7 +67,6 @@ const getSecurityOverview = asyncHandler(async (req, res) => {
 			lastLoginLocation: user.security?.lastLoginLocation,
 		},
 	};
-
 	res
 		.status(200)
 		.json(

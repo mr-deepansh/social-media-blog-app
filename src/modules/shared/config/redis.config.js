@@ -1,7 +1,7 @@
 // src/shared/config/redis.config.js
 import Redis from "ioredis";
 import { Logger } from "../../../shared/utils/Logger.js";
-const logger = new Logger('Redis');
+const logger = new Logger("Redis");
 
 /**
  * Redis configuration with clustering and failover support
@@ -47,7 +47,6 @@ try {
 		const clusterNodes = process.env.REDIS_CLUSTER_NODES
 			? JSON.parse(process.env.REDIS_CLUSTER_NODES)
 			: [{ host: "localhost", port: 6379 }];
-
 		redisClient = new Redis.Cluster(clusterNodes, {
 			redisOptions: {
 				password: process.env.REDIS_PASSWORD,
@@ -62,34 +61,27 @@ try {
 		// Single Redis instance
 		redisClient = new Redis(redisConfig);
 	}
-
 	// Event handlers
 	redisClient.on("connect", () => {
 		logger.info("Redis client connected");
 	});
-
 	redisClient.on("ready", () => {
 		logger.info("Redis client ready");
 	});
-
 	redisClient.on("error", (err) => {
 		logger.error("Redis client error:", err);
 	});
-
 	redisClient.on("close", () => {
 		logger.warn("Redis client connection closed");
 	});
-
 	redisClient.on("reconnecting", () => {
 		logger.info("Redis client reconnecting");
 	});
-
 	// Graceful shutdown
 	process.on("SIGINT", async () => {
 		logger.info("Closing Redis connection...");
 		await redisClient.quit();
 	});
-
 	process.on("SIGTERM", async () => {
 		logger.info("Closing Redis connection...");
 		await redisClient.quit();
@@ -108,14 +100,14 @@ const RedisUtils = {
 	 */
 	async setWithTTL(key, value, ttlSeconds = 3600) {
 		try {
-			const serializedValue = typeof value === 'object' ? JSON.stringify(value) : value;
+			const serializedValue =
+				typeof value === "object" ? JSON.stringify(value) : value;
 			return await redisClient.setex(key, ttlSeconds, serializedValue);
 		} catch (error) {
 			logger.error(`Redis SET error for key ${key}:`, error);
 			throw error;
 		}
 	},
-
 	/**
 	 * Get data with automatic JSON parsing
 	 */
@@ -123,7 +115,6 @@ const RedisUtils = {
 		try {
 			const value = await redisClient.get(key);
 			if (!value) return null;
-			
 			try {
 				return JSON.parse(value);
 			} catch {
@@ -134,7 +125,6 @@ const RedisUtils = {
 			return null;
 		}
 	},
-
 	/**
 	 * Delete keys by pattern
 	 */
@@ -150,19 +140,18 @@ const RedisUtils = {
 			throw error;
 		}
 	},
-
 	/**
 	 * Get Redis connection status
 	 */
 	getConnectionStatus() {
 		return {
 			status: redisClient.status,
-			connected: redisClient.status === 'ready',
-			clusterMode: process.env.REDIS_CLUSTER_ENABLED === 'true',
+			connected: redisClient.status === "ready",
+			clusterMode: process.env.REDIS_CLUSTER_ENABLED === "true",
 			uptime: process.uptime(),
-			memoryUsage: process.memoryUsage()
+			memoryUsage: process.memoryUsage(),
 		};
-	}
+	},
 };
 
 export { redisClient, RedisUtils };

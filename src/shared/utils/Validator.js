@@ -104,7 +104,8 @@ class Validator {
 	 * Validate registration data
 	 */
 	static validateRegistration(data) {
-		const { username, email, password, confirmPassword, firstName, lastName } = data;
+		const { username, email, password, confirmPassword, firstName, lastName } =
+			data;
 
 		// Security: Remove any role-related fields from client input
 		delete data.role;
@@ -114,8 +115,15 @@ class Validator {
 
 		// Check required fields
 		this.validateRequired(
-			["username", "email", "password", "confirmPassword", "firstName", "lastName"],
-			data
+			[
+				"username",
+				"email",
+				"password",
+				"confirmPassword",
+				"firstName",
+				"lastName",
+			],
+			data,
 		);
 
 		// Validate email
@@ -145,7 +153,7 @@ class Validator {
 			email: this.sanitizeString(email).toLowerCase(),
 			password,
 			firstName: this.sanitizeString(firstName),
-			lastName: this.sanitizeString(lastName)
+			lastName: this.sanitizeString(lastName),
 		};
 	}
 

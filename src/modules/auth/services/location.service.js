@@ -13,15 +13,12 @@ class LocationService {
 	static async getUserLoginLocations(userId, options = {}) {
 		const { limit = 10, days = 90, useCache = true } = options;
 		const cacheKey = `user_locations:${userId}:${limit}:${days}`;
-
 		if (useCache) {
 			const cached = await cacheService.get(cacheKey);
 			if (cached) return cached;
 		}
-
 		const dateThreshold = new Date();
 		dateThreshold.setDate(dateThreshold.getDate() - parseInt(days));
-
 		const locations = await UserActivity.aggregate([
 			{
 				$match: {
@@ -119,11 +116,9 @@ class LocationService {
 			{ $sort: { lastLogin: -1 } },
 			{ $limit: parseInt(limit) },
 		]);
-
 		if (useCache && locations.length > 0) {
 			await cacheService.set(cacheKey, locations, 300); // 5 minutes cache
 		}
-
 		return locations;
 	}
 
@@ -134,26 +129,28 @@ class LocationService {
 		const cacheKey = `location_analytics:${userId}:${days}`;
 		const cached = await cacheService.get(cacheKey);
 		if (cached) return cached;
-
 		const dateThreshold = new Date();
 		dateThreshold.setDate(dateThreshold.getDate() - parseInt(days));
-
-		const [locationStats, suspiciousActivity, timelineData] = await Promise.all([
-			// Location distribution
-			this._getLocationDistribution(userId, dateThreshold),
-			// Suspicious activity detection
-			this._getSuspiciousActivity(userId, dateThreshold),
-			// Timeline data for trends
-			this._getTimelineData(userId, dateThreshold),
-		]);
-
+		const [locationStats, suspiciousActivity, timelineData] = await Promise.all(
+			[
+				// Location distribution
+				this._getLocationDistribution(userId, dateThreshold),
+				// Suspicious activity detection
+				this._getSuspiciousActivity(userId, dateThreshold),
+				// Timeline data for trends
+				this._getTimelineData(userId, dateThreshold),
+			],
+		);
 		const analytics = {
 			locationDistribution: locationStats,
 			suspiciousActivity,
 			timeline: timelineData,
 			summary: {
 				totalCountries: locationStats.length,
-				totalLogins: locationStats.reduce((sum, loc) => sum + loc.loginCount, 0),
+				totalLogins: locationStats.reduce(
+					(sum, loc) => sum + loc.loginCount,
+					0,
+				),
 				totalUniqueIPs: locationStats.reduce(
 					(sum, loc) => sum + loc.uniqueIPCount,
 					0,
@@ -163,11 +160,9 @@ class LocationService {
 				riskLevel: this._calculateRiskLevel(suspiciousActivity),
 			},
 		};
-
 		await cacheService.set(cacheKey, analytics, 600); // 10 minutes cache
 		return analytics;
 	}
-
 	/**
 	 * Get location distribution statistics
 	 */
@@ -201,7 +196,6 @@ class LocationService {
 			{ $sort: { loginCount: -1 } },
 		]);
 	}
-
 	/**
 	 * Detect suspicious activity patterns
 	 */
@@ -287,7 +281,6 @@ class LocationService {
 			{ $limit: 20 },
 		]);
 	}
-
 	/**
 	 * Get timeline data for trend analysis
 	 */
@@ -328,7 +321,6 @@ class LocationService {
 			{ $sort: { date: 1 } },
 		]);
 	}
-
 	/**
 	 * Calculate overall risk level based on suspicious activities
 	 */
@@ -341,12 +333,10 @@ class LocationService {
 		const mediumRiskCount = suspiciousActivity.filter(
 			(activity) => activity.riskLevel === "medium",
 		).length;
-
 		if (highRiskCount > 0) return "high";
 		if (mediumRiskCount > 2) return "medium";
 		return "low";
 	}
-
 	/**
 	 * Track new login location
 	 */
@@ -372,19 +362,15 @@ class LocationService {
 			success: true,
 			sessionId: locationData.sessionId,
 		});
-
 		await activity.save();
-
 		// Invalidate related caches
 		const cacheKeys = [
 			`user_locations:${userId}:*`,
 			`location_analytics:${userId}:*`,
 		];
-
 		await Promise.all(
 			cacheKeys.map((pattern) => cacheService.deletePattern(pattern)),
 		);
-
 		return activity;
 	}
 }

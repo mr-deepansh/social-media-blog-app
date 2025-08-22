@@ -102,7 +102,6 @@ const getLoginLocations = asyncHandler(async (req, res) => {
 	const { limit = 10, days = 90 } = req.query;
 	const userId = req.user._id;
 	const dateThreshold = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-
 	// Enterprise-grade aggregation pipeline for location analytics
 	const locations = await UserActivity.aggregate([
 		{
@@ -162,7 +161,6 @@ const getLoginLocations = asyncHandler(async (req, res) => {
 		{ $sort: { lastLogin: -1 } },
 		{ $limit: parseInt(limit) },
 	]);
-
 	res
 		.status(200)
 		.json(
@@ -177,7 +175,6 @@ const getLocationAnalytics = asyncHandler(async (req, res) => {
 	const { days = 30 } = req.query;
 	const userId = req.user._id;
 	const dateThreshold = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-
 	// Simplified analytics for production stability
 	const [locationStats, suspiciousActivity] = await Promise.all([
 		UserActivity.aggregate([
@@ -234,7 +231,6 @@ const getLocationAnalytics = asyncHandler(async (req, res) => {
 			{ $limit: 10 },
 		]),
 	]);
-
 	const analytics = {
 		locationDistribution: locationStats,
 		suspiciousActivity,
@@ -246,7 +242,6 @@ const getLocationAnalytics = asyncHandler(async (req, res) => {
 			riskLevel: "low",
 		},
 	};
-
 	res
 		.status(200)
 		.json(
