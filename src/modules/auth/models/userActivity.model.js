@@ -24,6 +24,11 @@ const userActivitySchema = new Schema(
 				"password_reset",
 				"profile_update",
 				"email_change",
+				"password_change",
+				"account_locked",
+				"account_unlocked",
+				"mfa_enabled",
+				"mfa_disabled",
 			],
 			index: true,
 		},
@@ -57,13 +62,24 @@ const userActivitySchema = new Schema(
 	},
 );
 
-// Indexes for performance
-userActivitySchema.index({ userId: 1, createdAt: -1 });
-userActivitySchema.index({ action: 1, createdAt: -1 });
-userActivitySchema.index({ ip: 1 });
-userActivitySchema.index({ createdAt: -1 });
+// Compound indexes for optimal query performance
+userActivitySchema.index({ userId: 1, action: 1, createdAt: -1 });
+userActivitySchema.index({ userId: 1, success: 1, createdAt: -1 });
+userActivitySchema.index({ userId: 1, action: 1, success: 1 });
 
-// TTL index to auto-delete old logs after 90 days
+// Location-based indexes for geographic queries
+userActivitySchema.index({ "location.country": 1, createdAt: -1 });
+userActivitySchema.index({ "location.city": 1, "location.country": 1 });
+
+// Security monitoring indexes
+userActivitySchema.index({ ip: 1, createdAt: -1 });
+userActivitySchema.index({ ip: 1, success: 1 });
+
+// General performance indexes
+userActivitySchema.index({ email: 1, createdAt: -1 });
+userActivitySchema.index({ sessionId: 1 });
+
+// TTL index to auto-delete old logs after 90 days (enterprise compliance)
 userActivitySchema.index({ createdAt: 1 }, { expireAfterSeconds: 7776000 });
 
 export const UserActivity = mongoose.model("UserActivity", userActivitySchema);

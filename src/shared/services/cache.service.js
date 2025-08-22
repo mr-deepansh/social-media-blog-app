@@ -1,7 +1,7 @@
 // src/shared/services/cache.service.js
 import Redis from "ioredis";
 
-export class CacheService {
+class CacheService {
 	constructor() {
 		this.redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379");
 	}
@@ -38,7 +38,23 @@ export class CacheService {
 		}
 	}
 
+	async deletePattern(pattern) {
+		try {
+			const keys = await this.redis.keys(pattern);
+			if (keys.length > 0) {
+				await this.redis.del(...keys);
+			}
+			return true;
+		} catch (error) {
+			console.warn(`Cache delete pattern error for ${pattern}:`, error.message);
+			return false;
+		}
+	}
+
 	async setex(key, ttl, data) {
 		return this.set(key, data, ttl);
 	}
 }
+
+export const cacheService = new CacheService();
+export { CacheService };

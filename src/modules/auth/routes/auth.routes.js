@@ -9,8 +9,10 @@ import {
 	getUserActivity,
 	getActivityStats,
 	getLoginLocations,
+	getLocationAnalytics,
 } from "../controllers/activity.controller.js";
 import { verifyJWT } from "../../../shared/middleware/auth.middleware.js";
+import securityRoutes from "./security.routes.js";
 
 const router = Router();
 
@@ -24,6 +26,10 @@ router.route("/resend-verification").post(resendEmailVerification);
 router.route("/activity").get(getUserActivity);
 router.route("/activity/stats").get(getActivityStats);
 router.route("/activity/locations").get(getLoginLocations);
+router.route("/activity/location-analytics").get(getLocationAnalytics);
 router.route("/security-overview").get(getSecurityOverview);
+
+// Enterprise security routes
+router.use("/security", securityRoutes);
 
 export default router;
