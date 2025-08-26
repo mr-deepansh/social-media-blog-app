@@ -55,8 +55,8 @@ app.use((req, res, next) => {
 	console.log(`📝 Query:`, req.query);
 	console.log(`📦 Body:`, req.body);
 	console.log(`🔑 Headers:`, {
-		'content-type': req.headers['content-type'],
-		'authorization': req.headers.authorization ? 'Present' : 'Missing'
+		"content-type": req.headers["content-type"],
+		authorization: req.headers.authorization ? "Present" : "Missing",
 	});
 	next();
 });
@@ -69,24 +69,24 @@ const corsOptions = {
 	origin: function (origin, callback) {
 		// Allow requests with no origin (like mobile apps or curl requests)
 		if (!origin) return callback(null, true);
-		
+
 		// Allow localhost and common development origins
 		const allowedOrigins = [
-			'http://localhost:3000',
-			'http://localhost:3001', 
-			'http://127.0.0.1:3000',
-			'http://127.0.0.1:3001',
-			'http://localhost:5173', // Vite default
-			'http://localhost:5174',
-			origin // Allow the requesting origin
+			"http://localhost:3000",
+			"http://localhost:3001",
+			"http://127.0.0.1:3000",
+			"http://127.0.0.1:3001",
+			"http://localhost:5173", // Vite default
+			"http://localhost:5174",
+			origin, // Allow the requesting origin
 		];
-		
-		console.log('🌐 CORS Origin:', origin);
+
+		console.log("🌐 CORS Origin:", origin);
 		callback(null, true); // Allow all origins for now
 	},
 	credentials: true,
-	methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-	allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+	methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+	allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
 };
 
 app.use(cors(corsOptions));
@@ -130,18 +130,10 @@ apiRouter.use("/auth", resetPasswordRoutes);
 apiRouter.use("/users", userRoutes);
 apiRouter.use("/blogs", blogRoutes);
 
-// console.log(`🔗 Routes mounted at: /api/${serverConfig.apiVersion}`);
-
-// Mount the main API router
-/* app.use(`/api/${serverConfig.apiVersion}`, apiRouter);
-app.use(
-	`/api/${serverConfig.apiVersion}/admin`,
-	(req, res, next) => {
-		console.log(`🛡️ Admin route middleware: ${req.method} ${req.originalUrl}`);
-		next();
-	},
-	adminRoutes,
-); */
+// 404 handler
+apiRouter.use("*", (req, res) => {
+	throw new ApiError(404, "API Route Not Found, check the URL and try again.");
+});
 
 app.use(`/api/${serverConfig.apiVersion}`, apiRouter);
 

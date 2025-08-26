@@ -22,7 +22,7 @@ let redisClient;
 
 try {
 	redisClient = new Redis(redisConfig);
-	
+
 	redisClient.on("connect", () => console.log("Redis connected"));
 	redisClient.on("error", (err) => console.error("Redis error:", err));
 } catch (error) {
@@ -32,7 +32,8 @@ try {
 const RedisUtils = {
 	async setWithTTL(key, value, ttlSeconds = 3600) {
 		try {
-			const serializedValue = typeof value === "object" ? JSON.stringify(value) : value;
+			const serializedValue =
+				typeof value === "object" ? JSON.stringify(value) : value;
 			return await redisClient.setex(key, ttlSeconds, serializedValue);
 		} catch (error) {
 			console.error(`Redis SET error for key ${key}:`, error);

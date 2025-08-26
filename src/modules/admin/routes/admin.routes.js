@@ -99,23 +99,26 @@ router.use("/super-admin", superAdminRoutes);
 // Test endpoint before auth middleware
 router.route("/public-test/users").get(async (req, res) => {
 	try {
-		const { User } = await import('../../users/models/user.model.js');
+		const { User } = await import("../../users/models/user.model.js");
 		const count = await User.countDocuments({});
-		const users = await User.find({}).select('username email role isActive').limit(3).lean();
-		
+		const users = await User.find({})
+			.select("username email role isActive")
+			.limit(3)
+			.lean();
+
 		console.log(`🌐 Public test: Found ${count} total users`);
-		
+
 		return res.status(200).json({
 			success: true,
 			totalUsers: count,
 			sampleUsers: users,
-			message: 'Public test endpoint working - no auth required'
+			message: "Public test endpoint working - no auth required",
 		});
 	} catch (error) {
-		console.error('❌ Public test error:', error);
+		console.error("❌ Public test error:", error);
 		return res.status(500).json({
 			success: false,
-			error: error.message
+			error: error.message,
 		});
 	}
 });
@@ -234,26 +237,29 @@ router.route("/users/bulk-actions").post(bulkActions);
 // Debug endpoint to test user data
 router.route("/users/debug").get(async (req, res) => {
 	try {
-		console.log('🔍 Debug: Fetching users from database...');
-		const { User } = await import('../../users/models/user.model.js');
-		const users = await User.find({}).select('username email role isActive createdAt').limit(10).lean();
+		console.log("🔍 Debug: Fetching users from database...");
+		const { User } = await import("../../users/models/user.model.js");
+		const users = await User.find({})
+			.select("username email role isActive createdAt")
+			.limit(10)
+			.lean();
 		console.log(`📊 Found ${users.length} users in database`);
-		
+
 		if (users.length > 0) {
-			console.log('👤 Sample user:', users[0]);
+			console.log("👤 Sample user:", users[0]);
 		}
-		
+
 		return res.status(200).json({
 			success: true,
 			count: users.length,
 			users: users,
-			message: 'Debug: Users fetched successfully'
+			message: "Debug: Users fetched successfully",
 		});
 	} catch (error) {
-		console.error('❌ Debug endpoint error:', error);
+		console.error("❌ Debug endpoint error:", error);
 		return res.status(500).json({
 			success: false,
-			error: error.message
+			error: error.message,
 		});
 	}
 });
@@ -284,23 +290,26 @@ router.route("/users/:id/force-password-reset").post(forcePasswordReset);
 // Test endpoint without auth
 router.route("/test/users").get(async (req, res) => {
 	try {
-		const { User } = await import('../../users/models/user.model.js');
+		const { User } = await import("../../users/models/user.model.js");
 		const count = await User.countDocuments({});
-		const users = await User.find({}).select('username email role isActive').limit(5).lean();
-		
+		const users = await User.find({})
+			.select("username email role isActive")
+			.limit(5)
+			.lean();
+
 		console.log(`🧪 Test endpoint: Found ${count} total users`);
-		
+
 		return res.status(200).json({
 			success: true,
 			totalUsers: count,
 			sampleUsers: users,
-			message: 'Test endpoint working'
+			message: "Test endpoint working",
 		});
 	} catch (error) {
-		console.error('❌ Test endpoint error:', error);
+		console.error("❌ Test endpoint error:", error);
 		return res.status(500).json({
 			success: false,
-			error: error.message
+			error: error.message,
 		});
 	}
 });

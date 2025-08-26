@@ -1298,9 +1298,9 @@ const getAdminById = asyncHandler(async (req, res) => {
 
 // ** 🚀 Get All Admins with Pagination, Sorting, and Filtering tested
 const getAllUsers = asyncHandler(async (req, res) => {
-	console.log('📊 getAllUsers called with query:', req.query);
-	console.log('👤 Current user:', req.user?.username, req.user?.role);
-	
+	console.log("📊 getAllUsers called with query:", req.query);
+	console.log("👤 Current user:", req.user?.username, req.user?.role);
+
 	try {
 		const {
 			page = 1,
@@ -1316,8 +1316,14 @@ const getAllUsers = asyncHandler(async (req, res) => {
 		const pageNum = Math.max(1, parseInt(page) || 1);
 		const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 10));
 		const skip = (pageNum - 1) * limitNum;
-		
-		console.log('📄 Query params:', { pageNum, limitNum, search, role, isActive });
+
+		console.log("📄 Query params:", {
+			pageNum,
+			limitNum,
+			search,
+			role,
+			isActive,
+		});
 
 		// Build filter
 		const filter = {};
@@ -1334,39 +1340,47 @@ const getAllUsers = asyncHandler(async (req, res) => {
 		if (isActive !== undefined) {
 			filter.isActive = isActive === "true" || isActive === true;
 		}
-		
-		console.log('🔍 Database filter:', filter);
+
+		console.log("🔍 Database filter:", filter);
 
 		// Build sort
 		const sortObj = {};
-		const validSortFields = ["createdAt", "username", "email", "firstName", "lastName"];
+		const validSortFields = [
+			"createdAt",
+			"username",
+			"email",
+			"firstName",
+			"lastName",
+		];
 		const validSortBy = validSortFields.includes(sortBy) ? sortBy : "createdAt";
 		sortObj[validSortBy] = sortOrder === "desc" ? -1 : 1;
-		
-		console.log('🔄 Sort options:', sortObj);
+
+		console.log("🔄 Sort options:", sortObj);
 
 		// Execute queries
 		const [users, totalCount] = await Promise.all([
 			User.find(filter)
-				.select('username email firstName lastName role isActive createdAt lastLoginAt profileImage')
+				.select(
+					"username email firstName lastName role isActive createdAt lastLoginAt profileImage",
+				)
 				.sort(sortObj)
 				.skip(skip)
 				.limit(limitNum)
 				.lean(),
-			User.countDocuments(filter)
+			User.countDocuments(filter),
 		]);
-		
+
 		console.log(`✅ Found ${users.length} users out of ${totalCount} total`);
 
 		const totalPages = Math.ceil(totalCount / limitNum);
-		
+
 		const responseData = {
 			users: users.map((user) => ({
 				id: user._id,
 				username: user.username,
 				email: user.email,
-				firstName: user.firstName || '',
-				lastName: user.lastName || '',
+				firstName: user.firstName || "",
+				lastName: user.lastName || "",
 				role: user.role,
 				isActive: user.isActive,
 				createdAt: user.createdAt,
@@ -1391,16 +1405,15 @@ const getAllUsers = asyncHandler(async (req, res) => {
 			},
 			meta: {
 				cached: false,
-				generatedAt: new Date().toISOString()
+				generatedAt: new Date().toISOString(),
 			},
 		};
-		
-		console.log('📤 Sending response with', responseData.users.length, 'users');
-		
-		return res.status(200).json(
-			new ApiResponse(200, responseData, "Users fetched successfully")
-		);
-		
+
+		console.log("📤 Sending response with", responseData.users.length, "users");
+
+		return res
+			.status(200)
+			.json(new ApiResponse(200, responseData, "Users fetched successfully"));
 	} catch (error) {
 		console.error("❌ Get all users error:", error);
 		throw new ApiError(500, `Failed to fetch users: ${error.message}`);
