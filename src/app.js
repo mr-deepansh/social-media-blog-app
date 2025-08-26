@@ -44,20 +44,52 @@ app.use(
 		crossOriginEmbedderPolicy: false,
 	}),
 );
+// Body parsing middleware
+app.use(express.json({ limit: "16kb" }));
+app.use(express.urlencoded({ extended: true, limit: "16kb" }));
+
 // Debug middleware - log all requests
-app.use(express.json()); // body-parser
 app.use((req, res, next) => {
-	console.log(`\n📥 Incoming Request: ${req.method} ${req.originalUrl}`);
+	console.log(`\n📥 ${req.method} ${req.originalUrl}`);
+	console.log(`🌐 Origin:`, req.headers.origin);
 	console.log(`📝 Query:`, req.query);
 	console.log(`📦 Body:`, req.body);
+	console.log(`🔑 Headers:`, {
+		'content-type': req.headers['content-type'],
+		'authorization': req.headers.authorization ? 'Present' : 'Missing'
+	});
 	next();
 });
 
 // Apply global rate limiter
 app.use(apiRateLimiter);
 
-// Global middlewares
-app.use(cors({ origin: "*", credentials: true }));
+// Global middlewares - CORS configuration
+const corsOptions = {
+	origin: function (origin, callback) {
+		// Allow requests with no origin (like mobile apps or curl requests)
+		if (!origin) return callback(null, true);
+		
+		// Allow localhost and common development origins
+		const allowedOrigins = [
+			'http://localhost:3000',
+			'http://localhost:3001', 
+			'http://127.0.0.1:3000',
+			'http://127.0.0.1:3001',
+			'http://localhost:5173', // Vite default
+			'http://localhost:5174',
+			origin // Allow the requesting origin
+		];
+		
+		console.log('🌐 CORS Origin:', origin);
+		callback(null, true); // Allow all origins for now
+	},
+	credentials: true,
+	methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+	allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+};
+
+app.use(cors(corsOptions));
 app.use(express.json({ limit: "16kb" }));
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 app.use(cookieParser());

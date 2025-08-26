@@ -90,6 +90,8 @@ class AuthService {
 	}
 	// Login User
 	static async loginUser({ identifier, password }, req) {
+		console.log("🔍 AuthService.loginUser called with:", { identifier, password: "***" });
+		
 		const user = await User.findOne({
 			$or: [
 				{ email: identifier.toLowerCase() },
@@ -97,7 +99,19 @@ class AuthService {
 			],
 			isActive: true,
 		});
-		if (!user || !(await bcrypt.compare(password, user.password))) {
+		
+		console.log("👤 User found:", user ? { id: user._id, username: user.username, email: user.email, isActive: user.isActive } : "No user found");
+		
+		if (!user) {
+			console.log("❌ User not found with identifier:", identifier);
+			throw new ApiError(401, "Invalid credentials");
+		}
+		
+		const passwordMatch = await bcrypt.compare(password, user.password);
+		console.log("🔑 Password match:", passwordMatch);
+		
+		if (!passwordMatch) {
+			console.log("❌ Password does not match for user:", user.username);
 			throw new ApiError(401, "Invalid credentials");
 		}
 		const { accessToken, refreshToken } = this.generateTokens(user._id);

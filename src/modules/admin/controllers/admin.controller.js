@@ -1298,8 +1298,10 @@ const getAdminById = asyncHandler(async (req, res) => {
 
 // ** 🚀 Get All Admins with Pagination, Sorting, and Filtering tested
 const getAllUsers = asyncHandler(async (req, res) => {
+	console.log('📊 getAllUsers called with query:', req.query);
+	console.log('👤 Current user:', req.user?.username, req.user?.role);
+	
 	try {
-		const startTime = Date.now();
 		const {
 			page = 1,
 			limit = 10,
@@ -1314,102 +1316,57 @@ const getAllUsers = asyncHandler(async (req, res) => {
 		const pageNum = Math.max(1, parseInt(page) || 1);
 		const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 10));
 		const skip = (pageNum - 1) * limitNum;
-		// 🚀 OPTIMIZATION 1: Smart cache key
-		const cacheKey = `users:list:v2:${Buffer.from(
-			JSON.stringify({
-				page: pageNum,
-				limit: limitNum,
-				sortBy,
-				sortOrder,
-				search,
-				role,
-				isActive,
-			}),
-		)
-			.toString("base64")
-			.slice(0, 32)}`;
-		// Try cache first
-		try {
-			const cached = await cache.get(cacheKey);
-			if (cached) {
-				return res
-					.status(200)
-					.json(new ApiResponse(200, cached, "Users fetched from cache"));
-			}
-		} catch (cacheError) {
-			console.warn("Cache get failed:", cacheError.message);
-		}
-		// 🚀 OPTIMIZATION 2: Single aggregation pipeline
-		const pipeline = [];
-		const matchStage = {};
-		// Build match conditions
+		
+		console.log('📄 Query params:', { pageNum, limitNum, search, role, isActive });
+
+		// Build filter
+		const filter = {};
 		if (search?.trim()) {
 			const searchRegex = { $regex: search.trim(), $options: "i" };
-			matchStage.$or = [
+			filter.$or = [
 				{ username: searchRegex },
 				{ email: searchRegex },
 				{ firstName: searchRegex },
 				{ lastName: searchRegex },
 			];
 		}
-		if (role) matchStage.role = role;
+		if (role) filter.role = role;
 		if (isActive !== undefined) {
-			matchStage.isActive = isActive === "true" || isActive === true;
+			filter.isActive = isActive === "true" || isActive === true;
 		}
-		// Add match stage if needed
-		if (Object.keys(matchStage).length > 0) {
-			pipeline.push({ $match: matchStage });
-		}
-		// Sort
+		
+		console.log('🔍 Database filter:', filter);
+
+		// Build sort
 		const sortObj = {};
-		const validSortFields = [
-			"createdAt",
-			"username",
-			"email",
-			"firstName",
-			"lastName",
-		];
+		const validSortFields = ["createdAt", "username", "email", "firstName", "lastName"];
 		const validSortBy = validSortFields.includes(sortBy) ? sortBy : "createdAt";
 		sortObj[validSortBy] = sortOrder === "desc" ? -1 : 1;
-		pipeline.push({ $sort: sortObj });
-		// Project only needed fields
-		pipeline.push({
-			$project: {
-				username: 1,
-				email: 1,
-				firstName: 1,
-				lastName: 1,
-				role: 1,
-				isActive: 1,
-				createdAt: 1,
-				lastLoginAt: 1,
-				profileImage: 1,
-			},
-		});
-		// Facet for pagination and count
-		pipeline.push({
-			$facet: {
-				data: [{ $skip: skip }, { $limit: limitNum }],
-				totalCount: [{ $count: "count" }],
-			},
-		});
-		// 🚀 OPTIMIZATION 3: Execute with proper options
-		const [result] = await User.aggregate(pipeline, {
-			allowDiskUse: false,
-			maxTimeMS: 10000,
-			readConcern: { level: "local" },
-		});
-		const users = result.data || [];
-		const totalCount = result.totalCount[0]?.count || 0;
+		
+		console.log('🔄 Sort options:', sortObj);
+
+		// Execute queries
+		const [users, totalCount] = await Promise.all([
+			User.find(filter)
+				.select('username email firstName lastName role isActive createdAt lastLoginAt profileImage')
+				.sort(sortObj)
+				.skip(skip)
+				.limit(limitNum)
+				.lean(),
+			User.countDocuments(filter)
+		]);
+		
+		console.log(`✅ Found ${users.length} users out of ${totalCount} total`);
+
 		const totalPages = Math.ceil(totalCount / limitNum);
-		const executionTime = Date.now() - startTime;
+		
 		const responseData = {
 			users: users.map((user) => ({
 				id: user._id,
 				username: user.username,
 				email: user.email,
-				firstName: user.firstName,
-				lastName: user.lastName,
+				firstName: user.firstName || '',
+				lastName: user.lastName || '',
 				role: user.role,
 				isActive: user.isActive,
 				createdAt: user.createdAt,
@@ -1433,21 +1390,17 @@ const getAllUsers = asyncHandler(async (req, res) => {
 				isActive: isActive || null,
 			},
 			meta: {
-				executionTime: `${executionTime}ms`,
-				performanceGrade:
-					executionTime < 100 ? "A++" : executionTime < 200 ? "A+" : "B",
 				cached: false,
+				generatedAt: new Date().toISOString()
 			},
 		};
-		// 🚀 OPTIMIZATION 4: Non-blocking cache set
-		setImmediate(() => {
-			cache
-				.setex(cacheKey, 120, responseData)
-				.catch((err) => console.warn("Cache set failed:", err.message));
-		});
-		return res
-			.status(200)
-			.json(new ApiResponse(200, responseData, "Users fetched successfully"));
+		
+		console.log('📤 Sending response with', responseData.users.length, 'users');
+		
+		return res.status(200).json(
+			new ApiResponse(200, responseData, "Users fetched successfully")
+		);
+		
 	} catch (error) {
 		console.error("❌ Get all users error:", error);
 		throw new ApiError(500, `Failed to fetch users: ${error.message}`);

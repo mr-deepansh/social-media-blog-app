@@ -20,6 +20,12 @@ router.post(
 
 router.post(
 	"/login",
+	(req, res, next) => {
+		console.log("🔐 Login route hit!");
+		console.log("📧 Request body:", req.body);
+		console.log("🌐 IP:", req.ip);
+		next();
+	},
 	apiRateLimiter,
 	validateRequest(zodValidation.loginFlexible),
 	asyncHandler(userController.loginUser),
