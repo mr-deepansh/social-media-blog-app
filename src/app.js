@@ -1,5 +1,4 @@
 // src/app.js
-// Core imports
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -10,6 +9,7 @@ import { fileURLToPath } from "url";
 
 // Custom middlewares
 import { apiRateLimiter } from "./shared/middleware/rateLimit.middleware.js";
+import corsMiddleware from "./shared/middleware/cors.middleware.js";
 
 // Configurations
 import { serverConfig, securityConfig } from "./config/index.js";
@@ -30,7 +30,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
 
-// Apply security headers
+// Trust proxy (important for rate limiting and IP detection)
+app.set("trust proxy", 1);
+
+// ========================================
+// SECURITY MIDDLEWARE (Apply First)
+// ========================================
 app.use(
 	helmet({
 		contentSecurityPolicy: {
@@ -39,90 +44,121 @@ app.use(
 				styleSrc: ["'self'", "'unsafe-inline'"],
 				scriptSrc: ["'self'"],
 				imgSrc: ["'self'", "data:", "https:"],
+				connectSrc: ["'self'"],
+				fontSrc: ["'self'"],
+				objectSrc: ["'none'"],
+				mediaSrc: ["'self'"],
+				frameSrc: ["'none'"],
 			},
 		},
 		crossOriginEmbedderPolicy: false,
+		crossOriginResourcePolicy: { policy: "cross-origin" },
 	}),
 );
-// Body parsing middleware
-app.use(express.json({ limit: "16kb" }));
-app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 
-// Debug middleware - log all requests
-app.use((req, res, next) => {
-	console.log(`\n📥 ${req.method} ${req.originalUrl}`);
-	console.log(`🌐 Origin:`, req.headers.origin);
-	console.log(`📝 Query:`, req.query);
-	console.log(`📦 Body:`, req.body);
-	console.log(`🔑 Headers:`, {
-		"content-type": req.headers["content-type"],
-		authorization: req.headers.authorization ? "Present" : "Missing",
+// ========================================
+// CORS MIDDLEWARE (Apply Early)
+// ========================================
+app.use(corsMiddleware);
+
+// ✅ Handle preflight
+app.options("*", cors(securityConfig.cors));
+
+// ========================================
+// BODY PARSING MIDDLEWARE
+// ========================================
+app.use(express.json({ limit: serverConfig.bodyLimit }));
+app.use(express.urlencoded({ extended: true, limit: serverConfig.bodyLimit }));
+app.use(cookieParser());
+
+// ========================================
+// LOGGING MIDDLEWARE
+// ========================================
+if (serverConfig.nodeEnv === "development") {
+	// Custom debug middleware for development
+	app.use((req, res, next) => {
+		const startTime = Date.now();
+		console.log(`\n📥 ${req.method} ${req.originalUrl}`);
+		console.log(`🌐 Origin: ${req.headers.origin || "None"}`);
+		console.log(
+			`📝 Query:`,
+			Object.keys(req.query).length ? req.query : "None",
+		);
+		console.log(`📦 Body:`, Object.keys(req.body).length ? req.body : "None");
+		console.log(`🔑 Headers:`, {
+			"content-type": req.headers["content-type"] || "None",
+			authorization: req.headers.authorization ? "Present" : "Missing",
+			"user-agent":
+				req.headers["user-agent"]?.substring(0, 50) + "..." || "None",
+		});
+
+		// Log response time
+		const originalEnd = res.end;
+		res.end = function (...args) {
+			const duration = Date.now() - startTime;
+			console.log(`⏱️  Response: ${res.statusCode} (${duration}ms)`);
+			originalEnd.apply(res, args);
+		};
+
+		next();
 	});
-	next();
-});
+} else {
+	// Use morgan for production
+	app.use(morgan("combined"));
+}
 
-// Apply global rate limiter
+// ========================================
+// RATE LIMITING
+// ========================================
 app.use(apiRateLimiter);
 
-// Global middlewares - CORS configuration
-const corsOptions = {
-	origin: function (origin, callback) {
-		// Allow requests with no origin (like mobile apps or curl requests)
-		if (!origin) return callback(null, true);
-
-		// Allow localhost and common development origins
-		const allowedOrigins = [
-			"http://localhost:3000",
-			"http://localhost:3001",
-			"http://127.0.0.1:3000",
-			"http://127.0.0.1:3001",
-			"http://localhost:5173", // Vite default
-			"http://localhost:5174",
-			origin, // Allow the requesting origin
-		];
-
-		console.log("🌐 CORS Origin:", origin);
-		callback(null, true); // Allow all origins for now
-	},
-	credentials: true,
-	methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-	allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-};
-
-app.use(cors(corsOptions));
-app.use(express.json({ limit: "16kb" }));
-app.use(express.urlencoded({ extended: true, limit: "16kb" }));
-app.use(cookieParser());
-app.use(morgan("combined"));
-
-// Static files
-app.use("/Public", express.static(path.join(__dirname, "../Public")));
+// ========================================
+// STATIC FILES
+// ========================================
+app.use("/public", express.static(path.join(__dirname, "../Public")));
 app.use(
 	"/favicon.ico",
 	express.static(path.join(__dirname, "../Public/favicon.ico")),
 );
 
-// Health check routes
+// ========================================
+// HEALTH CHECK ROUTES
+// ========================================
 app.get("/health", (req, res) => {
 	res.status(200).json({
 		status: "healthy",
 		version: serverConfig.apiVersion,
+		environment: serverConfig.nodeEnv,
 		timestamp: new Date().toISOString(),
-		uptime: process.uptime(),
+		uptime: Math.floor(process.uptime()),
+		memory: {
+			used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + " MB",
+			total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024) + " MB",
+		},
 	});
 });
 
+// API version endpoint
 app.get(`/api/${serverConfig.apiVersion}`, (req, res) => {
 	res.status(200).json({
 		success: true,
-		message: `API version ${serverConfig.apiVersion} is running successfully`,
+		message: `endlessChatt API v${serverConfig.apiVersion} is running successfully`,
 		timestamp: new Date().toISOString(),
+		endpoints: {
+			auth: `/api/${serverConfig.apiVersion}/auth`,
+			users: `/api/${serverConfig.apiVersion}/users`,
+			blogs: `/api/${serverConfig.apiVersion}/blogs`,
+			admin: `/api/${serverConfig.apiVersion}/admin`,
+		},
 	});
 });
 
-// API Routes
+// ========================================
+// API ROUTES
+// ========================================
 const apiRouter = express.Router();
 
+// Mount all route modules
 apiRouter.use("/admin", adminRoutes);
 apiRouter.use("/auth", authRoutes);
 apiRouter.use("/auth", forgotPasswordRoutes);
@@ -130,43 +166,99 @@ apiRouter.use("/auth", resetPasswordRoutes);
 apiRouter.use("/users", userRoutes);
 apiRouter.use("/blogs", blogRoutes);
 
-// 404 handler
-apiRouter.use("*", (req, res) => {
-	throw new ApiError(404, "API Route Not Found, check the URL and try again.");
+// API 404 handler
+apiRouter.use("*", (req, res, next) => {
+	const error = new ApiError(
+		404,
+		`API Route Not Found: ${req.method} ${req.originalUrl}`,
+	);
+	next(error);
 });
 
+// Mount API router
 app.use(`/api/${serverConfig.apiVersion}`, apiRouter);
 
-// 404 handler
+// ========================================
+// ROOT ROUTE
+// ========================================
+app.get("/", (req, res) => {
+	res.status(200).json({
+		success: true,
+		message: "🎉 Welcome to endlessChatt API",
+		version: serverConfig.apiVersion,
+		environment: serverConfig.nodeEnv,
+		docs: `/api/${serverConfig.apiVersion}`,
+		health: "/health",
+		timestamp: new Date().toISOString(),
+	});
+});
+
+// ========================================
+// GLOBAL 404 HANDLER
+// ========================================
 app.use("*", (req, res) => {
 	res.status(404).json({
 		success: false,
 		message: "Route Not Found",
 		path: req.originalUrl,
 		method: req.method,
+		availableRoutes: {
+			api: `/api/${serverConfig.apiVersion}`,
+			health: "/health",
+			root: "/",
+		},
 		timestamp: new Date().toISOString(),
 	});
 });
 
-// Global error handler
+// ========================================
+// GLOBAL ERROR HANDLER
+// ========================================
 import { globalErrorHandler, notFound } from "./shared/utils/ErrorHandler.js";
-app.use(notFound);
+
+// Apply error handlers
 app.use(globalErrorHandler);
 
-// Graceful shutdown handlers
-process.on("SIGTERM", () => {
-	console.log("SIGTERM received. Shutting down gracefully...");
-	process.exit(0);
+// ========================================
+// GRACEFUL SHUTDOWN HANDLERS
+// ========================================
+const gracefulShutdown = (signal) => {
+	console.log(`\n🔄 ${signal} received. Starting graceful shutdown...`);
+
+	// Close server
+	const server = app.listen();
+	server.close(() => {
+		console.log("✅ HTTP server closed.");
+
+		// Close database connections, cleanup, etc.
+		// Add your cleanup logic here
+
+		console.log("✅ Graceful shutdown completed.");
+		process.exit(0);
+	});
+
+	// Force close after timeout
+	setTimeout(() => {
+		console.error(
+			"❌ Could not close connections in time, forcefully shutting down",
+		);
+		process.exit(1);
+	}, serverConfig.shutdownTimeout);
+};
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+
+process.on("unhandledRejection", (reason, promise) => {
+	console.error("🚨 Unhandled Rejection at:", promise, "reason:", reason);
+	// Close server gracefully
+	gracefulShutdown("Unhandled Rejection");
 });
 
-process.on("SIGINT", () => {
-	console.log("SIGINT received. Shutting down gracefully...");
-	process.exit(0);
-});
-
-process.on("unhandledRejection", (err) => {
-	console.error("Unhandled Rejection:", err);
-	process.exit(1);
+process.on("uncaughtException", (error) => {
+	console.error("🚨 Uncaught Exception:", error);
+	// Close server gracefully
+	gracefulShutdown("Uncaught Exception");
 });
 
 export default app;

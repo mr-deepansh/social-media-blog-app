@@ -4,6 +4,21 @@ import dotenv from "dotenv";
 // Load environment variables
 dotenv.config();
 
+// Helper function to parse comma-separated strings
+const parseArray = (str, defaultValue = []) => {
+	if (!str) return defaultValue;
+	return str
+		.split(",")
+		.map((item) => item.trim())
+		.filter(Boolean);
+};
+
+// Helper function to parse boolean
+const parseBoolean = (str, defaultValue = false) => {
+	if (str === undefined || str === null) return defaultValue;
+	return str.toLowerCase() === "true";
+};
+
 // ========================================
 // SERVER CONFIGURATION
 // ========================================
@@ -18,7 +33,7 @@ export const serverConfig = {
 	timeout: parseInt(process.env.SERVER_TIMEOUT) || 30000,
 	keepAliveTimeout: parseInt(process.env.KEEP_ALIVE_TIMEOUT) || 5000,
 	shutdownTimeout: parseInt(process.env.SHUTDOWN_TIMEOUT) || 15000,
-	clustering: process.env.CLUSTERING === "true",
+	clustering: parseBoolean(process.env.CLUSTERING),
 	backlog: parseInt(process.env.BACKLOG) || 511,
 };
 
@@ -63,7 +78,7 @@ export const emailConfig = {
 	service: process.env.EMAIL_SERVICE || "gmail",
 	host: process.env.EMAIL_HOST || "smtp.gmail.com",
 	port: parseInt(process.env.EMAIL_PORT) || 587,
-	secure: process.env.EMAIL_SECURE === "true" || false,
+	secure: parseBoolean(process.env.EMAIL_SECURE),
 	auth: {
 		user: process.env.EMAIL_USERNAME || process.env.EMAIL_USER,
 		pass: process.env.EMAIL_PASSWORD || process.env.EMAIL_PASS,
@@ -79,18 +94,59 @@ export const emailConfig = {
 // ========================================
 export const securityConfig = {
 	cors: {
-		origin: process.env.CORS_ORIGIN?.split(",") || ["http://localhost:3000"],
+		origin: (origin, callback) => {
+			const corsOrigin = process.env.CORS_ORIGIN;
+
+			// ✅ 1. Development: allow * safely
+			if (corsOrigin === "*") {
+				if (serverConfig.nodeEnv === "development") {
+					return callback(null, true);
+				} else {
+					// ❌ Production me wildcard block
+					return callback(
+						new Error("CORS wildcard * not allowed in production"),
+					);
+				}
+			}
+			// ✅ 2. Otherwise parse allowed origins from env
+			const allowedOrigins = corsOrigin ? parseArray(corsOrigin) : [];
+			// Postman / server-to-server requests (no Origin header)
+			if (!origin) return callback(null, true);
+			// ✅ 3. Check if request origin allowed
+			if (allowedOrigins.includes(origin)) {
+				return callback(null, true);
+			}
+			// ❌ Block anything not listed
+			return callback(new Error(`Not allowed by CORS: ${origin}`));
+		},
 		credentials: true,
-		methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-		allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+		methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"],
+		allowedHeaders: [
+			"Content-Type",
+			"Authorization",
+			"X-Requested-With",
+			"Accept",
+			"Origin",
+			"Cache-Control",
+			"X-File-Name",
+		],
+		exposedHeaders: ["Content-Range", "X-Content-Range"],
+		maxAge: 86400, // 24h
 	},
 	rateLimit: {
-		windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-		max: parseInt(process.env.RATE_LIMIT_MAX) || 100, // limit each IP to 100 requests per windowMs
-		message: "Too many requests from this IP, please try again later.",
+		windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
+		max: parseInt(process.env.RATE_LIMIT_MAX) || 100,
+		message: {
+			error: "Too many requests, please try again later.",
+			retryAfter: Math.ceil(
+				(parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000) / 1000,
+			),
+		},
+		standardHeaders: true,
+		legacyHeaders: false,
 	},
 	passwordReset: {
-		tokenExpiry: parseInt(process.env.PASSWORD_RESET_TOKEN_EXPIRY) || 15, // minutes
+		tokenExpiry: parseInt(process.env.PASSWORD_RESET_TOKEN_EXPIRY) || 15,
 	},
 };
 
@@ -99,21 +155,21 @@ export const securityConfig = {
 // ========================================
 export const uploadConfig = {
 	maxFileSize: parseInt(process.env.MAX_FILE_SIZE) || 5 * 1024 * 1024, // 5MB
-	allowedTypes: process.env.ALLOWED_FILE_TYPES?.split(",") || [
+	allowedTypes: parseArray(process.env.ALLOWED_FILE_TYPES, [
 		"image/jpeg",
 		"image/png",
 		"image/gif",
 		"image/webp",
-	],
+	]),
 	uploadDir: process.env.UPLOAD_DIR || "uploads",
 	local: {
 		uploadPath: process.env.UPLOAD_PATH || "./uploads",
 		maxFileSize: parseInt(process.env.MAX_FILE_SIZE) || 5 * 1024 * 1024, // 5MB
-		allowedTypes: process.env.ALLOWED_FILE_TYPES?.split(",") || [
+		allowedTypes: parseArray(process.env.ALLOWED_FILE_TYPES, [
 			"image/jpeg",
 			"image/png",
 			"image/gif",
-		],
+		]),
 	},
 	cloudinary: {
 		cloudName: process.env.CLOUDINARY_CLOUD_NAME,
@@ -121,7 +177,7 @@ export const uploadConfig = {
 		apiSecret: process.env.CLOUDINARY_API_SECRET,
 		folder: process.env.CLOUDINARY_FOLDER || "endlessChatt",
 		maxFileSize: parseInt(process.env.MAX_FILE_SIZE) || 5 * 1024 * 1024, // 5MB
-		allowedTypes: process.env.ALLOWED_FILE_TYPES?.split(",") || [
+		allowedTypes: parseArray(process.env.ALLOWED_FILE_TYPES, [
 			"image/jpeg",
 			"image/png",
 			"image/gif",
@@ -129,7 +185,7 @@ export const uploadConfig = {
 			"video/mp4",
 			"video/webm",
 			"video/ogg",
-		],
+		]),
 	},
 };
 
@@ -141,7 +197,7 @@ export const loggingConfig = {
 		process.env.LOG_LEVEL ||
 		(serverConfig.nodeEnv === "production" ? "info" : "debug"),
 	file: {
-		enabled: process.env.LOG_TO_FILE === "true",
+		enabled: parseBoolean(process.env.LOG_TO_FILE),
 		path: process.env.LOG_FILE_PATH || "./logs",
 		filename: process.env.LOG_FILE || "app.log",
 		maxSize: process.env.LOG_MAX_SIZE || "10m",
@@ -154,7 +210,7 @@ export const loggingConfig = {
 };
 
 // ========================================
-// CACHE CONFIGURATION (Optional)
+// CACHE CONFIGURATION
 // ========================================
 export const cacheConfig = {
 	redis: {
@@ -169,7 +225,7 @@ export const cacheConfig = {
 };
 
 // ========================================
-// MONITORING CONFIGURATION (Optional)
+// MONITORING CONFIGURATION
 // ========================================
 export const monitoringConfig = {
 	sentry: {
@@ -191,7 +247,7 @@ export const validationConfig = {
 		requireUppercase: process.env.PASSWORD_REQUIRE_UPPERCASE !== "false",
 		requireLowercase: process.env.PASSWORD_REQUIRE_LOWERCASE !== "false",
 		requireNumbers: process.env.PASSWORD_REQUIRE_NUMBERS !== "false",
-		requireSpecialChars: process.env.PASSWORD_REQUIRE_SPECIAL === "true",
+		requireSpecialChars: parseBoolean(process.env.PASSWORD_REQUIRE_SPECIAL),
 	},
 	email: {
 		maxLength: parseInt(process.env.EMAIL_MAX_LENGTH) || 254,
@@ -208,7 +264,6 @@ export const validationConfig = {
 // ========================================
 export const validateConfig = () => {
 	const required = ["MONGODB_URI", "JWT_SECRET"];
-
 	const missing = required.filter((key) => !process.env[key]);
 
 	if (missing.length > 0) {
@@ -223,6 +278,13 @@ export const validateConfig = () => {
 			"⚠️  JWT_SECRET should be at least 32 characters long for security",
 		);
 	}
+
+	// Validate CORS configuration
+	console.log("🔐 CORS Configuration:");
+	console.log("   Origins:", securityConfig.cors.origin);
+	console.log("   Credentials:", securityConfig.cors.credentials);
+	console.log("   Methods:", securityConfig.cors.methods);
+	return true;
 };
 
 // ========================================

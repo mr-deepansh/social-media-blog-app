@@ -1,36 +1,37 @@
 // src/shared/services/metrics.service.js
 import { Logger } from "../utils/Logger.js";
+
 /**
- * MetricsCollector - Comprehensive metrics collection service
- * Handles counters, timers, histograms, and custom metrics
+ * MetricsCollector - Production-grade metrics service
+ * Supports: counters, gauges, timers, histograms, custom metrics
+ * Optimized for millions of events with safe memory handling
  */
 export class MetricsCollector {
 	constructor(options = {}) {
 		this.logger = new Logger("MetricsCollector");
-		this.metrics = new Map();
-		this.timers = new Map();
-		this.histograms = new Map();
 
-		// Configuration
+		// Default + custom config
 		this.config = {
-			flushInterval: options.flushInterval || 60000, // 1 minute
-			maxMetricsInMemory: options.maxMetricsInMemory || 10000,
+			flushInterval: options.flushInterval || 60_000, // 1 min
+			maxMetricsInMemory: options.maxMetricsInMemory || 10_000,
 			enableConsoleOutput: options.enableConsoleOutput ?? true,
 			enableFileOutput: options.enableFileOutput ?? false,
 			enableRemoteOutput: options.enableRemoteOutput ?? false,
 			remoteEndpoint: options.remoteEndpoint || null,
 			namespace: options.namespace || "app",
-			environment: options.environment || "development",
+			environment: options.environment || process.env.NODE_ENV || "development",
 			...options,
 		};
 
-		// Initialize storage
+		// In-memory stores
 		this.counters = new Map();
 		this.gauges = new Map();
 		this.timingMetrics = new Map();
+		this.histograms = new Map();
 		this.customMetrics = new Map();
+		this.metadata = new Map();
 
-		// Start periodic flush if enabled
+		// Periodic flush
 		if (this.config.flushInterval > 0) {
 			this.startPeriodicFlush();
 		}
@@ -42,291 +43,148 @@ export class MetricsCollector {
 		});
 	}
 
-	/**
-	 * Increment a counter metric
-	 * @param {string} name - Metric name
-	 * @param {number} value - Value to increment by (default: 1)
-	 * @param {Object} tags - Additional tags/labels
-	 */
+	// -------------------------
+	// Core Metric APIs
+	// -------------------------
+
 	increment(name, value = 1, tags = {}) {
-		try {
-			const metricKey = this.buildMetricKey(name, tags);
-			const currentValue = this.counters.get(metricKey) || 0;
-			this.counters.set(metricKey, currentValue + value);
-
-			// Store metadata
-			this.storeMetricMetadata(name, "counter", tags, { value });
-
-			// Debug logging removed for production performance
-		} catch (error) {
-			this.logger.error("Failed to increment counter", {
-				name,
-				value,
-				tags,
-				error: error.message,
-			});
-		}
+		this.#safeExec(
+			() => {
+				const key = this.#metricKey(name, tags);
+				this.counters.set(key, (this.counters.get(key) || 0) + value);
+				this.#storeMetadata(name, "counter", tags, { value });
+			},
+			"increment",
+			{ name, value },
+		);
 	}
 
-	/**
-	 * Decrement a counter metric
-	 * @param {string} name - Metric name
-	 * @param {number} value - Value to decrement by (default: 1)
-	 * @param {Object} tags - Additional tags/labels
-	 */
 	decrement(name, value = 1, tags = {}) {
 		this.increment(name, -value, tags);
 	}
 
-	/**
-	 * Set a gauge metric (current value)
-	 * @param {string} name - Metric name
-	 * @param {number} value - Current value
-	 * @param {Object} tags - Additional tags/labels
-	 */
 	gauge(name, value, tags = {}) {
-		try {
-			const metricKey = this.buildMetricKey(name, tags);
-			this.gauges.set(metricKey, {
-				value,
-				timestamp: Date.now(),
-				tags: { ...tags },
-			});
-
-			this.storeMetricMetadata(name, "gauge", tags, { value });
-
-			// Debug logging removed for production performance
-		} catch (error) {
-			this.logger.error("Failed to set gauge", {
-				name,
-				value,
-				tags,
-				error: error.message,
-			});
-		}
+		this.#safeExec(
+			() => {
+				const key = this.#metricKey(name, tags);
+				this.gauges.set(key, { value, ts: Date.now(), tags: { ...tags } });
+				this.#storeMetadata(name, "gauge", tags, { value });
+			},
+			"gauge",
+			{ name, value },
+		);
 	}
 
-	/**
-	 * Record timing metric
-	 * @param {string} name - Metric name
-	 * @param {number} duration - Duration in milliseconds
-	 * @param {Object} tags - Additional tags/labels
-	 */
 	timing(name, duration, tags = {}) {
-		try {
-			const metricKey = this.buildMetricKey(name, tags);
-
-			if (!this.timingMetrics.has(metricKey)) {
-				this.timingMetrics.set(metricKey, []);
-			}
-
-			const timings = this.timingMetrics.get(metricKey);
-			timings.push({
-				duration,
-				timestamp: Date.now(),
-			});
-
-			// Keep only recent timings to prevent memory issues
-			if (timings.length > 1000) {
-				timings.splice(0, timings.length - 1000);
-			}
-
-			this.storeMetricMetadata(name, "timing", tags, { duration });
-
-			// Debug logging removed for production performance
-		} catch (error) {
-			this.logger.error("Failed to record timing", {
-				name,
-				duration,
-				tags,
-				error: error.message,
-			});
-		}
+		this.#safeExec(
+			() => {
+				const key = this.#metricKey(name, tags);
+				if (!this.timingMetrics.has(key)) this.timingMetrics.set(key, []);
+				const arr = this.timingMetrics.get(key);
+				arr.push({ duration, ts: Date.now() });
+				if (arr.length > 1000) arr.splice(0, arr.length - 1000); // cap
+				this.#storeMetadata(name, "timing", tags, { duration });
+			},
+			"timing",
+			{ name, duration },
+		);
 	}
 
-	/**
-	 * Start a timer for a metric
-	 * @param {string} name - Metric name
-	 * @param {Object} tags - Additional tags/labels
-	 * @returns {Function} - Function to call when timer should stop
-	 */
 	startTimer(name, tags = {}) {
-		const startTime = process.hrtime.bigint();
-		const timerKey = `${name}_${Date.now()}_${Math.random()}`;
-
-		this.timers.set(timerKey, {
-			name,
-			tags,
-			startTime,
-		});
-
-		// Return a function to stop the timer
+		const start = process.hrtime.bigint();
+		const key = `${name}_${Date.now()}_${Math.random()}`;
 		return () => {
-			const timer = this.timers.get(timerKey);
-			if (timer) {
-				const endTime = process.hrtime.bigint();
-				const duration = Number(endTime - timer.startTime) / 1000000; // Convert to milliseconds
-
-				this.timing(timer.name, duration, timer.tags);
-				this.timers.delete(timerKey);
-
-				return duration;
-			}
-			return null;
+			const end = process.hrtime.bigint();
+			const duration = Number(end - start) / 1e6; // ms
+			this.timing(name, duration, tags);
+			return duration;
 		};
 	}
 
-	/**
-	 * Record histogram value
-	 * @param {string} name - Metric name
-	 * @param {number} value - Value to record
-	 * @param {Object} tags - Additional tags/labels
-	 */
 	histogram(name, value, tags = {}) {
-		try {
-			const metricKey = this.buildMetricKey(name, tags);
-
-			if (!this.histograms.has(metricKey)) {
-				this.histograms.set(metricKey, []);
-			}
-
-			const values = this.histograms.get(metricKey);
-			values.push({
-				value,
-				timestamp: Date.now(),
-			});
-
-			// Keep only recent values
-			if (values.length > 1000) {
-				values.splice(0, values.length - 1000);
-			}
-
-			this.storeMetricMetadata(name, "histogram", tags, { value });
-
-			// Debug logging removed for production performance
-		} catch (error) {
-			this.logger.error("Failed to record histogram", {
-				name,
-				value,
-				tags,
-				error: error.message,
-			});
-		}
+		this.#safeExec(
+			() => {
+				const key = this.#metricKey(name, tags);
+				if (!this.histograms.has(key)) this.histograms.set(key, []);
+				const arr = this.histograms.get(key);
+				arr.push({ value, ts: Date.now() });
+				if (arr.length > 1000) arr.splice(0, arr.length - 1000);
+				this.#storeMetadata(name, "histogram", tags, { value });
+			},
+			"histogram",
+			{ name, value },
+		);
 	}
 
-	/**
-	 * Record custom metric
-	 * @param {string} name - Metric name
-	 * @param {any} value - Metric value
-	 * @param {string} type - Metric type
-	 * @param {Object} tags - Additional tags/labels
-	 */
 	custom(name, value, type = "custom", tags = {}) {
-		try {
-			const metricKey = this.buildMetricKey(name, tags);
-
-			this.customMetrics.set(metricKey, {
-				name,
-				value,
-				type,
-				tags: { ...tags },
-				timestamp: Date.now(),
-			});
-
-			this.storeMetricMetadata(name, type, tags, { value });
-
-			// Debug logging removed for production performance
-		} catch (error) {
-			this.logger.error("Failed to record custom metric", {
-				name,
-				value,
-				type,
-				tags,
-				error: error.message,
-			});
-		}
+		this.#safeExec(
+			() => {
+				const key = this.#metricKey(name, tags);
+				this.customMetrics.set(key, {
+					value,
+					type,
+					tags: { ...tags },
+					ts: Date.now(),
+				});
+				this.#storeMetadata(name, type, tags, { value });
+			},
+			"custom",
+			{ name, value },
+		);
 	}
 
-	/**
-	 * Get current metric value
-	 * @param {string} name - Metric name
-	 * @param {Object} tags - Tags to match
-	 * @returns {any} - Current metric value
-	 */
+	// -------------------------
+	// Retrieval APIs
+	// -------------------------
+
 	getMetric(name, tags = {}) {
-		const metricKey = this.buildMetricKey(name, tags);
-
-		// Check different metric types
-		if (this.counters.has(metricKey)) {
-			return this.counters.get(metricKey);
-		}
-
-		if (this.gauges.has(metricKey)) {
-			return this.gauges.get(metricKey).value;
-		}
-
-		if (this.customMetrics.has(metricKey)) {
-			return this.customMetrics.get(metricKey).value;
-		}
-
+		const key = this.#metricKey(name, tags);
+		if (this.counters.has(key)) return this.counters.get(key);
+		if (this.gauges.has(key)) return this.gauges.get(key).value;
+		if (this.customMetrics.has(key)) return this.customMetrics.get(key).value;
 		return null;
 	}
 
-	/**
-	 * Get timing statistics
-	 * @param {string} name - Metric name
-	 * @param {Object} tags - Tags to match
-	 * @returns {Object} - Timing statistics
-	 */
 	getTimingStats(name, tags = {}) {
-		const metricKey = this.buildMetricKey(name, tags);
-		const timings = this.timingMetrics.get(metricKey);
+		const key = this.#metricKey(name, tags);
+		const arr = this.timingMetrics.get(key);
+		if (!arr?.length) return null;
 
-		if (!timings || timings.length === 0) {
-			return null;
-		}
-
-		const durations = timings.map((t) => t.duration);
-		durations.sort((a, b) => a - b);
+		const durations = arr.map((d) => d.duration).sort((a, b) => a - b);
+		const percentile = (p) => {
+			const idx = (p / 100) * (durations.length - 1);
+			const lo = Math.floor(idx),
+				hi = Math.ceil(idx);
+			if (lo === hi) return durations[lo];
+			const w = idx - lo;
+			return durations[lo] * (1 - w) + durations[hi] * w;
+		};
 
 		return {
 			count: durations.length,
-			min: Math.min(...durations),
-			max: Math.max(...durations),
+			min: durations[0],
+			max: durations.at(-1),
 			avg: durations.reduce((a, b) => a + b, 0) / durations.length,
-			median: this.calculatePercentile(durations, 50),
-			p95: this.calculatePercentile(durations, 95),
-			p99: this.calculatePercentile(durations, 99),
+			median: percentile(50),
+			p95: percentile(95),
+			p99: percentile(99),
 		};
 	}
 
-	/**
-	 * Get all metrics summary
-	 * @returns {Object} - Complete metrics summary
-	 */
 	getAllMetrics() {
 		return {
 			counters: Object.fromEntries(this.counters),
 			gauges: Object.fromEntries(
-				Array.from(this.gauges.entries()).map(([key, data]) => [
-					key,
-					data.value,
-				]),
+				[...this.gauges].map(([k, v]) => [k, v.value]),
 			),
 			timings: Object.fromEntries(
-				Array.from(this.timingMetrics.entries()).map(([key, timings]) => [
-					key,
-					this.getTimingStats(key.split("|")[0], this.parseTagsFromKey(key)),
-				]),
+				[...this.timingMetrics].map(([k]) => [k, this.getTimingStats(k)]),
 			),
 			custom: Object.fromEntries(
-				Array.from(this.customMetrics.entries()).map(([key, data]) => [
-					key,
-					data.value,
-				]),
+				[...this.customMetrics].map(([k, v]) => [k, v.value]),
 			),
-			metadata: {
-				totalMetrics:
+			meta: {
+				total:
 					this.counters.size +
 					this.gauges.size +
 					this.timingMetrics.size +
@@ -338,213 +196,89 @@ export class MetricsCollector {
 		};
 	}
 
-	/**
-	 * Reset all metrics
-	 */
-	reset() {
-		this.counters.clear();
-		this.gauges.clear();
-		this.timingMetrics.clear();
-		this.histograms.clear();
-		this.customMetrics.clear();
-		this.metrics.clear();
+	// -------------------------
+	// Flush / Output
+	// -------------------------
 
-		this.logger.info("All metrics reset");
-	}
-
-	/**
-	 * Reset specific metric
-	 * @param {string} name - Metric name to reset
-	 */
-	resetMetric(name) {
-		const keysToDelete = [];
-
-		// Find all keys that match the metric name
-		for (const [key] of [
-			...this.counters,
-			...this.gauges,
-			...this.timingMetrics,
-			...this.customMetrics,
-		]) {
-			if (key.startsWith(name + "|") || key === name) {
-				keysToDelete.push(key);
-			}
-		}
-
-		// Delete matching keys from all metric stores
-		keysToDelete.forEach((key) => {
-			this.counters.delete(key);
-			this.gauges.delete(key);
-			this.timingMetrics.delete(key);
-			this.customMetrics.delete(key);
-		});
-
-		this.logger.info("Metric reset", {
-			name,
-			keysDeleted: keysToDelete.length,
-		});
-	}
-
-	/**
-	 * Flush metrics to configured outputs
-	 */
 	async flush() {
 		try {
 			const metrics = this.getAllMetrics();
-
-			if (this.config.enableConsoleOutput) {
-				this.outputToConsole(metrics);
-			}
-
-			if (this.config.enableFileOutput) {
-				await this.outputToFile(metrics);
-			}
-
+			if (this.config.enableConsoleOutput) this.#outputConsole(metrics);
+			if (this.config.enableFileOutput) await this.#outputFile(metrics);
 			if (this.config.enableRemoteOutput && this.config.remoteEndpoint) {
-				await this.outputToRemote(metrics);
+				await this.#outputRemote(metrics);
 			}
-
-			// Debug logging removed for production performance
-		} catch (error) {
-			this.logger.error("Failed to flush metrics", { error: error.message });
+		} catch (err) {
+			this.logger.error("Flush failed", { err: err.message });
 		}
-	}
-
-	// Private methods
-
-	buildMetricKey(name, tags) {
-		if (Object.keys(tags).length === 0) {
-			return name;
-		}
-
-		const tagString = Object.entries(tags)
-			.sort(([a], [b]) => a.localeCompare(b))
-			.map(([key, value]) => `${key}=${value}`)
-			.join(",");
-
-		return `${name}|${tagString}`;
-	}
-
-	parseTagsFromKey(key) {
-		const parts = key.split("|");
-		if (parts.length < 2) return {};
-
-		const tagString = parts[1];
-		const tags = {};
-
-		tagString.split(",").forEach((pair) => {
-			const [key, value] = pair.split("=");
-			if (key && value) {
-				tags[key] = value;
-			}
-		});
-
-		return tags;
-	}
-
-	storeMetricMetadata(name, type, tags, data) {
-		const metricKey = this.buildMetricKey(name, tags);
-		this.metrics.set(metricKey, {
-			name,
-			type,
-			tags: { ...tags },
-			lastUpdated: Date.now(),
-			...data,
-		});
-	}
-
-	calculatePercentile(sortedArray, percentile) {
-		const index = (percentile / 100) * (sortedArray.length - 1);
-		const lower = Math.floor(index);
-		const upper = Math.ceil(index);
-		const weight = index - lower;
-
-		if (lower === upper) {
-			return sortedArray[lower];
-		}
-
-		return sortedArray[lower] * (1 - weight) + sortedArray[upper] * weight;
 	}
 
 	startPeriodicFlush() {
-		this.flushInterval = setInterval(() => {
-			this.flush();
-		}, this.config.flushInterval);
-
+		this.flushInterval = setInterval(
+			() => this.flush(),
+			this.config.flushInterval,
+		);
 		this.logger.info("Periodic flush started", {
 			interval: this.config.flushInterval,
 		});
 	}
 
 	stopPeriodicFlush() {
-		if (this.flushInterval) {
-			clearInterval(this.flushInterval);
-			this.flushInterval = null;
-			this.logger.info("Periodic flush stopped");
-		}
+		if (this.flushInterval) clearInterval(this.flushInterval);
 	}
 
-	outputToConsole(metrics) {
-		console.log("\n=== METRICS REPORT ===");
-		console.log(`Generated at: ${metrics.metadata.generatedAt}`);
-		console.log(`Total metrics: ${metrics.metadata.totalMetrics}`);
-		console.log(`Namespace: ${metrics.metadata.namespace}`);
-		console.log(`Environment: ${metrics.metadata.environment}\n`);
-
-		if (Object.keys(metrics.counters).length > 0) {
-			console.log("COUNTERS:");
-			Object.entries(metrics.counters).forEach(([key, value]) => {
-				console.log(`  ${key}: ${value}`);
-			});
-			console.log("");
-		}
-
-		if (Object.keys(metrics.gauges).length > 0) {
-			console.log("GAUGES:");
-			Object.entries(metrics.gauges).forEach(([key, value]) => {
-				console.log(`  ${key}: ${value}`);
-			});
-			console.log("");
-		}
-
-		if (Object.keys(metrics.timings).filter(([, stats]) => stats).length > 0) {
-			console.log("TIMINGS:");
-			Object.entries(metrics.timings).forEach(([key, stats]) => {
-				if (stats) {
-					console.log(`  ${key}:`);
-					console.log(`    Count: ${stats.count}`);
-					console.log(`    Avg: ${stats.avg.toFixed(2)}ms`);
-					console.log(`    Min: ${stats.min.toFixed(2)}ms`);
-					console.log(`    Max: ${stats.max.toFixed(2)}ms`);
-					console.log(`    P95: ${stats.p95.toFixed(2)}ms`);
-				}
-			});
-			console.log("");
-		}
-
-		console.log("========================\n");
-	}
-
-	async outputToFile(metrics) {
-		// Implementation would depend on your file system setup
-		// This is a placeholder for file output functionality
-		this.logger.info("File output not implemented yet");
-	}
-
-	async outputToRemote(metrics) {
-		// Implementation would depend on your remote metrics system
-		// This is a placeholder for remote output functionality
-		this.logger.info("Remote output not implemented yet");
-	}
-
-	/**
-	 * Cleanup method to call before shutting down
-	 */
 	async shutdown() {
 		this.stopPeriodicFlush();
 		await this.flush();
-		this.reset();
 		this.logger.info("MetricsCollector shutdown complete");
+	}
+
+	// -------------------------
+	// Private helpers
+	// -------------------------
+
+	#metricKey(name, tags) {
+		if (!Object.keys(tags).length) return name;
+		const tagStr = Object.entries(tags)
+			.sort()
+			.map(([k, v]) => `${k}=${v}`)
+			.join(",");
+		return `${name}|${tagStr}`;
+	}
+
+	#storeMetadata(name, type, tags, data) {
+		const key = this.#metricKey(name, tags);
+		this.metadata.set(key, { name, type, tags, ts: Date.now(), ...data });
+	}
+
+	#safeExec(fn, op, ctx) {
+		try {
+			fn();
+		} catch (err) {
+			this.logger.error(`Metric ${op} failed`, { ...ctx, err: err.message });
+		}
+	}
+
+	#outputConsole(metrics) {
+		console.log("\n=== METRICS ===");
+		console.log(`Generated: ${metrics.meta.generatedAt}`);
+		console.log(
+			`Total: ${metrics.meta.total} | Env: ${metrics.meta.environment}\n`,
+		);
+		Object.entries(metrics.counters).forEach(([k, v]) =>
+			console.log(`Counter ${k}: ${v}`),
+		);
+		console.log("=================\n");
+	}
+
+	async #outputFile(metrics) {
+		// TODO: integrate with fs/promises or Winston dailyRotateFile
+		this.logger.info("File output not implemented");
+	}
+
+	async #outputRemote(metrics) {
+		// TODO: integrate with Prometheus pushgateway, Datadog, Grafana Loki, etc.
+		this.logger.info("Remote output not implemented");
 	}
 }
 
