@@ -1,58 +1,128 @@
 // src/shared/middleware/auth.middleware.js
+import jwt from "jsonwebtoken";
 import { User } from "../../modules/users/models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/AsyncHandler.js";
-import Jwt from "jsonwebtoken";
+import { redisClient, RedisUtils } from "../../config/redis/redis.config.js";
 
+// Token blacklist with Redis for horizontal scaling
+const isTokenBlacklisted = async (token) => {
+	try {
+		const result = await redisClient.get(`blacklist:${token}`);
+		return result !== null;
+	} catch (error) {
+		console.error("Redis blacklist check failed:", error);
+		return false; // Fail open for availability
+	}
+};
+
+// Cache user data in Redis to reduce DB queries
+const getCachedUser = async (userId) => {
+	try {
+		const cached = await redisClient.get(`user:${userId}`);
+		if (cached) {
+			return JSON.parse(cached);
+		}
+		return null;
+	} catch (error) {
+		console.error("Redis user cache failed:", error);
+		return null;
+	}
+};
+
+const setCachedUser = async (userId, userData, ttl = 300) => {
+	try {
+		await redisClient.setex(`user:${userId}`, ttl, JSON.stringify(userData));
+	} catch (error) {
+		console.error("Redis user cache set failed:", error);
+	}
+};
+
+// 🔥 OPTIMIZED AUTH MIDDLEWARE
 export const verifyJWT = asyncHandler(async (req, res, next) => {
-	/* 	console.log("🔐 verifyJWT middleware called");
-	console.log("📋 Headers Authorization:", req.header("Authorization"));
-	console.log("🍪 Cookies accessToken:", req.cookies?.accessToken); */
+	try {
+		// Extract token from multiple sources
+		const token =
+			req.cookies?.accessToken ||
+			req.header("Authorization")?.replace("Bearer ", "") ||
+			req.body?.accessToken;
 
-	const token =
-		req.cookies?.accessToken ||
-		req.header("Authorization")?.replace("Bearer ", "");
+		if (!token) {
+			throw new ApiError(401, "Unauthorized request");
+		}
 
-	/* 	console.log("🎫 Token found:", token ? "Yes" : "No");
-	console.log(
-		"🎫 Token preview:",
-		token ? token.substring(0, 20) + "..." : "None",
-	); */
+		// Check token blacklist (for logout/security)
+		if (await isTokenBlacklisted(token)) {
+			throw new ApiError(401, "Token has been invalidated");
+		}
 
-	if (!token) {
-		// console.log("❌ No token provided");
-		throw new ApiError(401, "Unauthorized request");
+		// Verify JWT
+		const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+
+		// Try cache first, then database
+		let user = await getCachedUser(decodedToken._id);
+
+		if (!user) {
+			user = await User.findById(decodedToken._id)
+				.select("-password -refreshToken -security.passwordHistory")
+				.lean(); // Use lean() for better performance
+
+			if (!user) {
+				throw new ApiError(401, "Invalid Access Token");
+			}
+
+			// Cache user data
+			await setCachedUser(decodedToken._id, user);
+		}
+
+		// Security checks
+		if (!user.isActive) {
+			throw new ApiError(401, "Account is deactivated");
+		}
+
+		req.user = user;
+		req.token = token; // Store token for logout
+		next();
+	} catch (error) {
+		if (error instanceof jwt.JsonWebTokenError) {
+			throw new ApiError(401, "Invalid Access Token");
+		}
+		if (error instanceof jwt.TokenExpiredError) {
+			throw new ApiError(401, "Access Token Expired");
+		}
+		throw error;
 	}
+});
 
-	const decodedToken = Jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
-	// console.log("🔓 Token decoded successfully:", decodedToken);
+// Optional auth middleware (doesn't throw error if no token)
+export const optionalAuth = asyncHandler(async (req, res, next) => {
+	try {
+		const token =
+			req.cookies?.accessToken ||
+			req.header("Authorization")?.replace("Bearer ", "");
 
-	const user = await User.findById(decodedToken?._id).select(
-		"-password -refreshToken",
-	);
+		if (!token) {
+			req.user = null;
+			return next();
+		}
 
-	// console.log("👤 User found:", user ? "Yes" : "No");
-	// if (user) {
-	// 	console.log("👤 User details:", {
-	// 		id: user._id,
-	// 		email: user.email,
-	// 		role: user.role,
-	// 		isActive: user.isActive,
-	// 	});
-	// }
+		const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+		let user = await getCachedUser(decodedToken._id);
 
-	if (!user) {
-		// console.log("❌ Invalid access token - user not found");
-		throw new ApiError(401, "Invalid access token");
+		if (!user) {
+			user = await User.findById(decodedToken._id)
+				.select("-password -refreshToken")
+				.lean();
+
+			if (user) {
+				await setCachedUser(decodedToken._id, user);
+			}
+		}
+
+		req.user = user && user.isActive ? user : null;
+		next();
+	} catch (error) {
+		req.user = null;
+		next();
 	}
-
-	// Check if user is active
-	if (user.isActive === false) {
-		// console.log("❌ User account is suspended");
-		throw new ApiError(403, "Account suspended. Contact administrator.");
-	}
-
-	req.user = user;
-	// console.log("✅ Authentication successful");
-	next();
 });

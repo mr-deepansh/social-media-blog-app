@@ -176,6 +176,9 @@ const userSchema = new Schema(
 if (process.env.NODE_ENV !== "production") {
 	userSchema.index({ followers: 1 });
 	userSchema.index({ following: 1 });
+	userSchema.index({ username: 1 }, { unique: true });
+	userSchema.index({ refreshToken: 1 });
+	userSchema.index({ email: 1 }, { unique: true });
 	userSchema.index({ role: 1, isActive: 1 });
 	userSchema.index({ "security.lastLoginIP": 1 });
 	userSchema.index({ "activityLog.timestamp": -1 });

@@ -33,8 +33,9 @@ const generateAccessAndRefreshTokens = async (userId) => {
 		);
 	}
 };
-
-// Get all users with pagination and filtering
+// ================================================
+// 📌 Get all users with pagination + filtering
+// ================================================
 const getAllUsers = asyncHandler(async (req, res) => {
 	const startTime = Date.now();
 	try {
@@ -69,12 +70,14 @@ const getAllUsers = asyncHandler(async (req, res) => {
 		const sortOptions = {};
 		sortOptions[sortBy] = sortOrder === "desc" ? -1 : 1;
 		const skip = (page - 1) * limit;
+		// 🚀 Optimized query with indexing support
 		const [users, totalUsers] = await Promise.all([
 			User.find(query)
 				.select("-password -refreshToken")
 				.sort(sortOptions)
 				.skip(skip)
-				.limit(parseInt(limit)),
+				.limit(parseInt(limit))
+				.lean(),
 			User.countDocuments(query),
 		]);
 		const executionTime = Date.now() - startTime;
@@ -134,8 +137,9 @@ const getAllUsers = asyncHandler(async (req, res) => {
 		handleControllerError(error, req, res, startTime, logger);
 	}
 });
-
-// Get user by ID
+// ================================================
+// 📌 Get user by ID
+// ================================================
 const getUserById = asyncHandler(async (req, res) => {
 	const { id } = req.params;
 
@@ -151,8 +155,9 @@ const getUserById = asyncHandler(async (req, res) => {
 		.status(200)
 		.json(new ApiResponse(200, user, "User fetched successfully"));
 });
-
-// Create a new user
+// ================================================
+// 📌 Create user (Register)
+// ================================================
 const createUser = asyncHandler(async (req, res) => {
 	const { username, email, password, firstName, lastName, bio, avatar } =
 		req.body;
@@ -169,11 +174,11 @@ const createUser = asyncHandler(async (req, res) => {
 	if (existingUser) {
 		throw new ApiError(409, "Username or email already exists");
 	}
-	const hashedPassword = await bcrypt.hash(password, 10);
+	// Let the User model handle password hashing via pre-save middleware
 	const user = await User.create({
 		username: username.toLowerCase(),
 		email: email.toLowerCase(),
-		password: hashedPassword,
+		password: password, // Will be hashed by pre-save middleware
 		firstName,
 		lastName,
 		bio,
@@ -186,7 +191,14 @@ const createUser = asyncHandler(async (req, res) => {
 	);
 	return res
 		.status(201)
-		.json(new ApiResponse(201, createdUser, "User created successfully"));
+		.set("Location", `${req.protocol}://${req.get("host")}/users/${user._id}`)
+		.json(
+			new ApiResponse(
+				201,
+				{ success: true, data: createdUser },
+				"User created successfully",
+			),
+		);
 });
 
 // Update user profile
@@ -320,10 +332,22 @@ const registerUser = asyncHandler(async (req, res) => {
 			{ ...validatedData, bio: sanitizedBio, avatar: sanitizedAvatar },
 			req,
 		);
+		// Generate tokens for immediate login after registration
+		const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
+
 		// Fetch clean user data
 		const createdUser = await User.findById(user._id)
 			.select("-password -refreshToken -security -activityLog")
 			.lean();
+
+		// Set cookie options for tokens
+		const cookieOptions = {
+			httpOnly: true,
+			secure: process.env.NODE_ENV === "production",
+			sameSite: "strict",
+			maxAge: 86400000, // 24 hours
+		};
+
 		// Performance tracking
 		const executionTime = Date.now() - startTime;
 		logger.success("User registration completed", {
@@ -331,16 +355,28 @@ const registerUser = asyncHandler(async (req, res) => {
 			username: user.username,
 			executionTime: `${executionTime}ms`,
 		});
-		return res.status(201).json(
-			new ApiResponse(
-				201,
-				{
-					user: createdUser,
-					message: "Registration successful! Please verify your email.",
-				},
-				"User registered successfully",
-			),
-		);
+
+		return res
+			.status(201)
+			.cookie("accessToken", accessToken, cookieOptions)
+			.cookie("refreshToken", refreshToken, cookieOptions)
+			.json(
+				new ApiResponse(
+					201,
+					{
+						user: createdUser,
+						accessToken,
+						refreshToken,
+						message: "Registration successful! You are now logged in.",
+						meta: {
+							executionTime: `${executionTime}ms`,
+							apiHealth: calculateApiHealth(executionTime),
+							registrationTime: new Date().toISOString(),
+						},
+					},
+					"User registered and logged in successfully",
+				),
+			);
 	} catch (error) {
 		handleControllerError(error, req, res, startTime, logger);
 	}
@@ -443,14 +479,21 @@ const loginUser = asyncHandler(async (req, res) => {
 
 const logoutUser = asyncHandler(async (req, res) => {
 	const user = req.user;
+	const token = req.token; // From auth middleware
 
-	// Use AuthService for enhanced logout
-	await AuthService.logoutUser(user, req);
+	if (!user) {
+		throw new ApiError(401, "User not authenticated");
+	}
+
+	// Use auth service for logout
+	await AuthService.logoutUser(user, token, req);
+
 	const cookieOptions = {
 		httpOnly: true,
 		secure: process.env.NODE_ENV === "production",
-		sameSite: "Strict",
+		sameSite: "strict",
 	};
+
 	return res
 		.status(200)
 		.clearCookie("accessToken", cookieOptions)

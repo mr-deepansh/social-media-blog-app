@@ -2,238 +2,270 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { User } from "../../users/models/user.model.js";
-import { UserActivity } from "../models/userActivity.model.js";
 import { ApiError } from "../../../shared/utils/ApiError.js";
-import { sendEmail } from "../../../shared/utils/sendEmail.js";
-import { UAParser } from "ua-parser-js";
-import geoip from "geoip-lite";
+import { redisClient, RedisUtils } from "../../../config/redis/redis.config.js";
 
-/**
- * Enterprise AuthService - Handles authentication & authorization
- */
+// Cache user data in Redis to reduce DB queries
+const setCachedUser = async (userId, userData, ttl = 300) => {
+	try {
+		await redisClient.setex(`user:${userId}`, ttl, JSON.stringify(userData));
+	} catch (error) {
+		console.error("Redis user cache set failed:", error);
+	}
+};
+
 class AuthService {
-	// Register User
+	// 🚀 HIGH-PERFORMANCE REGISTRATION
 	static async registerUser(userData, req) {
 		const { username, email, password, firstName, lastName, bio, avatar } =
 			userData;
 
-		// Ensure role is not passed from client - always default to 'user'
-		delete userData.role;
-		// Check for existing email and username separately for specific error messages
-		const [existingEmail, existingUsername] = await Promise.all([
-			User.findOne({ email: email.toLowerCase() }).lean(),
-			User.findOne({ username: username.toLowerCase() }).lean(),
-		]);
-		if (existingEmail && existingUsername) {
-			throw new ApiError(
-				409,
-				"Both username and email are already registered",
-				{
-					conflicts: ["username", "email"],
-					suggestions: [
-						"Try a different username and email",
-						"Login if you already have an account",
-					],
-				},
-			);
-		}
-		if (existingEmail) {
-			throw new ApiError(409, "Email address is already registered", {
-				conflicts: ["email"],
-				suggestions: [
-					"Use a different email address",
-					"Try logging in instead",
-				],
+		// Batch existence check with single query
+		const existingUsers = await User.find({
+			$or: [
+				{ email: email.toLowerCase() },
+				{ username: username.toLowerCase() },
+			],
+		})
+			.select("email username")
+			.lean();
+
+		// Check conflicts
+		const emailExists = existingUsers.find(
+			(u) => u.email === email.toLowerCase(),
+		);
+		const usernameExists = existingUsers.find(
+			(u) => u.username === username.toLowerCase(),
+		);
+
+		if (emailExists || usernameExists) {
+			const conflicts = [];
+			if (emailExists) conflicts.push("email");
+			if (usernameExists) conflicts.push("username");
+
+			throw new ApiError(409, "Registration failed", {
+				conflicts,
+				message: `${conflicts.join(" and ")} already in use`,
 			});
 		}
-		if (existingUsername) {
-			throw new ApiError(409, "Username is already taken", {
-				conflicts: ["username"],
-				suggestions: [
-					"Choose a different username",
-					"Try adding numbers or underscores",
-				],
-			});
-		}
-		// Create user
-		const hashedPassword = await bcrypt.hash(password, 12);
+
+		// Create user with optimized data structure
+		// Password will be hashed by the User model's pre-save middleware
 		const user = await User.create({
 			username: username.toLowerCase(),
 			email: email.toLowerCase(),
-			password: hashedPassword,
+			password: password, // Let the model handle hashing
 			firstName,
 			lastName,
-			bio,
+			bio: bio?.substring(0, 500) || "", // Limit bio length
 			avatar,
 			isActive: true,
-			// role will default to 'user' from schema
+			role: "user", // Always default to user
+			// Initialize arrays to prevent null issues
+			followers: [],
+			following: [],
+			watchHistory: [],
 		});
 
-		await this.logActivity(user, "register", req);
+		// Log activity asynchronously
+		this.logActivity(user, "register", req).catch(console.error);
+
 		return user;
 	}
-	// Check Availability
-	static async checkAvailability(field, value) {
-		const query =
-			field === "email"
-				? { email: value.toLowerCase() }
-				: { username: value.toLowerCase() };
-		const exists = await User.findOne(query).lean();
-		return {
-			available: !exists,
-			field,
-			value,
-			message: exists
-				? `${field.charAt(0).toUpperCase() + field.slice(1)} is already taken`
-				: `${field.charAt(0).toUpperCase() + field.slice(1)} is available`,
-		};
-	}
-	// Login User
-	static async loginUser({ identifier, password }, req) {
-		console.log("🔍 AuthService.loginUser called with:", {
-			identifier,
-			password: "***",
-		});
 
+	// 🔥 OPTIMIZED LOGIN WITH SECURITY
+	static async loginUser({ identifier, password }, req) {
+		const startTime = Date.now();
+
+		// Find user with single query
 		const user = await User.findOne({
 			$or: [
 				{ email: identifier.toLowerCase() },
 				{ username: identifier.toLowerCase() },
 			],
 			isActive: true,
-		});
-
-		console.log(
-			"👤 User found:",
-			user
-				? {
-						id: user._id,
-						username: user.username,
-						email: user.email,
-						isActive: user.isActive,
-					}
-				: "No user found",
-		);
+		}).select("+password +security.failedLoginAttempts +security.lockUntil");
 
 		if (!user) {
-			console.log("❌ User not found with identifier:", identifier);
+			// Consistent timing to prevent user enumeration
+			await bcrypt.hash("dummy", 10);
 			throw new ApiError(401, "Invalid credentials");
 		}
 
-		const passwordMatch = await bcrypt.compare(password, user.password);
-		console.log("🔑 Password match:", passwordMatch);
+		// Check account lockout
+		if (user.isAccountLocked()) {
+			throw new ApiError(
+				423,
+				"Account temporarily locked due to failed attempts",
+			);
+		}
 
-		if (!passwordMatch) {
-			console.log("❌ Password does not match for user:", user.username);
+		// Verify password
+		const isPasswordValid = await bcrypt.compare(password, user.password);
+
+		if (!isPasswordValid) {
+			// Increment failed attempts
+			await user.incrementFailedLoginAttempts();
 			throw new ApiError(401, "Invalid credentials");
 		}
+
+		// Reset failed attempts on successful login
+		if (user.security.failedLoginAttempts > 0) {
+			await user.resetFailedLoginAttempts();
+		}
+
+		// Generate tokens
 		const { accessToken, refreshToken } = this.generateTokens(user._id);
-		user.refreshToken = refreshToken;
-		user.lastActive = new Date();
-		await user.save({ validateBeforeSave: false });
-		await this.logActivity(user, "login", req);
+
+		// Update user data
+		await User.findByIdAndUpdate(user._id, {
+			refreshToken,
+			lastActive: new Date(),
+			"security.lastLoginIP": req.ip,
+			"security.lastLoginLocation": req.get("CF-IPCountry") || "Unknown",
+		});
+
+		// Cache user data
+		const userForCache = await User.findById(user._id)
+			.select("-password -refreshToken")
+			.lean();
+
+		await setCachedUser(user._id, userForCache);
+
+		// Log activity asynchronously
+		this.logActivity(user, "login", req).catch(console.error);
+
+		const executionTime = Date.now() - startTime;
+		console.log(`✅ Login completed in ${executionTime}ms`);
+
 		return {
-			user: await User.findById(user._id).select("-password -refreshToken"),
+			user: userForCache,
 			accessToken,
 			refreshToken,
 		};
 	}
-	// Generate JWT Tokens
+
+	// 🔥 OPTIMIZED LOGOUT WITH TOKEN BLACKLISTING
+	static async logoutUser(user, token, req) {
+		const startTime = Date.now();
+
+		try {
+			// Parallel operations for better performance
+			await Promise.all([
+				// Clear refresh token in DB
+				User.findByIdAndUpdate(user._id, {
+					$unset: { refreshToken: 1 },
+					lastActive: new Date(),
+				}),
+
+				// Add token to blacklist (expires with token)
+				this.blacklistToken(token),
+
+				// Clear user cache
+				redisClient.del(`user:${user._id}`).catch(console.error),
+			]);
+
+			// Log activity asynchronously
+			this.logActivity(user, "logout", req).catch(console.error);
+
+			const executionTime = Date.now() - startTime;
+			console.log(`✅ Logout completed in ${executionTime}ms`);
+
+			return true;
+		} catch (error) {
+			console.error("Logout error:", error);
+			throw new ApiError(500, "Logout failed");
+		}
+	}
+
+	// Token blacklisting for security
+	static async blacklistToken(token) {
+		try {
+			const decoded = jwt.decode(token);
+			const expiryTime = decoded.exp * 1000; // Convert to milliseconds
+			const currentTime = Date.now();
+			const ttl = Math.max(0, Math.floor((expiryTime - currentTime) / 1000));
+
+			if (ttl > 0) {
+				await redisClient.setex(`blacklist:${token}`, ttl, "1");
+			}
+		} catch (error) {
+			console.error("Token blacklist failed:", error);
+		}
+	}
+
+	// 🚀 OPTIMIZED TOKEN GENERATION
 	static generateTokens(userId) {
 		const accessToken = jwt.sign(
 			{ _id: userId },
-			process.env.ACCESS_TOKEN_SECRET || process.env.JWT_SECRET,
-			{ expiresIn: process.env.ACCESS_TOKEN_EXPIRY || "1h" },
+			process.env.ACCESS_TOKEN_SECRET,
+			{
+				expiresIn: process.env.ACCESS_TOKEN_EXPIRY || "15m",
+				algorithm: "HS256",
+			},
 		);
+
 		const refreshToken = jwt.sign(
-			{ _id: userId },
-			process.env.REFRESH_TOKEN_SECRET || process.env.JWT_SECRET,
-			{ expiresIn: process.env.REFRESH_TOKEN_EXPIRY || "7d" },
+			{ _id: userId, type: "refresh" },
+			process.env.REFRESH_TOKEN_SECRET,
+			{
+				expiresIn: process.env.REFRESH_TOKEN_EXPIRY || "7d",
+				algorithm: "HS256",
+			},
 		);
+
 		return { accessToken, refreshToken };
 	}
-	// Refresh Token
-	static async refreshToken(oldRefreshToken) {
+
+	// 🚀 OPTIMIZED TOKEN REFRESH
+	static async refreshTokens(oldRefreshToken) {
 		try {
 			const decoded = jwt.verify(
 				oldRefreshToken,
-				process.env.REFRESH_TOKEN_SECRET || process.env.JWT_SECRET,
+				process.env.REFRESH_TOKEN_SECRET,
 			);
-			const user = await User.findById(decoded._id);
-			if (!user || user.refreshToken !== oldRefreshToken) {
+
+			// Validate refresh token type
+			if (decoded.type !== "refresh") {
+				throw new ApiError(401, "Invalid token type");
+			}
+
+			const user = await User.findById(decoded._id).select(
+				"refreshToken isActive",
+			);
+
+			if (!user || !user.isActive) {
+				throw new ApiError(401, "User not found or inactive");
+			}
+
+			if (user.refreshToken !== oldRefreshToken) {
+				// Possible token reuse - security issue
+				await User.findByIdAndUpdate(user._id, { $unset: { refreshToken: 1 } });
+				throw new ApiError(401, "Invalid refresh token - please login again");
+			}
+
+			// Generate new tokens
+			const { accessToken, refreshToken } = this.generateTokens(user._id);
+
+			// Update user with new refresh token
+			await User.findByIdAndUpdate(user._id, {
+				refreshToken,
+				lastActive: new Date(),
+			});
+
+			// Blacklist old refresh token
+			await this.blacklistToken(oldRefreshToken);
+
+			return { accessToken, refreshToken };
+		} catch (error) {
+			if (error instanceof jwt.JsonWebTokenError) {
 				throw new ApiError(401, "Invalid refresh token");
 			}
-			const { accessToken, refreshToken } = this.generateTokens(user._id);
-			user.refreshToken = refreshToken;
-			await user.save({ validateBeforeSave: false });
-			return { accessToken, refreshToken };
-		} catch {
-			throw new ApiError(401, "Invalid or expired refresh token");
+			throw error;
 		}
 	}
-	// Forgot Password
-	static async processForgotPassword(email, req) {
-		const user = await User.findOne({ email: email.toLowerCase() });
-		if (!user) throw new ApiError(404, "User not found");
-		const resetToken = crypto.randomBytes(32).toString("hex");
-		const resetPasswordToken = crypto
-			.createHash("sha256")
-			.update(resetToken)
-			.digest("hex");
-		user.resetPasswordToken = resetPasswordToken;
-		user.resetPasswordExpire = Date.now() + 15 * 60 * 1000; // 15 minutes
-		await user.save({ validateBeforeSave: false });
-		const resetUrl = `${req.protocol}://${req.get("host")}/api/v1/auth/reset-password/${resetToken}`;
-		await sendEmail({
-			email: user.email,
-			subject: "Password Reset Request",
-			message: `Reset your password: ${resetUrl}`,
-		});
 
-		return true;
-	}
-	// Reset Password
-	static async resetPassword(resetToken, newPassword) {
-		const hashedToken = crypto
-			.createHash("sha256")
-			.update(resetToken)
-			.digest("hex");
-		const user = await User.findOne({
-			resetPasswordToken: hashedToken,
-			resetPasswordExpire: { $gt: Date.now() },
-		});
-		if (!user) throw new ApiError(400, "Invalid or expired reset token");
-		user.password = await bcrypt.hash(newPassword, 12);
-		user.resetPasswordToken = undefined;
-		user.resetPasswordExpire = undefined;
-		user.refreshToken = undefined; // Invalidate existing sessions
-		await user.save();
-		// Send confirmation email
-		await sendEmail({
-			email: user.email,
-			subject: "Password Reset Confirmation",
-			message: "Your password has been successfully reset.",
-		});
-		return true;
-	}
-	// Verify Email
-	static async verifyEmail(token) {
-		const decoded = jwt.verify(token, process.env.JWT_SECRET);
-		const user = await User.findById(decoded._id);
-		if (!user) throw new ApiError(404, "User not found");
-		if (user.isVerified) throw new ApiError(400, "Email already verified");
-		user.isVerified = true;
-		await user.save();
-		return true;
-	}
-	// Logout User
-	static async logoutUser(user, req) {
-		user.refreshToken = undefined;
-		await user.save({ validateBeforeSave: false });
-		await this.logActivity(user, "logout", req);
-		return true;
-	}
-	// Activity Logger
+	// 🔥 ASYNC ACTIVITY LOGGING (Non-blocking)
 	static async logActivity(
 		user,
 		action,
@@ -242,37 +274,26 @@ class AuthService {
 		errorMessage = null,
 	) {
 		try {
-			if (!req) return; // Skip if no request context
-			const ip =
-				req.headers["x-forwarded-for"]?.split(",")[0] ||
-				req.connection?.remoteAddress ||
-				"127.0.0.1";
-			const uaParser = new UAParser(req.headers["user-agent"]);
-			const uaResult = uaParser.getResult();
-			const geo = geoip.lookup(ip === "127.0.0.1" ? null : ip) || {};
-			await UserActivity.create({
+			// Use worker queue for heavy operations in production
+			const activityData = {
 				userId: user._id,
 				email: user.email,
 				action,
-				ip,
-				location: {
-					country: geo.country || "Unknown",
-					region: geo.region || "Unknown",
-					city: geo.city || "Unknown",
-					timezone: geo.timezone || "UTC",
-				},
-				device: {
-					browser: uaResult.browser?.name || "Unknown",
-					version: uaResult.browser?.version || "Unknown",
-					os: uaResult.os?.name || "Unknown",
-					device: uaResult.device?.model || "Desktop",
-					userAgent: req.headers["user-agent"] || "Unknown",
-				},
+				ip: req.ip || req.connection?.remoteAddress || "127.0.0.1",
+				userAgent: req.get("User-Agent") || "Unknown",
+				timestamp: new Date(),
 				success,
 				errorMessage,
-			});
+			};
+
+			// Store in Redis queue for processing
+			await redisClient.lpush("activity_log", JSON.stringify(activityData));
+
+			// Keep queue size manageable
+			await redisClient.ltrim("activity_log", 0, 9999);
 		} catch (error) {
 			console.error("Activity logging failed:", error.message);
+			// Never throw - logging should not affect user experience
 		}
 	}
 }
