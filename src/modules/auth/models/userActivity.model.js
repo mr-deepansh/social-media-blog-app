@@ -80,6 +80,7 @@ userActivitySchema.index({ email: 1, createdAt: -1 });
 userActivitySchema.index({ sessionId: 1 });
 
 // TTL index to auto-delete old logs after 90 days (enterprise compliance)
+// Note: Using createdAt from timestamps: true
 userActivitySchema.index({ createdAt: 1 }, { expireAfterSeconds: 7776000 });
 
 export const UserActivity = mongoose.model("UserActivity", userActivitySchema);

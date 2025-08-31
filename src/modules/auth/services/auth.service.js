@@ -6,7 +6,7 @@ import { UserActivity } from "../models/userActivity.model.js";
 import { ApiError } from "../../../shared/utils/ApiError.js";
 import { sendEmail } from "../../../shared/utils/sendEmail.js";
 import { UAParser } from "ua-parser-js";
-import * as geoip from "geoip-lite";
+import geoip from "geoip-lite";
 
 /**
  * Enterprise AuthService - Handles authentication & authorization

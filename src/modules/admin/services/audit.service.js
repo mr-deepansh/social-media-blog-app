@@ -61,11 +61,7 @@ const auditLogSchema = new mongoose.Schema(
 			index: true,
 		},
 		userAgent: String,
-		timestamp: {
-			type: Date,
-			default: Date.now,
-			index: true,
-		},
+		// Using createdAt from timestamps: true instead of manual timestamp
 		level: {
 			type: String,
 			enum: ["info", "warning", "error", "critical"],
@@ -94,16 +90,16 @@ const auditLogSchema = new mongoose.Schema(
 );
 
 // Enterprise-grade compound indexes for maximum performance
-auditLogSchema.index({ adminId: 1, timestamp: -1 });
-auditLogSchema.index({ action: 1, timestamp: -1 });
-auditLogSchema.index({ level: 1, timestamp: -1 });
-auditLogSchema.index({ status: 1, timestamp: -1 });
-auditLogSchema.index({ timestamp: -1 });
-auditLogSchema.index({ adminId: 1, action: 1, timestamp: -1 });
-auditLogSchema.index({ level: 1, status: 1, timestamp: -1 });
+auditLogSchema.index({ adminId: 1, createdAt: -1 });
+auditLogSchema.index({ action: 1, createdAt: -1 });
+auditLogSchema.index({ level: 1, createdAt: -1 });
+auditLogSchema.index({ status: 1, createdAt: -1 });
+auditLogSchema.index({ createdAt: -1 });
+auditLogSchema.index({ adminId: 1, action: 1, createdAt: -1 });
+auditLogSchema.index({ level: 1, status: 1, createdAt: -1 });
 
 // TTL index for automatic cleanup (optional)
-auditLogSchema.index({ timestamp: 1 }, { expireAfterSeconds: 7776000 }); // 90 days
+auditLogSchema.index({ createdAt: 1 }, { expireAfterSeconds: 7776000 }); // 90 days
 
 const AuditLog = mongoose.model("AuditLog", auditLogSchema);
 
@@ -156,7 +152,6 @@ export class AuditService {
 				status,
 				executionTime,
 				metadata,
-				timestamp: new Date(),
 			});
 
 			// Use lean save for better performance
@@ -247,7 +242,7 @@ export class AuditService {
 
 			// Use parallel execution for optimal performance
 			const [totalCount, logs] = await Promise.all([
-				AuditLog.countDocuments(query).hint({ timestamp: -1 }),
+				AuditLog.countDocuments(query).hint({ createdAt: -1 }),
 				AuditLog.find(query, {
 					__v: 0, // Exclude version field
 				})
@@ -258,7 +253,7 @@ export class AuditService {
 					.skip((page - 1) * limit)
 					.limit(limit)
 					.lean(true) // Faster lean queries
-					.hint({ timestamp: -1 }),
+					.hint({ createdAt: -1 }),
 			]);
 
 			const totalPages = Math.ceil(totalCount / limit);
@@ -299,7 +294,7 @@ export class AuditService {
 				[
 					{
 						$match: {
-							timestamp: { $gte: dateRange.start, $lte: dateRange.end },
+							createdAt: { $gte: dateRange.start, $lte: dateRange.end },
 						},
 					},
 					{
@@ -320,13 +315,13 @@ export class AuditService {
 							],
 							recentErrors: [
 								{ $match: { level: { $in: ["error", "critical"] } } },
-								{ $sort: { timestamp: -1 } },
+								{ $sort: { createdAt: -1 } },
 								{ $limit: 10 },
 								{
 									$project: {
 										action: 1,
 										error: 1,
-										timestamp: 1,
+										createdAt: 1,
 										adminId: 1,
 										level: 1,
 									},
@@ -350,9 +345,9 @@ export class AuditService {
 								{
 									$group: {
 										_id: {
-											year: { $year: "$timestamp" },
-											month: { $month: "$timestamp" },
-											day: { $dayOfMonth: "$timestamp" },
+											year: { $year: "$createdAt" },
+											month: { $month: "$createdAt" },
+											day: { $dayOfMonth: "$createdAt" },
 										},
 										count: { $sum: 1 },
 										errors: {
@@ -482,7 +477,6 @@ export class AuditService {
 						targetUserId: activity.targetUserId
 							? new mongoose.Types.ObjectId(activity.targetUserId)
 							: null,
-						timestamp: new Date(),
 					},
 				},
 			}));
@@ -512,7 +506,7 @@ export class AuditService {
 			cutoffDate.setDate(cutoffDate.getDate() - this.retentionDays);
 
 			const result = await AuditLog.deleteMany({
-				timestamp: { $lt: cutoffDate },
+				createdAt: { $lt: cutoffDate },
 			});
 
 			console.log(`🧹 Cleaned up ${result.deletedCount} old audit logs`);
@@ -532,7 +526,7 @@ export class AuditService {
 
 			const metrics = await AuditLog.aggregate([
 				{
-					$match: { timestamp: { $gte: last24Hours } },
+					$match: { createdAt: { $gte: last24Hours } },
 				},
 				{
 					$facet: {
@@ -559,7 +553,7 @@ export class AuditService {
 						hourlyActivity: [
 							{
 								$group: {
-									_id: { $hour: "$timestamp" },
+									_id: { $hour: "$createdAt" },
 									count: { $sum: 1 },
 								},
 							},
@@ -658,12 +652,12 @@ export class AuditService {
 		}
 
 		if (filters.dateFrom || filters.dateTo) {
-			query.timestamp = {};
+			query.createdAt = {};
 			if (filters.dateFrom) {
-				query.timestamp.$gte = new Date(filters.dateFrom);
+				query.createdAt.$gte = new Date(filters.dateFrom);
 			}
 			if (filters.dateTo) {
-				query.timestamp.$lte = new Date(filters.dateTo);
+				query.createdAt.$lte = new Date(filters.dateTo);
 			}
 		}
 
@@ -718,14 +712,14 @@ export class AuditService {
 			error: log.error,
 			ipAddress: log.ipAddress,
 			userAgent: log.userAgent,
-			timestamp: log.timestamp,
+			createdAt: log.createdAt,
 			level: log.level,
 			status: log.status,
 			executionTime: log.executionTime,
 			metadata: log.metadata,
 			// Add human-readable timestamps
-			timeAgo: this._getTimeAgo(log.timestamp),
-			formattedDate: log.timestamp.toLocaleDateString(),
+			timeAgo: this._getTimeAgo(log.createdAt),
+			formattedDate: log.createdAt.toLocaleDateString(),
 		};
 	}
 
@@ -755,7 +749,7 @@ export class AuditService {
 				id: auditEntry._id,
 				action: auditEntry.action,
 				adminId: auditEntry.adminId,
-				timestamp: auditEntry.timestamp,
+				createdAt: auditEntry.createdAt,
 			});
 
 			// Example: Could integrate with notification services

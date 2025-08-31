@@ -12,6 +12,7 @@ import {
 import { AuthService } from "../../auth/services/auth.service.js";
 import Jwt from "jsonwebtoken";
 import mongoose from "mongoose";
+import bcrypt from "bcrypt";
 import { calculateApiHealth } from "../../../shared/utils/ApiHealth.js";
 
 const logger = new Logger("UserController");
