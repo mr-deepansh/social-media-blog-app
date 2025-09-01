@@ -12,7 +12,6 @@ const userActivitySchema = new Schema(
 		email: {
 			type: String,
 			required: true,
-			index: true,
 		},
 		action: {
 			type: String,
@@ -59,6 +58,7 @@ const userActivitySchema = new Schema(
 	{
 		timestamps: true,
 		collection: "useractivities",
+		suppressReservedKeysWarning: true,
 	},
 );
 

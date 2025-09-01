@@ -6,8 +6,8 @@ const usernamePattern = z
 	.min(3)
 	.max(30)
 	.regex(
-		/^[a-zA-Z0-9_]+$/,
-		"Username can only contain letters, numbers, and underscores",
+		/^[a-zA-Z0-9._]+$/,
+		"Username can only contain letters, numbers, dots, and underscores",
 	);
 
 const emailPattern = z.string().email("Invalid email format");

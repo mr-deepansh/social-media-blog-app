@@ -1,22 +1,20 @@
+// src/modules/blogs/routes/blog.routes.js
 import express from "express";
-import {
-	createBlog,
-	getAllBlogs,
-	getBlogById,
-	updateBlog,
-	deleteBlog,
-} from "../controllers/blog.controller.js";
-import { verifyJWT } from "../../../shared/middleware/auth.middleware.js";
+
+// Import sub-routes
+import postRoutes from "./post/post.routes.js";
+import commentRoutes from "./comment/comment.routes.js";
+import engagementRoutes from "./engagement/engagement.routes.js";
+import mediaRoutes from "./media/media.routes.js";
+import analyticsRoutes from "./analytics.routes.js";
 
 const router = express.Router();
 
-// Public routes
-router.get("/", getAllBlogs);
-router.get("/:id", getBlogById);
-
-// Protected routes
-router.post("/", verifyJWT, createBlog);
-router.patch("/:id", verifyJWT, updateBlog);
-router.delete("/:id", verifyJWT, deleteBlog);
+// Mount sub-routes
+router.use("/posts", postRoutes);
+router.use("/comments", commentRoutes);
+router.use("/engagement", engagementRoutes);
+router.use("/media", mediaRoutes);
+router.use("/analytics", analyticsRoutes);
 
 export default router;

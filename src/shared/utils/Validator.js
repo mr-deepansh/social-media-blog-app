@@ -61,11 +61,12 @@ class Validator {
 			};
 		}
 
-		const usernameRegex = /^[a-zA-Z0-9_]+$/;
+		const usernameRegex = /^[a-zA-Z0-9._]+$/;
 		if (!usernameRegex.test(username)) {
 			return {
 				valid: false,
-				message: "Username can only contain letters, numbers, and underscores",
+				message:
+					"Username can only contain letters, numbers, dots, and underscores",
 			};
 		}
 

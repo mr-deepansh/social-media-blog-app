@@ -252,7 +252,103 @@ export class SecurityValidator {
             result.warnings.push('Password contains repeated characters');
         }
 
-        if (/123|abc|qwerty|password|admin|letmein/i.test(password)) {
+        // Sequential character checks
+        if (/123456|abcdef|qwerty/i.test(password)) {
+            result.warnings.push('Password contains common sequences');
+        }
+
+        // Dictionary word checks (basic)
+        const commonPasswords = ['password', 'admin', '123456', 'qwerty', 'letmein'];
+        if (commonPasswords.some(common => password.toLowerCase().includes(common))) {
+            result.errors.push('Password contains common words');
+        }
+
+        // Username similarity check
+        if (options.username && password.toLowerCase().includes(options.username.toLowerCase())) {
+            result.errors.push('Password cannot contain username');
+        }
+
+        // Calculate strength
+        result.score = score;
+        if (score >= 7) result.strength = 'very strong';
+        else if (score >= 5) result.strength = 'strong';
+        else if (score >= 3) result.strength = 'medium';
+        else result.strength = 'weak';
+
+        result.isValid = result.errors.length === 0;
+        return result;
+    }
+
+    /**
+     * Validates email address
+     * @param {string} email - Email to validate
+     * @returns {Object} - Validation result
+     */
+    static validateEmail(email) {
+        const result = {
+            isValid: false,
+            errors: [],
+            sanitized: null
+        };
+
+        if (!email || typeof email !== 'string') {
+            result.errors.push('Email is required');
+            return result;
+        }
+
+        const trimmedEmail = email.trim().toLowerCase();
+        
+        // Basic email regex
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(trimmedEmail)) {
+            result.errors.push('Invalid email format');
+        }
+
+        // Length check
+        if (trimmedEmail.length > 254) {
+            result.errors.push('Email address too long');
+        }
+
+        // Malicious pattern check
+        this.MALICIOUS_PATTERNS.forEach(pattern => {
+            if (pattern.test(trimmedEmail)) {
+                result.errors.push('Email contains potentially harmful content');
+                return;
+            }
+        });
+
+        result.isValid = result.errors.length === 0;
+        result.sanitized = result.isValid ? trimmedEmail : null;
+        return result;
+    }
+
+    /**
+     * Sanitizes input by removing potentially harmful content
+     * @param {string} input - Input to sanitize
+     * @returns {string} - Sanitized input
+     */
+    static sanitizeInput(input) {
+        if (!input || typeof input !== 'string') return '';
+        
+        return input
+            .trim()
+            .replace(/[<>"'&]/g, '') // Remove basic HTML chars
+            .replace(/javascript:/gi, '') // Remove javascript protocol
+            .replace(/on\w+=/gi, '') // Remove event handlers
+            .substring(0, 1000); // Limit length
+    }
+
+    /**
+     * Validates if a string contains only safe characters
+     * @param {string} input - Input to validate
+     * @returns {boolean} - True if safe
+     */
+    static isSafeString(input) {
+        if (!input || typeof input !== 'string') return false;
+        
+        return !this.MALICIOUS_PATTERNS.some(pattern => pattern.test(input));
+    }
+}     if (/123|abc|qwerty|password|admin|letmein/i.test(password)) {
             result.errors.push('Password contains common patterns that are easy to guess');
         }
 

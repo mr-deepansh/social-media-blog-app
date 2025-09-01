@@ -9,7 +9,6 @@ const userSchema = new Schema(
 		username: {
 			type: String,
 			trim: true,
-			index: true,
 			unique: true,
 			required: true,
 			lowercase: true,
@@ -173,18 +172,15 @@ const userSchema = new Schema(
 );
 
 // Enterprise indexes for performance and security
-if (process.env.NODE_ENV !== "production") {
-	userSchema.index({ followers: 1 });
-	userSchema.index({ following: 1 });
-	userSchema.index({ username: 1 }, { unique: true });
-	userSchema.index({ refreshToken: 1 });
-	userSchema.index({ email: 1 }, { unique: true });
-	userSchema.index({ role: 1, isActive: 1 });
-	userSchema.index({ "security.lastLoginIP": 1 });
-	userSchema.index({ "activityLog.timestamp": -1 });
-	userSchema.index({ lastActive: -1 });
-	userSchema.index({ isEmailVerified: 1 });
-}
+// Note: username and email unique indexes are already created by schema definition
+userSchema.index({ followers: 1 });
+userSchema.index({ following: 1 });
+userSchema.index({ refreshToken: 1 });
+userSchema.index({ role: 1, isActive: 1 });
+userSchema.index({ "security.lastLoginIP": 1 });
+userSchema.index({ "activityLog.timestamp": -1 });
+userSchema.index({ lastActive: -1 });
+userSchema.index({ isEmailVerified: 1 });
 
 // Virtual for full name
 userSchema.virtual("fullName").get(function () {

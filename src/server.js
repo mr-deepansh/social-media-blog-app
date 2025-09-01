@@ -18,33 +18,76 @@ const getLocalIp = () => {
 	return "localhost";
 };
 
+const findAvailablePort = (startPort) => {
+	return new Promise((resolve, reject) => {
+		const server = http.createServer();
+		server.listen(startPort, (err) => {
+			if (err) {
+				if (err.code === "EADDRINUSE") {
+					// Port is in use, try next port
+					findAvailablePort(startPort + 1)
+						.then(resolve)
+						.catch(reject);
+				} else {
+					reject(err);
+				}
+			} else {
+				server.close(() => {
+					resolve(startPort);
+				});
+			}
+		});
+	});
+};
+
 const startServer = async () => {
-	await connectDB();
-	const server = http.createServer(app);
-	server.listen(serverConfig.port, "0.0.0.0", () => {
-		const localIP = getLocalIp();
-		console.log(
-			"✅ MongoDB Connected: ac-plgpi9r-shard-00-00.ggw6kgo.mongodb.net",
-		);
+	try {
+		// Connect to MongoDB first
+		await connectDB();
 
-		console.log("⚙️  Server is running at:");
-		console.log(`🔹 Local:   http://localhost:${serverConfig.port}`);
-		console.log(`🔹 Network: http://${localIP}:${serverConfig.port}`);
-		console.log(
-			`🔹 Local:   http://localhost:${serverConfig.port}/api/${serverConfig.apiVersion}`,
-		);
-		console.log(
-			`🔹 Network: http://${localIP}:${serverConfig.port}/api/${serverConfig.apiVersion}`,
-		);
-	});
+		// Find available port
+		const availablePort = await findAvailablePort(serverConfig.port);
+		const server = http.createServer(app);
 
-	server.on("error", (err) => {
-		if (err.code === "EADDRINUSE") {
-			console.error(`❌ Port ${serverConfig.port} is already in use.`);
-		} else {
-			console.error("❌ Failed to start server:", err);
-		}
+		server.listen(availablePort, "0.0.0.0", () => {
+			const localIP = getLocalIp();
+			console.log("✅ MongoDB Connected Successfully");
+			console.log("⚙️  Server is running at:");
+			console.log(`🔹 Local:   http://localhost:${availablePort}`);
+			console.log(`🔹 Network: http://${localIP}:${availablePort}`);
+			console.log(
+				`🔹 API:     http://localhost:${availablePort}/api/${serverConfig.apiVersion}`,
+			);
+			console.log(`🔹 Environment: ${serverConfig.nodeEnv}`);
+			console.log(`🔹 Process ID: ${process.pid}`);
+
+			if (availablePort !== serverConfig.port) {
+				console.log(
+					`ℹ️  Port ${serverConfig.port} was in use, using port ${availablePort}`,
+				);
+			}
+		});
+
+		// Enhanced error handling
+		server.on("error", (err) => {
+			console.error("❌ Server Error:", err.message);
+			process.exit(1);
+		});
+
+		// Graceful shutdown handling
+		const gracefulShutdown = (signal) => {
+			console.log(`\n🔄 Received ${signal}. Graceful shutdown...`);
+			server.close(() => {
+				console.log("✅ Server closed successfully");
+				process.exit(0);
+			});
+		};
+
+		process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+		process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+	} catch (error) {
+		console.error("❌ Failed to start server:", error.message);
 		process.exit(1);
-	});
+	}
 };
 startServer();

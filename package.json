@@ -10,6 +10,7 @@
 		"lint": "eslint . --fix",
 		"format": "prettier --write .",
 		"code:fix": "npm run format && npm run lint",
+		"prepare": "husky",
 		"redis:start": "docker run -d --name myredis -p 6379:6379 redis:latest",
 		"redis:stop": "docker stop myredis && docker rm myredis",
 		"redis:logs": "docker logs -f myredis",
@@ -22,7 +23,6 @@
 		"lint:security": "eslint . --ext .js --config eslint.security.js",
 		"format:check": "prettier --check .",
 		"code:check": "npm run lint:check && npm run format:check",
-		"prepare": "husky install",
 		"pre-commit": "lint-staged",
 		"fix:common": "node scripts/fix-common-issues.js",
 		"fix:critical": "node scripts/fix-critical-errors.cjs",
@@ -37,7 +37,14 @@
 		"docker:stop": "docker-compose down",
 		"security:audit": "npm audit",
 		"security:fix": "npm audit fix",
-		"deps:update": "npm update"
+		"deps:update": "npm update",
+		"test:api": "node scripts/blog-api-tester.js",
+		"test:api:optimized": "node scripts/optimized-blog-tester.js",
+		"cleanup": "node scripts/cleanup-for-git.js",
+		"cleanup:win": "scripts\\cleanup.bat",
+		"cleanup:unix": "bash scripts/cleanup.sh",
+		"lint:staged": "lint-staged",
+		"pre-push": "npm run cleanup && npm run code:check"
 	},
 	"keywords": [
 		"social-media",
@@ -92,29 +99,31 @@
 		"arm64"
 	],
 	"dependencies": {
+		"axios": "^1.11.0",
 		"bcrypt": "^5.1.1",
 		"bull": "^4.16.5",
-		"cookie-parser": "^1.4.6",
+		"chalk": "^5.6.0",
+		"cookie-parser": "^1.4.7",
 		"cors": "^2.8.5",
-		"crypto": "^1.0.1",
-		"dotenv": "^16.4.1",
+		"dotenv": "^16.6.1",
 		"ejs": "^3.1.10",
-		"express": "^4.18.2",
+		"express": "^4.21.2",
 		"fast-csv": "^5.0.2",
 		"geoip-lite": "^1.4.10",
 		"helmet": "^8.0.0",
 		"ioredis": "^5.7.0",
 		"jsonwebtoken": "^9.0.2",
-		"mongoose": "^8.1.1",
+		"mongoose": "^8.18.0",
 		"morgan": "^1.10.0",
-		"multer": "^1.4.5-lts.1",
+		"multer": "^2.0.2",
+		"node-cron": "^4.2.1",
 		"nodemailer": "^6.10.1",
 		"ua-parser-js": "^2.0.4",
-		"zod": "^3.25.67"
+		"zod": "^3.25.76"
 	},
 	"devDependencies": {
 		"@eslint/js": "^9.33.0",
-		"eslint": "^9.21.0",
+		"eslint": "^9.34.0",
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-import": "^2.32.0",
 		"eslint-plugin-node": "^11.1.0",
@@ -126,13 +135,12 @@
 		"node-fetch": "^3.3.2",
 		"nodemon": "^3.0.3",
 		"prettier": "^3.6.2",
-		"supertest": "^6.3.3"
+		"supertest": "^7.1.4"
 	},
 	"optionalDependencies": {
 		"compression": "^1.7.4",
 		"express-rate-limit": "^7.1.0",
 		"express-validator": "^7.0.1",
-		"redis": "^4.6.0",
 		"winston": "^3.11.0",
 		"winston-daily-rotate-file": "^4.7.1"
 	},
@@ -145,5 +153,13 @@
 	"publishConfig": {
 		"access": "public"
 	},
-	"bundleDependencies": []
+	"lint-staged": {
+		"*.{js,jsx,ts,tsx}": [
+			"eslint --fix",
+			"prettier --write"
+		],
+		"*.{json,md,yml,yaml}": [
+			"prettier --write"
+		]
+	}
 }

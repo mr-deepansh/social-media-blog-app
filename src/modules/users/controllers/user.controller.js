@@ -24,12 +24,8 @@ const generateAccessAndRefreshTokens = async (userId) => {
 		const refreshToken = user.generateRefreshToken();
 
 		// Update refresh token using findByIdAndUpdate to avoid triggering pre-save middleware
-		await User.findByIdAndUpdate(
-			userId,
-			{ refreshToken },
-			{ new: false }
-		);
-		
+		await User.findByIdAndUpdate(userId, { refreshToken }, { new: false });
+
 		return { accessToken, refreshToken };
 	} catch (error) {
 		throw new ApiError(
@@ -338,7 +334,9 @@ const registerUser = asyncHandler(async (req, res) => {
 			req,
 		);
 		// Generate tokens for immediate login after registration
-		const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
+		const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
+			user._id,
+		);
 
 		// Fetch clean user data
 		const createdUser = await User.findById(user._id)
