@@ -7,15 +7,38 @@ export const zodValidation = {
 	// Register/Create user
 	createUser: z
 		.object({
-			username: z
-				.string()
-				.min(3, "Username must be at least 3 characters")
-				.max(30, "Username cannot exceed 30 characters")
-				.regex(
-					/^[a-zA-Z0-9_]+$/,
-					"Only alphanumeric characters and underscores",
-				)
-				.trim(),
+	username: z
+		.string()
+		.trim()
+		.min(3, "Username must be at least 3 characters")
+		.max(30, "Username cannot exceed 30 characters")
+		.regex(
+			/^[a-zA-Z0-9._-]+$/,
+			"Username can only contain letters, numbers, dots, underscores, and hyphens",
+		)
+		.refine((username) => {
+			// Security validations
+			const securityChecks = [
+				// Cannot start or end with special characters
+				!/^[._-]/.test(username) && !/[._-]$/.test(username),
+				// Cannot have consecutive special characters
+				!/[._-]{2,}/.test(username),
+				// Must contain at least one letter or number
+				/[a-zA-Z0-9]/.test(username),
+				// Cannot be all numbers (prevents confusion with IDs)
+				!/^\d+$/.test(username),
+				// Prevent reserved words and system usernames
+				!['admin', 'root', 'api', 'www', 'ftp', 'mail', 'test', 'user', 'guest', 'anonymous', 'null', 'undefined', 'system', 'support', 'help', 'info', 'contact', 'about', 'terms', 'privacy', 'security', 'login', 'register', 'signup', 'signin', 'logout', 'profile', 'settings', 'config', 'dashboard', 'moderator'].includes(username.toLowerCase()),
+				// Prevent potential XSS patterns
+				!/[<>"'&%]/.test(username),
+				// Prevent SQL injection patterns (basic)
+				!/(union|select|insert|update|delete|drop|create|alter|exec|script)/i.test(username)
+			];
+			return securityChecks.every(check => check);
+		}, {
+			message: "Username format is invalid or contains restricted content"
+		})
+		.transform((username) => username.toLowerCase()),
 			email: z.string().email("Enter a valid email").trim().toLowerCase(),
 			password: z
 				.string()
@@ -105,12 +128,23 @@ export const zodValidation = {
 	// Update user
 	updateUser: z
 		.object({
-			username: z
+	username: z
 				.string()
+				.trim()
 				.min(3)
 				.max(30)
-				.regex(/^[a-zA-Z0-9_]+$/)
-				.trim()
+				.regex(/^[a-zA-Z0-9._-]+$/, "Username can only contain letters, numbers, dots, underscores, and hyphens")
+				.refine((username) => {
+					if (!username) return true; // Skip validation if optional and empty
+					const securityChecks = [
+						!/^[._-]/.test(username) && !/[._-]$/.test(username),
+						!/[._-]{2,}/.test(username),
+						/[a-zA-Z0-9]/.test(username),
+						!/^\d+$/.test(username)
+					];
+					return securityChecks.every(check => check);
+				}, "Invalid username format")
+				.transform((username) => username ? username.toLowerCase() : username)
 				.optional(),
 			email: z.string().email().trim().toLowerCase().optional(),
 			firstName: z.string().min(2).max(50).trim().optional(),
@@ -176,12 +210,23 @@ export const zodValidation = {
 	// Update own profile
 	updateProfile: z
 		.object({
-			username: z
+	username: z
 				.string()
+				.trim()
 				.min(3)
 				.max(30)
-				.regex(/^[a-zA-Z0-9_]+$/)
-				.trim()
+				.regex(/^[a-zA-Z0-9._-]+$/, "Username can only contain letters, numbers, dots, underscores, and hyphens")
+				.refine((username) => {
+					if (!username) return true; // Skip validation if optional and empty
+					const securityChecks = [
+						!/^[._-]/.test(username) && !/[._-]$/.test(username),
+						!/[._-]{2,}/.test(username),
+						/[a-zA-Z0-9]/.test(username),
+						!/^\d+$/.test(username)
+					];
+					return securityChecks.every(check => check);
+				}, "Invalid username format")
+				.transform((username) => username ? username.toLowerCase() : username)
 				.optional(),
 			firstName: z.string().min(2).max(50).trim().optional(),
 			lastName: z.string().min(2).max(50).trim().optional(),

@@ -142,7 +142,7 @@ app.get("/health", (req, res) => {
 app.get(`/api/${serverConfig.apiVersion}`, (req, res) => {
 	res.status(200).json({
 		success: true,
-		message: `endlessChatt API v${serverConfig.apiVersion} is running successfully`,
+		message: `endlessChatt API ${serverConfig.apiVersion} is running successfully`,
 		timestamp: new Date().toISOString(),
 		endpoints: {
 			auth: `/api/${serverConfig.apiVersion}/auth`,
