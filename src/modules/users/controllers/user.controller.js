@@ -16,7 +16,7 @@ import { calculateApiHealth } from "../../../shared/utils/ApiHealth.js";
 
 const logger = new Logger("UserController");
 
-const generateAccessAndRefreshTokens = async (userId) => {
+const generateAccessAndRefreshTokens = async userId => {
   try {
     const user = await User.findById(userId);
     const accessToken = user.generateAccessToken();
@@ -811,39 +811,39 @@ const getUserFollowers = asyncHandler(async (req, res) => {
     User.aggregate([
       { $match: { _id: { $in: user.followers } } },
       ...(search && search.trim()
-        ? [
-          {
-            $match: {
-              $or: [
-                {
-                  username: {
-                    $regex: new RegExp(
-                      search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-                      "i",
-                    ),
-                  },
-                },
-                {
-                  firstName: {
-                    $regex: new RegExp(
-                      search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-                      "i",
-                    ),
-                  },
-                },
-                {
-                  lastName: {
-                    $regex: new RegExp(
-                      search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-                      "i",
-                    ),
-                  },
-                },
-              ],
-            },
-          },
-        ]
-        : []),
+				? [
+				  {
+				    $match: {
+				      $or: [
+				        {
+				          username: {
+				            $regex: new RegExp(
+				              search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+				              "i",
+				            ),
+				          },
+				        },
+				        {
+				          firstName: {
+				            $regex: new RegExp(
+				              search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+				              "i",
+				            ),
+				          },
+				        },
+				        {
+				          lastName: {
+				            $regex: new RegExp(
+				              search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+				              "i",
+				            ),
+				          },
+				        },
+				      ],
+				    },
+				  },
+				]
+				: []),
       { $count: "total" },
     ]),
   ]);
@@ -856,7 +856,7 @@ const getUserFollowers = asyncHandler(async (req, res) => {
     new ApiResponse(
       200,
       {
-        followers: followers.map((follower) => ({
+        followers: followers.map(follower => ({
           ...follower,
           avatar: follower.avatar || "/assets/default-avatar.png",
           bio: follower.bio || "",
@@ -984,39 +984,39 @@ const getUserFollowing = asyncHandler(async (req, res) => {
     User.aggregate([
       { $match: { _id: { $in: user.following } } },
       ...(search && search.trim()
-        ? [
-          {
-            $match: {
-              $or: [
-                {
-                  username: {
-                    $regex: new RegExp(
-                      search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-                      "i",
-                    ),
-                  },
-                },
-                {
-                  firstName: {
-                    $regex: new RegExp(
-                      search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-                      "i",
-                    ),
-                  },
-                },
-                {
-                  lastName: {
-                    $regex: new RegExp(
-                      search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-                      "i",
-                    ),
-                  },
-                },
-              ],
-            },
-          },
-        ]
-        : []),
+				? [
+				  {
+				    $match: {
+				      $or: [
+				        {
+				          username: {
+				            $regex: new RegExp(
+				              search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+				              "i",
+				            ),
+				          },
+				        },
+				        {
+				          firstName: {
+				            $regex: new RegExp(
+				              search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+				              "i",
+				            ),
+				          },
+				        },
+				        {
+				          lastName: {
+				            $regex: new RegExp(
+				              search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+				              "i",
+				            ),
+				          },
+				        },
+				      ],
+				    },
+				  },
+				]
+				: []),
       { $count: "total" },
     ]),
   ]);
@@ -1027,7 +1027,7 @@ const getUserFollowing = asyncHandler(async (req, res) => {
     new ApiResponse(
       200,
       {
-        following: following.map((user) => ({
+        following: following.map(user => ({
           ...user,
           avatar: user.avatar || "/assets/default-avatar.png",
           bio: user.bio || "",
@@ -1097,7 +1097,7 @@ const searchUsers = asyncHandler(async (req, res) => {
     // Simplified search approach using MongoDB find() instead of aggregation
     const searchConditions = [];
     // Helper function to create case-insensitive regex
-    const createRegex = (term) => {
+    const createRegex = term => {
       const escapedTerm = term.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       return new RegExp(escapedTerm, "i");
     };
@@ -1131,8 +1131,8 @@ const searchUsers = asyncHandler(async (req, res) => {
     // Combine search conditions with base query
     const finalQuery =
 			searchConditions.length > 0
-			  ? { ...baseQuery, $or: searchConditions }
-			  : baseQuery;
+				? { ...baseQuery, $or: searchConditions }
+				: baseQuery;
     // Sorting logic
     let sortOptions = {};
     switch (sortBy) {
@@ -1167,7 +1167,7 @@ const searchUsers = asyncHandler(async (req, res) => {
     if (users.length > 0) {
       console.log(
         "👥 Sample users found:",
-        users.slice(0, 2).map((u) => ({
+        users.slice(0, 2).map(u => ({
           username: u.username,
           firstName: u.firstName,
           lastName: u.lastName,
@@ -1178,19 +1178,19 @@ const searchUsers = asyncHandler(async (req, res) => {
       );
     }
     // Format results
-    const formattedUsers = users.map((user) => {
+    const formattedUsers = users.map(user => {
       const followersCount = Array.isArray(user.followers)
-        ? user.followers.length
-        : 0;
+				? user.followers.length
+				: 0;
       const followingCount = Array.isArray(user.following)
-        ? user.following.length
-        : 0;
+				? user.following.length
+				: 0;
       const isFollowing =
 				currentUserId && Array.isArray(user.followers)
-				  ? user.followers.some(
-				    (id) => id.toString() === currentUserId.toString(),
-				  )
-				  : false;
+					? user.followers.some(
+					  id => id.toString() === currentUserId.toString(),
+					)
+					: false;
       return {
         _id: user._id,
         username: user.username,
@@ -1236,9 +1236,9 @@ const searchUsers = asyncHandler(async (req, res) => {
             sortBy,
           },
         },
-        formattedUsers.length === 0
-          ? "No users found matching your search criteria"
-          : `Found ${formattedUsers.length} of ${totalCount} users`,
+				formattedUsers.length === 0
+					? "No users found matching your search criteria"
+					: `Found ${formattedUsers.length} of ${totalCount} users`,
       ),
     );
   } catch (error) {
@@ -1448,15 +1448,15 @@ const getUserSuggestions = asyncHandler(async (req, res) => {
     const suggestions = await User.aggregate(pipeline).maxTimeMS(10000);
     console.log("✅ Suggestions found:", suggestions.length);
     // Enhanced formatting with better suggestion reasons
-    const formattedSuggestions = suggestions.map((user) => {
+    const formattedSuggestions = suggestions.map(user => {
       let suggestionReason = "Suggested for you";
       if (user.followsYou) {
         suggestionReason = "Follows you";
       } else if (user.mutualFollowersCount > 0) {
         suggestionReason =
 					user.mutualFollowersCount === 1
-					  ? "1 mutual follower"
-					  : `${user.mutualFollowersCount} mutual followers`;
+						? "1 mutual follower"
+						: `${user.mutualFollowersCount} mutual followers`;
       } else if (user.followersCount > 1000) {
         suggestionReason = "Popular user";
       } else if (user.followersCount > 100) {
@@ -1482,9 +1482,9 @@ const getUserSuggestions = asyncHandler(async (req, res) => {
             hasMore: formattedSuggestions.length === limitNum,
           },
         },
-        formattedSuggestions.length > 0
-          ? "User suggestions fetched successfully"
-          : "No suggestions available at this time",
+				formattedSuggestions.length > 0
+					? "User suggestions fetched successfully"
+					: "No suggestions available at this time",
       ),
     );
   } catch (error) {
@@ -1628,8 +1628,8 @@ const getUserFeed = asyncHandler(async (req, res) => {
     const sortField = validSortFields.includes(sortBy) ? sortBy : "createdAt";
     const validSortOrders = ["asc", "desc"];
     const validSortOrder = validSortOrders.includes(sortOrder)
-      ? sortOrder
-      : "desc";
+			? sortOrder
+			: "desc";
 
     const sortStage = {};
     sortStage[sortField] = validSortOrder === "desc" ? -1 : 1;
@@ -1801,15 +1801,15 @@ const getUserFeed = asyncHandler(async (req, res) => {
     const totalPages = Math.ceil(totalPosts / limitNum);
 
     // Enhanced response formatting
-    const formattedFeed = feed.map((post) => ({
+    const formattedFeed = feed.map(post => ({
       ...post,
       author: {
         ...post.author,
         avatar: post.author?.avatar || "/assets/default-avatar.png",
         displayName: post.author
-          ? `${post.author.firstName || ""} ${post.author.lastName || ""}`.trim() ||
+					? `${post.author.firstName || ""} ${post.author.lastName || ""}`.trim() ||
 						post.author.username
-          : "Unknown User",
+					: "Unknown User",
       },
       // Add relative timestamps if needed
       timeAgo: getTimeAgo(post.createdAt),
@@ -1835,9 +1835,9 @@ const getUserFeed = asyncHandler(async (req, res) => {
             followingCount: followingIds.length,
           },
         },
-        totalPosts === 0
-          ? `No posts found in your ${type} feed`
-          : `Feed fetched successfully - ${totalPosts} posts available`,
+				totalPosts === 0
+					? `No posts found in your ${type} feed`
+					: `Feed fetched successfully - ${totalPosts} posts available`,
       ),
     );
   } catch (error) {
@@ -2061,33 +2061,33 @@ const getUserProfileByUsername = asyncHandler(async (req, res) => {
 				profile.username,
       joinDate: profile.createdAt,
       relationshipStatus: profile.isOwnProfile
-        ? "self"
-        : profile.isFollowing && profile.followsYou
-          ? "mutual"
-          : profile.isFollowing
-            ? "following"
-            : profile.followsYou
-              ? "follower"
-              : "none",
+				? "self"
+				: profile.isFollowing && profile.followsYou
+					? "mutual"
+					: profile.isFollowing
+						? "following"
+						: profile.followsYou
+							? "follower"
+							: "none",
       // Add formatted mutual followers info
       mutualInfo:
 				profile.mutualFollowersCount > 0
-				  ? {
-				    count: profile.mutualFollowersCount,
-				    sample:
-								profile.mutualFollowersSample?.map((user) => ({
+					? {
+					  count: profile.mutualFollowersCount,
+					  sample:
+								profile.mutualFollowersSample?.map(user => ({
 								  ...user,
 								  avatar: user.avatar || "/assets/default-avatar.png",
 								  displayName:
 										`${user.firstName || ""} ${user.lastName || ""}`.trim() ||
 										user.username,
 								})) || [],
-				    message:
+					  message:
 								profile.mutualFollowersCount === 1
-								  ? "1 mutual follower"
-								  : `${profile.mutualFollowersCount} mutual followers`,
-				  }
-				  : null,
+									? "1 mutual follower"
+									: `${profile.mutualFollowersCount} mutual followers`,
+					}
+					: null,
       // Profile stats for display
       stats: {
         posts: 0, // This would need to be calculated from posts collection
@@ -2270,7 +2270,7 @@ const unfollowUser = asyncHandler(async (req, res) => {
 });
 
 // Utility function for time ago calculation
-const getTimeAgo = (date) => {
+const getTimeAgo = date => {
   const now = new Date();
   const postDate = new Date(date);
   const diffInSeconds = Math.floor((now - postDate) / 1000);

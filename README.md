@@ -321,11 +321,11 @@ social-media-blog-app/
 ```javascript
 // Real-time security monitoring
 const securityMetrics = {
-	threatLevel: "LOW",
+	threatLevel: 'LOW',
 	activeThreats: 0,
 	blockedIPs: 1247,
 	suspiciousActivity: 3,
-	lastScan: "2024-01-15T10:30:00Z",
+	lastScan: '2024-01-15T10:30:00Z',
 };
 ```
 
@@ -366,14 +366,14 @@ const executiveDashboard = {
 	overview: {
 		totalUsers: 125420,
 		activeUsers: 98340,
-		monthlyGrowth: "+15.2%",
-		revenue: "$2.4M",
-		engagement: "87%",
+		monthlyGrowth: '+15.2%',
+		revenue: '$2.4M',
+		engagement: '87%',
 	},
 	trends: {
-		userGrowth: "increasing",
-		contentEngagement: "stable",
-		systemPerformance: "optimal",
+		userGrowth: 'increasing',
+		contentEngagement: 'stable',
+		systemPerformance: 'optimal',
 	},
 };
 ```
@@ -537,12 +537,12 @@ const featureFlags = {
 #### Docker Compose (Development)
 
 ```yaml
-version: "3.8"
+version: '3.8'
 services:
   app:
     build: .
     ports:
-      - "5000:5000"
+      - '5000:5000'
     environment:
       - NODE_ENV=development
     depends_on:
@@ -555,7 +555,7 @@ services:
   mongodb:
     image: mongo:6.0
     ports:
-      - "27017:27017"
+      - '27017:27017'
     volumes:
       - mongodb_data:/data/db
     environment:
@@ -565,7 +565,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - '6379:6379'
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes
@@ -573,8 +573,8 @@ services:
   nginx:
     image: nginx:alpine
     ports:
-      - "80:80"
-      - "443:443"
+      - '80:80'
+      - '443:443'
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf
       - ./ssl:/etc/nginx/ssl
@@ -612,7 +612,7 @@ spec:
             - containerPort: 5000
           env:
             - name: NODE_ENV
-              value: "production"
+              value: 'production'
             - name: MONGODB_URI
               valueFrom:
                 secretKeyRef:
@@ -620,11 +620,11 @@ spec:
                   key: mongodb-uri
           resources:
             requests:
-              memory: "256Mi"
-              cpu: "250m"
+              memory: '256Mi'
+              cpu: '250m'
             limits:
-              memory: "512Mi"
-              cpu: "500m"
+              memory: '512Mi'
+              cpu: '500m'
           livenessProbe:
             httpGet:
               path: /api/v1/health
@@ -905,7 +905,7 @@ npm run test:security
 ```javascript
 // jest.config.js
 module.exports = {
-	testEnvironment: "node",
+	testEnvironment: 'node',
 	coverageThreshold: {
 		global: {
 			branches: 80,
@@ -914,9 +914,9 @@ module.exports = {
 			statements: 80,
 		},
 	},
-	collectCoverageFrom: ["src/**/*.js", "!src/**/*.test.js", "!src/config/**"],
-	testMatch: ["**/__tests__/**/*.js", "**/?(*.)+(spec|test).js"],
-	setupFilesAfterEnv: ["<rootDir>/tests/setup.js"],
+	collectCoverageFrom: ['src/**/*.js', '!src/**/*.test.js', '!src/config/**'],
+	testMatch: ['**/__tests__/**/*.js', '**/?(*.)+(spec|test).js'],
+	setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
 };
 ```
 
@@ -998,16 +998,16 @@ Response:
 ```javascript
 // Winston logger configuration
 const logger = winston.createLogger({
-	level: "info",
+	level: 'info',
 	format: winston.format.combine(
 		winston.format.timestamp(),
 		winston.format.errors({ stack: true }),
-		winston.format.json(),
+		winston.format.json()
 	),
-	defaultMeta: { service: "social-media-blog" },
+	defaultMeta: { service: 'social-media-blog' },
 	transports: [
-		new winston.transports.File({ filename: "logs/error.log", level: "error" }),
-		new winston.transports.File({ filename: "logs/combined.log" }),
+		new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
+		new winston.transports.File({ filename: 'logs/combined.log' }),
 		new winston.transports.Console({
 			format: winston.format.simple(),
 		}),
@@ -1232,18 +1232,18 @@ services:
     image: redis:7-alpine
     container_name: social-media-blog-redis
     ports:
-      - "6379:6379"
+      - '6379:6379'
     volumes:
       - ./redis-data:/data
     command:
       [
-        "redis-server",
-        "--appendonly",
-        "yes",
-        "--maxmemory",
-        "256mb",
-        "--maxmemory-policy",
-        "allkeys-lru",
+        'redis-server',
+        '--appendonly',
+        'yes',
+        '--maxmemory',
+        '256mb',
+        '--maxmemory-policy',
+        'allkeys-lru',
       ]
     restart: unless-stopped
     networks:
@@ -1351,22 +1351,22 @@ For licensing inquiries, please contact: deepanshgangwar7037@outlook.com
 // Compliance monitoring service
 const complianceMetrics = {
 	gdprCompliance: {
-		dataRetentionPolicy: "enforced",
-		rightToErasure: "implemented",
-		consentManagement: "active",
-		dataPortability: "available",
+		dataRetentionPolicy: 'enforced',
+		rightToErasure: 'implemented',
+		consentManagement: 'active',
+		dataPortability: 'available',
 	},
 	securityCompliance: {
-		encryptionAtRest: "AES-256",
-		encryptionInTransit: "TLS 1.3",
-		accessControls: "RBAC implemented",
-		auditLogging: "comprehensive",
+		encryptionAtRest: 'AES-256',
+		encryptionInTransit: 'TLS 1.3',
+		accessControls: 'RBAC implemented',
+		auditLogging: 'comprehensive',
 	},
 	operationalCompliance: {
-		backupStrategy: "3-2-1 rule",
-		disasterRecovery: "tested quarterly",
-		incidentResponse: "documented",
-		changeManagement: "controlled",
+		backupStrategy: '3-2-1 rule',
+		disasterRecovery: 'tested quarterly',
+		incidentResponse: 'documented',
+		changeManagement: 'controlled',
 	},
 };
 ```
@@ -1682,12 +1682,12 @@ GET /api/v1
 #### Forgot Password Form
 
 ```javascript
-const handleForgotPassword = async (email) => {
+const handleForgotPassword = async email => {
 	try {
-		const response = await fetch("/api/v1/auth/forgot-password", {
-			method: "POST",
+		const response = await fetch('/api/v1/auth/forgot-password', {
+			method: 'POST',
 			headers: {
-				"Content-Type": "application/json",
+				'Content-Type': 'application/json',
 			},
 			body: JSON.stringify({ email }),
 		});
@@ -1695,12 +1695,12 @@ const handleForgotPassword = async (email) => {
 		const data = await response.json();
 
 		if (data.success) {
-			alert("Password reset link sent to your email!");
+			alert('Password reset link sent to your email!');
 		} else {
 			alert(data.message);
 		}
 	} catch (error) {
-		console.error("Error:", error);
+		console.error('Error:', error);
 	}
 };
 ```
@@ -1711,9 +1711,9 @@ const handleForgotPassword = async (email) => {
 const handleResetPassword = async (token, newPassword, confirmPassword) => {
 	try {
 		const response = await fetch(`/api/v1/auth/reset-password/${token}`, {
-			method: "POST",
+			method: 'POST',
 			headers: {
-				"Content-Type": "application/json",
+				'Content-Type': 'application/json',
 			},
 			body: JSON.stringify({ newPassword, confirmPassword }),
 		});
@@ -1721,13 +1721,13 @@ const handleResetPassword = async (token, newPassword, confirmPassword) => {
 		const data = await response.json();
 
 		if (data.success) {
-			alert("Password reset successful!");
+			alert('Password reset successful!');
 			// Redirect to login page
 		} else {
 			alert(data.message);
 		}
 	} catch (error) {
-		console.error("Error:", error);
+		console.error('Error:', error);
 	}
 };
 ```
@@ -2457,12 +2457,12 @@ GET /api/v1
 #### Forgot Password Form
 
 ```javascript
-const handleForgotPassword = async (email) => {
+const handleForgotPassword = async email => {
 	try {
-		const response = await fetch("/api/v1/auth/forgot-password", {
-			method: "POST",
+		const response = await fetch('/api/v1/auth/forgot-password', {
+			method: 'POST',
 			headers: {
-				"Content-Type": "application/json",
+				'Content-Type': 'application/json',
 			},
 			body: JSON.stringify({ email }),
 		});
@@ -2470,12 +2470,12 @@ const handleForgotPassword = async (email) => {
 		const data = await response.json();
 
 		if (data.success) {
-			alert("Password reset link sent to your email!");
+			alert('Password reset link sent to your email!');
 		} else {
 			alert(data.message);
 		}
 	} catch (error) {
-		console.error("Error:", error);
+		console.error('Error:', error);
 	}
 };
 ```
@@ -2486,9 +2486,9 @@ const handleForgotPassword = async (email) => {
 const handleResetPassword = async (token, newPassword, confirmPassword) => {
 	try {
 		const response = await fetch(`/api/v1/auth/reset-password/${token}`, {
-			method: "POST",
+			method: 'POST',
 			headers: {
-				"Content-Type": "application/json",
+				'Content-Type': 'application/json',
 			},
 			body: JSON.stringify({ newPassword, confirmPassword }),
 		});
@@ -2496,13 +2496,13 @@ const handleResetPassword = async (token, newPassword, confirmPassword) => {
 		const data = await response.json();
 
 		if (data.success) {
-			alert("Password reset successful!");
+			alert('Password reset successful!');
 			// Redirect to login page
 		} else {
 			alert(data.message);
 		}
 	} catch (error) {
-		console.error("Error:", error);
+		console.error('Error:', error);
 	}
 };
 ```

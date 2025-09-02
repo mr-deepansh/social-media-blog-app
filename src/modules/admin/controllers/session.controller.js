@@ -70,7 +70,7 @@ const getAdminSessionAnalytics = asyncHandler(async (req, res) => {
         ) / Math.max(sessionAnalytics.length, 1),
       ),
       uniqueRegions: [
-        ...new Set(sessionAnalytics.flatMap((admin) => admin.regions)),
+        ...new Set(sessionAnalytics.flatMap(admin => admin.regions)),
       ].length,
     },
     metadata: {

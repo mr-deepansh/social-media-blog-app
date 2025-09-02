@@ -122,8 +122,8 @@ const trackView = asyncHandler(async (req, res) => {
 
         // Update post view count
         const isUniqueView = userId
-          ? !(await View.findOne({ user: userId, post: postId }))
-          : !(await View.findOne({ ip: req.ip, post: postId }));
+					? !(await View.findOne({ user: userId, post: postId }))
+					: !(await View.findOne({ ip: req.ip, post: postId }));
 
         await Post.findByIdAndUpdate(postId, {
           $inc: {

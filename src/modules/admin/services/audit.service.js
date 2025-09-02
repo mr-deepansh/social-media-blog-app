@@ -140,11 +140,11 @@ export class AuditService {
         adminId: new mongoose.Types.ObjectId(adminId),
         action,
         targetUserId: targetUserId
-          ? new mongoose.Types.ObjectId(targetUserId)
-          : null,
+					? new mongoose.Types.ObjectId(targetUserId)
+					: null,
         targetAdminId: targetAdminId
-          ? new mongoose.Types.ObjectId(targetAdminId)
-          : null,
+					? new mongoose.Types.ObjectId(targetAdminId)
+					: null,
         details: sanitizedDetails,
         ipAddress,
         userAgent,
@@ -259,7 +259,7 @@ export class AuditService {
       const totalPages = Math.ceil(totalCount / limit);
 
       return {
-        logs: logs.map((log) => this._formatLogEntry(log)),
+        logs: logs.map(log => this._formatLogEntry(log)),
         pagination: {
           currentPage: page,
           totalPages,
@@ -420,13 +420,13 @@ export class AuditService {
         },
         breakdown: {
           byLevel: Object.fromEntries(
-            result.logsByLevel.map((item) => [item._id, item.count]),
+            result.logsByLevel.map(item => [item._id, item.count]),
           ),
           byAction: Object.fromEntries(
-            result.logsByAction.map((item) => [item._id, item.count]),
+            result.logsByAction.map(item => [item._id, item.count]),
           ),
           byStatus: Object.fromEntries(
-            result.logsByStatus.map((item) => [item._id, item.count]),
+            result.logsByStatus.map(item => [item._id, item.count]),
           ),
         },
         performance: result.performanceStats[0] || {
@@ -442,11 +442,11 @@ export class AuditService {
           recentErrors: result.recentErrors,
           errorRate:
 						result.totalLogs[0]?.count > 0
-						  ? (
-						    (result.recentErrors.length / result.totalLogs[0].count) *
+							? (
+							  (result.recentErrors.length / result.totalLogs[0].count) *
 									100
-						  ).toFixed(2)
-						  : "0.00",
+							).toFixed(2)
+							: "0.00",
         },
         topAdmins: result.topAdmins,
         metadata: {
@@ -469,14 +469,14 @@ export class AuditService {
         return [];
       }
 
-      const bulkOps = activities.map((activity) => ({
+      const bulkOps = activities.map(activity => ({
         insertOne: {
           document: {
             ...activity,
             adminId: new mongoose.Types.ObjectId(activity.adminId),
             targetUserId: activity.targetUserId
-              ? new mongoose.Types.ObjectId(activity.targetUserId)
-              : null,
+							? new mongoose.Types.ObjectId(activity.targetUserId)
+							: null,
           },
         },
       }));
@@ -571,8 +571,8 @@ export class AuditService {
           totalActivity: result.totalActivity[0]?.count || 0,
           errorRate:
 						errorData.total > 0
-						  ? ((errorData.errors / errorData.total) * 100).toFixed(2)
-						  : "0.00",
+							? ((errorData.errors / errorData.total) * 100).toFixed(2)
+							: "0.00",
           activeAdmins: result.activeAdmins[0]?.count || 0,
           hourlyBreakdown: result.hourlyActivity,
         },
@@ -610,12 +610,12 @@ export class AuditService {
     ];
     const sanitized = { ...details };
 
-    const sanitizeObject = (obj) => {
+    const sanitizeObject = obj => {
       for (const key in obj) {
         if (typeof obj[key] === "object" && obj[key] !== null) {
           sanitizeObject(obj[key]);
         } else if (
-          sensitiveFields.some((field) => key.toLowerCase().includes(field))
+          sensitiveFields.some(field => key.toLowerCase().includes(field))
         ) {
           obj[key] = "***REDACTED***";
         }

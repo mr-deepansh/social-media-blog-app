@@ -118,11 +118,7 @@ router.get(
     res
       .status(200)
       .json(
-        new ApiResponse(
-          200,
-          report,
-          "Compliance report generated successfully",
-        ),
+        new ApiResponse(200, report, "Compliance report generated successfully"),
       );
   }),
 );
@@ -146,11 +142,7 @@ router.post(
     res
       .status(200)
       .json(
-        new ApiResponse(
-          200,
-          validation,
-          "IP validation completed successfully",
-        ),
+        new ApiResponse(200, validation, "IP validation completed successfully"),
       );
   }),
 );

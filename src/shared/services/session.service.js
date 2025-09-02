@@ -121,7 +121,7 @@ export class SessionService {
       total: 0,
     };
     const userActivity = Object.fromEntries(
-      result?.userActivity?.map((item) => [item._id, item.count]) || [],
+      result?.userActivity?.map(item => [item._id, item.count]) || [],
     );
 
     return {

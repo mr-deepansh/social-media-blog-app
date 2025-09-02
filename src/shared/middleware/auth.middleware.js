@@ -6,7 +6,7 @@ import { asyncHandler } from "../utils/AsyncHandler.js";
 import { redisClient, RedisUtils } from "../../config/redis/redis.config.js";
 
 // Token blacklist with Redis for horizontal scaling
-const isTokenBlacklisted = async (token) => {
+const isTokenBlacklisted = async token => {
   try {
     const result = await redisClient.get(`blacklist:${token}`);
     return result !== null;
@@ -17,7 +17,7 @@ const isTokenBlacklisted = async (token) => {
 };
 
 // Cache user data in Redis to reduce DB queries
-const getCachedUser = async (userId) => {
+const getCachedUser = async userId => {
   try {
     const cached = await redisClient.get(`user:${userId}`);
     if (cached) {

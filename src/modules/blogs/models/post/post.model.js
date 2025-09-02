@@ -277,7 +277,7 @@ postSchema.pre("save", function (next) {
   // Extract hashtags
   if (this.isModified("content")) {
     this.hashtags = this.content.match(/#\w+/g) || [];
-    this.hashtags = this.hashtags.map((tag) => tag.toLowerCase().substring(1));
+    this.hashtags = this.hashtags.map(tag => tag.toLowerCase().substring(1));
   }
 
   // Set published date

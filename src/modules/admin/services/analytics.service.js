@@ -141,7 +141,7 @@ export class AnalyticsService {
     return {
       period,
       days,
-      growth: growth.map((item) => ({
+      growth: growth.map(item => ({
         ...item._id,
         newUsers: item.newUsers,
         activeUsers: item.activeUsers,
@@ -151,11 +151,11 @@ export class AnalyticsService {
         totalNewUsers: growth.reduce((sum, item) => sum + item.newUsers, 0),
         averageDaily:
 					growth.length > 0
-					  ? Math.round(
-					    growth.reduce((sum, item) => sum + item.newUsers, 0) /
+						? Math.round(
+						  growth.reduce((sum, item) => sum + item.newUsers, 0) /
 									growth.length,
-					  )
-					  : 0,
+						)
+						: 0,
       },
     };
   }
@@ -263,7 +263,7 @@ export class AnalyticsService {
       (sum, item) => sum + item.count,
       0,
     );
-    const roleDistribution = result.roleDistribution.map((item) => ({
+    const roleDistribution = result.roleDistribution.map(item => ({
       role: item._id,
       count: item.count,
       percentage:
@@ -272,7 +272,7 @@ export class AnalyticsService {
 
     return {
       roleDistribution,
-      statusDistribution: result.statusDistribution.map((item) => ({
+      statusDistribution: result.statusDistribution.map(item => ({
         status: item._id ? "active" : "inactive",
         count: item.count,
       })),
@@ -329,8 +329,8 @@ export class AnalyticsService {
     const dailyRate = recent / days;
     const previousTotal = total - recent;
     return previousTotal > 0
-      ? Math.round(((dailyRate * days) / previousTotal) * 100)
-      : 0;
+			? Math.round(((dailyRate * days) / previousTotal) * 100)
+			: 0;
   }
 
   formatDate(dateObj, period) {

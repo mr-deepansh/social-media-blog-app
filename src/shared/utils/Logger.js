@@ -33,7 +33,7 @@ class Logger {
     const logFile = path.join(this.logDir, `${level}.log`);
     const formattedMessage = this.formatMessage(level, message, meta);
 
-    fs.appendFile(logFile, formattedMessage, (err) => {
+    fs.appendFile(logFile, formattedMessage, err => {
       if (err) {
         console.error("Failed to write to log file:", err);
       }

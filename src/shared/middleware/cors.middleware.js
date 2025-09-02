@@ -25,8 +25,8 @@ const corsOptions = {
 
     // Parse allowed origins from environment variable
     const allowedOrigins = corsOrigin
-      ? corsOrigin.split(",").map((o) => o.trim())
-      : [];
+			? corsOrigin.split(",").map(o => o.trim())
+			: [];
     console.log("📋 CORS: Allowed origins:", allowedOrigins);
 
     // Check if origin is allowed

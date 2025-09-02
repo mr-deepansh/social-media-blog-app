@@ -42,7 +42,7 @@ export class NotificationService {
     ];
     return {
       templates:
-				type === "all" ? templates : templates.filter((t) => t.type === type),
+				type === "all" ? templates : templates.filter(t => t.type === type),
       total: templates.length,
       types: ["email", "sms", "push", "in-app"],
     };

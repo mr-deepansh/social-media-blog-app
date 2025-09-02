@@ -334,10 +334,10 @@ class LocationService {
     }
 
     const highRiskCount = suspiciousActivity.filter(
-      (activity) => activity.riskLevel === "high",
+      activity => activity.riskLevel === "high",
     ).length;
     const mediumRiskCount = suspiciousActivity.filter(
-      (activity) => activity.riskLevel === "medium",
+      activity => activity.riskLevel === "medium",
     ).length;
     if (highRiskCount > 0) {
       return "high";
@@ -379,7 +379,7 @@ class LocationService {
 			`location_analytics:${userId}:*`,
     ];
     await Promise.all(
-      cacheKeys.map((pattern) => cacheService.deletePattern(pattern)),
+      cacheKeys.map(pattern => cacheService.deletePattern(pattern)),
     );
     return activity;
   }

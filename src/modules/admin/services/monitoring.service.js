@@ -141,7 +141,7 @@ export class MonitoringService {
         .toArray();
       const stats = await mongoose.connection.db.stats();
       const collectionStats = await Promise.all(
-        collections.map(async (collection) => {
+        collections.map(async collection => {
           try {
             const coll = mongoose.connection.db.collection(collection.name);
             const count = await coll.countDocuments();
@@ -219,12 +219,12 @@ export class MonitoringService {
       },
       security: {
         jwtSecret: process.env.JWT_SECRET
-          ? "***configured***"
-          : "not configured",
+					? "***configured***"
+					: "not configured",
         jwtExpiry: process.env.JWT_EXPIRES_IN || "1h",
         encryptionKey: process.env.ENCRYPTION_KEY
-          ? "***configured***"
-          : "not configured",
+					? "***configured***"
+					: "not configured",
       },
       performance: {
         rateLimitMax: process.env.RATE_LIMIT_MAX || "1000",
@@ -277,7 +277,7 @@ export class MonitoringService {
 	 */
   validateConfigSettings(category, settings) {
     const validators = {
-      security: (settings) => {
+      security: settings => {
         if (
           settings.maxLoginAttempts &&
 					(settings.maxLoginAttempts < 1 || settings.maxLoginAttempts > 10)
@@ -288,7 +288,7 @@ export class MonitoringService {
           throw new Error("lockoutDuration must be at least 60 seconds");
         }
       },
-      performance: (settings) => {
+      performance: settings => {
         if (settings.rateLimitMax && settings.rateLimitMax < 1) {
           throw new Error("rateLimitMax must be positive");
         }
@@ -296,7 +296,7 @@ export class MonitoringService {
           throw new Error("cacheTTL must be non-negative");
         }
       },
-      monitoring: (settings) => {
+      monitoring: settings => {
         if (
           settings.healthCheckInterval &&
 					settings.healthCheckInterval < 5000

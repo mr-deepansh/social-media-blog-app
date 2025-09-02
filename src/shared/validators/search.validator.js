@@ -2,12 +2,12 @@
 import { z } from "zod";
 
 // Custom validation functions
-const sanitizeSearchTerm = (term) => {
+const sanitizeSearchTerm = term => {
   // Remove potentially dangerous characters
   return term.replace(/[<>{}();'"\\]/g, "").trim();
 };
 
-const validateSearchTerm = (term) => {
+const validateSearchTerm = term => {
   // Check for common XSS patterns
   const xssPatterns = [
     /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
@@ -18,7 +18,7 @@ const validateSearchTerm = (term) => {
     /<embed/gi,
   ];
 
-  return !xssPatterns.some((pattern) => pattern.test(term));
+  return !xssPatterns.some(pattern => pattern.test(term));
 };
 
 export const searchValidation = {
@@ -31,7 +31,7 @@ export const searchValidation = {
         .max(100, "Search term cannot exceed 100 characters")
         .transform(sanitizeSearchTerm)
         .refine(
-          (val) => val.length >= 2,
+          val => val.length >= 2,
           "Search term must be at least 2 characters after sanitization",
         )
         .refine(validateSearchTerm, "Search term contains invalid characters"),
@@ -39,20 +39,17 @@ export const searchValidation = {
         .string()
         .optional()
         .default("1")
-        .transform((val) => parseInt(val, 10))
+        .transform(val => parseInt(val, 10))
         .refine(
-          (val) => val > 0 && val <= 1000,
+          val => val > 0 && val <= 1000,
           "Page must be between 1 and 1000",
         ),
       limit: z
         .string()
         .optional()
         .default("10")
-        .transform((val) => parseInt(val, 10))
-        .refine(
-          (val) => val > 0 && val <= 50,
-          "Limit must be between 1 and 50",
-        ),
+        .transform(val => parseInt(val, 10))
+        .refine(val => val > 0 && val <= 50, "Limit must be between 1 and 50"),
       sortBy: z
         .enum(["relevance", "username", "followers", "newest", "verified"])
         .default("relevance"),
@@ -60,12 +57,12 @@ export const searchValidation = {
         .string()
         .optional()
         .default("false")
-        .transform((val) => val === "true"),
+        .transform(val => val === "true"),
       includeInactive: z
         .string()
         .optional()
         .default("false")
-        .transform((val) => val === "true"),
+        .transform(val => val === "true"),
     })
     .strict(),
 
@@ -101,57 +98,51 @@ export const searchValidation = {
       isVerified: z
         .string()
         .optional()
-        .transform((val) => val === "true"),
+        .transform(val => val === "true"),
       isActive: z
         .string()
         .optional()
-        .transform((val) => val === "true"),
+        .transform(val => val === "true"),
       isPrivate: z
         .string()
         .optional()
-        .transform((val) => val === "true"),
+        .transform(val => val === "true"),
       minFollowers: z
         .string()
         .optional()
-        .transform((val) => (val ? parseInt(val, 10) : undefined))
+        .transform(val => (val ? parseInt(val, 10) : undefined))
         .refine(
-          (val) => !val || (val >= 0 && val <= 1000000),
+          val => !val || (val >= 0 && val <= 1000000),
           "Invalid follower count",
         ),
       maxFollowers: z
         .string()
         .optional()
-        .transform((val) => (val ? parseInt(val, 10) : undefined))
+        .transform(val => (val ? parseInt(val, 10) : undefined))
         .refine(
-          (val) => !val || (val >= 0 && val <= 1000000),
+          val => !val || (val >= 0 && val <= 1000000),
           "Invalid follower count",
         ),
       createdAfter: z
         .string()
         .optional()
-        .refine(
-          (val) => !val || !isNaN(Date.parse(val)),
-          "Invalid date format",
-        ),
+        .refine(val => !val || !isNaN(Date.parse(val)), "Invalid date format"),
       createdBefore: z
         .string()
         .optional()
-        .refine(
-          (val) => !val || !isNaN(Date.parse(val)),
-          "Invalid date format",
-        ),
+        .refine(val => !val || !isNaN(Date.parse(val)), "Invalid date format"),
       page: z
         .string()
         .optional()
         .default("1")
-        .transform((val) => parseInt(val, 10))
-        .refine((val) => val > 0 && val <= 1000, "Invalid page number"),
+        .transform(val => parseInt(val, 10))
+        .refine(val => val > 0 && val <= 1000, "Invalid page number"),
       limit: z
         .string()
         .optional()
         .default("10")
-        .transform((val) => parseInt(val, 10))
-        .refine((val) => val > 0 && val <= 50, "Invalid limit"),
+        .transform(val => parseInt(val, 10))
+        .refine(val => val > 0 && val <= 50, "Invalid limit"),
       sortBy: z
         .enum([
           "relevance",
@@ -166,7 +157,7 @@ export const searchValidation = {
     })
     .strict()
     .refine(
-      (data) =>
+      data =>
         !data.minFollowers ||
 				!data.maxFollowers ||
 				data.minFollowers <= data.maxFollowers,
@@ -176,7 +167,7 @@ export const searchValidation = {
       },
     )
     .refine(
-      (data) =>
+      data =>
         !data.createdAfter ||
 				!data.createdBefore ||
 				new Date(data.createdAfter) <= new Date(data.createdBefore),
@@ -200,11 +191,8 @@ export const searchValidation = {
         .string()
         .optional()
         .default("5")
-        .transform((val) => parseInt(val, 10))
-        .refine(
-          (val) => val > 0 && val <= 20,
-          "Limit must be between 1 and 20",
-        ),
+        .transform(val => parseInt(val, 10))
+        .refine(val => val > 0 && val <= 20, "Limit must be between 1 and 20"),
     })
     .strict(),
 
@@ -215,29 +203,29 @@ export const searchValidation = {
         .string()
         .optional()
         .default("true")
-        .transform((val) => val === "true"),
+        .transform(val => val === "true"),
       includePosts: z
         .string()
         .optional()
         .default("false")
-        .transform((val) => val === "true"),
+        .transform(val => val === "true"),
       includeFollowers: z
         .string()
         .optional()
         .default("false")
-        .transform((val) => val === "true"),
+        .transform(val => val === "true"),
       includeFollowing: z
         .string()
         .optional()
         .default("false")
-        .transform((val) => val === "true"),
+        .transform(val => val === "true"),
       postsLimit: z
         .string()
         .optional()
         .default("10")
-        .transform((val) => parseInt(val, 10))
+        .transform(val => parseInt(val, 10))
         .refine(
-          (val) => val > 0 && val <= 50,
+          val => val > 0 && val <= 50,
           "Posts limit must be between 1 and 50",
         ),
     })
@@ -248,25 +236,25 @@ export const searchValidation = {
     .object({
       startDate: z
         .string()
-        .refine((val) => !isNaN(Date.parse(val)), "Invalid start date"),
+        .refine(val => !isNaN(Date.parse(val)), "Invalid start date"),
       endDate: z
         .string()
-        .refine((val) => !isNaN(Date.parse(val)), "Invalid end date"),
+        .refine(val => !isNaN(Date.parse(val)), "Invalid end date"),
       groupBy: z.enum(["day", "week", "month"]).default("day"),
       includeTerms: z
         .string()
         .optional()
         .default("true")
-        .transform((val) => val === "true"),
+        .transform(val => val === "true"),
       limit: z
         .string()
         .optional()
         .default("100")
-        .transform((val) => parseInt(val, 10))
-        .refine((val) => val > 0 && val <= 1000, "Invalid limit"),
+        .transform(val => parseInt(val, 10))
+        .refine(val => val > 0 && val <= 1000, "Invalid limit"),
     })
     .strict()
-    .refine((data) => new Date(data.startDate) <= new Date(data.endDate), {
+    .refine(data => new Date(data.startDate) <= new Date(data.endDate), {
       message: "Start date cannot be later than end date",
       path: ["startDate"],
     }),
@@ -287,7 +275,7 @@ export const searchValidation = {
     })
     .strict()
     .refine(
-      (data) => !data.minAge || !data.maxAge || data.minAge <= data.maxAge,
+      data => !data.minAge || !data.maxAge || data.minAge <= data.maxAge,
       {
         message: "Minimum age cannot be greater than maximum age",
         path: ["minAge"],

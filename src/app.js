@@ -83,7 +83,7 @@ if (serverConfig.nodeEnv === "development") {
     console.log(`🌐 Origin: ${req.headers.origin || "None"}`);
     console.log(
       "📝 Query:",
-      Object.keys(req.query).length ? req.query : "None",
+			Object.keys(req.query).length ? req.query : "None",
     );
     console.log("📦 Body:", Object.keys(req.body).length ? req.body : "None");
     console.log("🔑 Headers:", {
@@ -225,7 +225,7 @@ app.use(globalErrorHandler);
 // ========================================
 // GRACEFUL SHUTDOWN HANDLERS
 // ========================================
-const gracefulShutdown = (signal) => {
+const gracefulShutdown = signal => {
   console.log(`\n🔄 ${signal} received. Starting graceful shutdown...`);
 
   // Close server
@@ -258,7 +258,7 @@ process.on("unhandledRejection", (reason, promise) => {
   gracefulShutdown("Unhandled Rejection");
 });
 
-process.on("uncaughtException", (error) => {
+process.on("uncaughtException", error => {
   console.error("🚨 Uncaught Exception:", error);
   // Close server gracefully
   gracefulShutdown("Uncaught Exception");

@@ -210,7 +210,7 @@ const OPTIMIZED_ADMIN_STATS_PIPELINE = [
 ];
 
 // PRODUCTION UTILITY FUNCTIONS
-const getPerformanceGrade = (executionTime) => {
+const getPerformanceGrade = executionTime => {
   if (executionTime < PERFORMANCE_THRESHOLDS.EXCELLENT) {
     return "A++";
   }
@@ -667,8 +667,7 @@ const getAdminStats = asyncHandler(async (req, res) => {
     const currentYear = now.getFullYear();
     const currentMonthGrowth =
 			monthlyGrowth.find(
-			  (item) =>
-			    item._id.month === currentMonth && item._id.year === currentYear,
+			  item => item._id.month === currentMonth && item._id.year === currentYear,
 			)?.count || 0;
     // Build optimized response structure
     const stats = {
@@ -685,18 +684,18 @@ const getAdminStats = asyncHandler(async (req, res) => {
       },
       breakdown: {
         usersByRole: Object.fromEntries(
-          roleDistribution.map((item) => [item._id || "undefined", item.count]),
+          roleDistribution.map(item => [item._id || "undefined", item.count]),
         ),
         usersByLocation: Object.fromEntries(
-          locationStats.map((item) => [item._id, item.count]),
+          locationStats.map(item => [item._id, item.count]),
         ),
-        monthlyGrowth: monthlyGrowth.map((item) => ({
+        monthlyGrowth: monthlyGrowth.map(item => ({
           year: item._id.year,
           month: item._id.month,
           count: item.count,
           monthName: MONTH_NAMES[item._id.month - 1] || "Unknown",
         })),
-        dailyGrowth: dailyGrowth.map((item) => ({
+        dailyGrowth: dailyGrowth.map(item => ({
           year: item._id.year,
           month: item._id.month,
           day: item._id.day,
@@ -707,7 +706,7 @@ const getAdminStats = asyncHandler(async (req, res) => {
         })),
       },
       activity: {
-        recentUsers: recentUsers.map((user) => ({
+        recentUsers: recentUsers.map(user => ({
           id: user._id,
           username: user.username,
           email: user.email,
@@ -735,7 +734,7 @@ const getAdminStats = asyncHandler(async (req, res) => {
         cache.setex(cacheKey, CACHE_TTL.ADMIN_STATS, stats),
         cache.setex("admin:stats:fallback:v3", 300, stats), // 5-minute fallback
         analyticsService.updateDashboardMetrics?.(stats),
-      ]).catch((err) =>
+      ]).catch(err =>
         console.warn("Background operations failed:", err.message),
       );
     });
@@ -944,8 +943,8 @@ const getAllAdmins = asyncHandler(async (req, res) => {
     const validSortOrders = ["asc", "desc"];
     const finalSortBy = validSortFields.includes(sortBy) ? sortBy : "createdAt";
     const finalSortOrder = validSortOrders.includes(sortOrder)
-      ? sortOrder
-      : "desc";
+			? sortOrder
+			: "desc";
     // Smart caching
     const cacheKey = generateCacheKey("admin:list", req.query);
     const cachedResult = await safeAsyncOperation(
@@ -1017,7 +1016,7 @@ const getAllAdmins = asyncHandler(async (req, res) => {
 			]);
     const executionTime = Date.now() - startTime;
     // Transform admin data
-    const transformedAdmins = admins.map((admin) => ({
+    const transformedAdmins = admins.map(admin => ({
       id: admin._id,
       username: admin.username,
       email: admin.email,
@@ -1034,13 +1033,13 @@ const getAllAdmins = asyncHandler(async (req, res) => {
         (Date.now() - new Date(admin.createdAt)) / (24 * 60 * 60 * 1000),
       ),
       daysSinceLastLogin: admin.lastLoginAt
-        ? Math.floor(
-          (Date.now() - new Date(admin.lastLoginAt)) / (24 * 60 * 60 * 1000),
-        )
-        : null,
+				? Math.floor(
+				  (Date.now() - new Date(admin.lastLoginAt)) / (24 * 60 * 60 * 1000),
+				)
+				: null,
       isOnline: admin.lastLoginAt
-        ? Date.now() - new Date(admin.lastLoginAt) < 15 * 60 * 1000
-        : false,
+				? Date.now() - new Date(admin.lastLoginAt) < 15 * 60 * 1000
+				: false,
     }));
     // Build response
     const totalPages = Math.ceil(totalCount / validatedParams.limit);
@@ -1062,7 +1061,7 @@ const getAllAdmins = asyncHandler(async (req, res) => {
         activeAdmins: activeCount,
         suspendedAdmins: totalCount - activeCount,
         recentlyActive: recentActivityCount,
-        onlineNow: transformedAdmins.filter((admin) => admin.isOnline).length,
+        onlineNow: transformedAdmins.filter(admin => admin.isOnline).length,
       },
       filters: {
         applied: {
@@ -1072,8 +1071,8 @@ const getAllAdmins = asyncHandler(async (req, res) => {
           dateRange: dateFrom || dateTo ? { from: dateFrom, to: dateTo } : null,
           lastLoginRange:
 						lastLoginFrom || lastLoginTo
-						  ? { from: lastLoginFrom, to: lastLoginTo }
-						  : null,
+							? { from: lastLoginFrom, to: lastLoginTo }
+							: null,
         },
         available: {
           statuses: ["all", "active", "suspended"],
@@ -1094,7 +1093,7 @@ const getAllAdmins = asyncHandler(async (req, res) => {
     setImmediate(() => {
       cache
         .setex(cacheKey, CACHE_TTL.USER_LIST, result)
-        .catch((err) => console.warn("Cache set failed:", err.message));
+        .catch(err => console.warn("Cache set failed:", err.message));
     });
     // Log audit (non-blocking)
     setImmediate(() => {
@@ -1228,14 +1227,14 @@ const getAdminById = asyncHandler(async (req, res) => {
           (Date.now() - new Date(adminData.createdAt)) / (24 * 60 * 60 * 1000),
         ),
         daysSinceLastLogin: adminData.lastLoginAt
-          ? Math.floor(
-            (Date.now() - new Date(adminData.lastLoginAt)) /
+					? Math.floor(
+					  (Date.now() - new Date(adminData.lastLoginAt)) /
 								(24 * 60 * 60 * 1000),
-          )
-          : null,
+					)
+					: null,
         isCurrentlyOnline: adminData.lastLoginAt
-          ? Date.now() - new Date(adminData.lastLoginAt) < 15 * 60 * 1000
-          : false,
+					? Date.now() - new Date(adminData.lastLoginAt) < 15 * 60 * 1000
+					: false,
       },
       statistics: {
         managedUsers,
@@ -1265,7 +1264,7 @@ const getAdminById = asyncHandler(async (req, res) => {
     setImmediate(() => {
       cache
         .setex(cacheKey, CACHE_TTL.USER_PROFILE, enrichedAdmin)
-        .catch((err) => console.warn("Cache set failed:", err.message));
+        .catch(err => console.warn("Cache set failed:", err.message));
     });
     // Log profile view (non-blocking)
     setImmediate(() => {
@@ -1411,7 +1410,7 @@ const getAllUsers = asyncHandler(async (req, res) => {
     const totalPages = Math.ceil(totalCount / limitNum);
 
     const responseData = {
-      users: users.map((user) => ({
+      users: users.map(user => ({
         id: user._id,
         username: user.username,
         email: user.email,
@@ -1605,7 +1604,7 @@ const deleteUserById = asyncHandler(async (req, res) => {
       cache.del("users:list:*"),
       cache.del("admin:stats:*"),
       EnhancedCacheManager.invalidatePattern(`user:${id}:*`),
-    ]).catch((err) => console.warn("Cache invalidation failed:", err.message));
+    ]).catch(err => console.warn("Cache invalidation failed:", err.message));
   });
   // Send notification if requested (non-blocking)
   if (notifyUser && user.email) {
@@ -1696,7 +1695,7 @@ const suspendUser = asyncHandler(async (req, res) => {
       cache.del(`user:profile:${id}`),
       cache.del("users:list:*"),
       cache.del("admin:stats:*"),
-    ]).catch((err) => console.warn("Cache clear failed:", err.message));
+    ]).catch(err => console.warn("Cache clear failed:", err.message));
   });
   // Log audit (non-blocking)
   setImmediate(() => {
@@ -1747,7 +1746,7 @@ const activateUser = asyncHandler(async (req, res) => {
       cache.del(`user:profile:${id}`),
       cache.del("users:list:*"),
       cache.del("admin:stats:*"),
-    ]).catch((err) => console.warn("Cache clear failed:", err.message));
+    ]).catch(err => console.warn("Cache clear failed:", err.message));
   });
   // Log audit (non-blocking)
   setImmediate(() => {
@@ -1794,7 +1793,7 @@ const verifyUserAccount = asyncHandler(async (req, res) => {
       cache.del(`user:profile:${id}`),
       cache.del("users:list:*"),
       cache.del("admin:stats:*"),
-    ]).catch((err) => console.warn("Cache clear failed:", err.message));
+    ]).catch(err => console.warn("Cache clear failed:", err.message));
   });
   // Log audit (non-blocking)
   setImmediate(() => {
@@ -1965,7 +1964,7 @@ const searchUsers = asyncHandler(async (req, res) => {
       const cacheTTL = searchQuery ? 60 : 180; // Shorter cache for search results
       cache
         .setex(cacheKey, cacheTTL, responseData)
-        .catch((err) => console.warn("Search cache set failed:", err.message));
+        .catch(err => console.warn("Search cache set failed:", err.message));
     });
     return res
       .status(200)
@@ -2074,17 +2073,17 @@ const bulkExportUsers = asyncHandler(async (req, res) => {
       if (fields && fields.trim()) {
         const fieldList = fields
           .split(",")
-          .map((f) => f.trim())
-          .filter((f) => f);
+          .map(f => f.trim())
+          .filter(f => f);
         if (fieldList.length === 0) {
           throw new ApiError(400, "No valid fields specified for export");
         }
         console.log("📋 Custom fields for export:", fieldList);
         csvHeader = `${fieldList.join(",")}\n`;
         csvData = users
-          .map((user) => {
+          .map(user => {
             return fieldList
-              .map((field) => {
+              .map(field => {
                 let value = user[field];
                 if (value === null || value === undefined) {
                   return "";
@@ -2112,8 +2111,8 @@ const bulkExportUsers = asyncHandler(async (req, res) => {
         csvHeader =
 					"ID,Username,Email,First Name,Last Name,Role,Active,Created At\n";
         csvData = users
-          .map((user) => {
-            const escapeCSV = (val) => {
+          .map(user => {
+            const escapeCSV = val => {
               if (val === null || val === undefined) {
                 return "";
               }
@@ -2134,8 +2133,8 @@ const bulkExportUsers = asyncHandler(async (req, res) => {
               escapeCSV(user.firstName || ""),
               escapeCSV(user.lastName || ""),
               escapeCSV(user.role || ""),
-              user.isActive ? "true" : "false",
-              new Date(user.createdAt).toISOString(),
+							user.isActive ? "true" : "false",
+							new Date(user.createdAt).toISOString(),
             ].join(",");
           })
           .join("\n");
@@ -2217,7 +2216,7 @@ const bulkImportUsers = asyncHandler(async (req, res) => {
         batchSize: 500,
         adminId: req.user._id,
       },
-      progressCallback: (progress) => {
+      progressCallback: progress => {
         console.log(`Import progress: ${progress.processed}/${progress.total}`);
       },
     });
@@ -2277,7 +2276,7 @@ const bulkActions = asyncHandler(async (req, res) => {
   }
   const validUserIds = [];
   const invalidUserIds = [];
-  userIds.forEach((id) => {
+  userIds.forEach(id => {
     if (mongoose.Types.ObjectId.isValid(id)) {
       validUserIds.push(id);
     } else {
@@ -2379,11 +2378,11 @@ const bulkActions = asyncHandler(async (req, res) => {
           },
           details:
 						result.errors.length > 0
-						  ? {
-						    errors: result.errors.slice(0, 10),
-						    hasMoreErrors: result.errors.length > 10,
-						  }
-						  : undefined,
+							? {
+							  errors: result.errors.slice(0, 10),
+							  hasMoreErrors: result.errors.length > 10,
+							}
+							: undefined,
         },
 				`Bulk ${action} completed`,
       ),
@@ -2526,7 +2525,7 @@ const sendNotificationToUser = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Cannot send notifications to inactive users");
   }
   const validChannels = ["email", "sms", "push", "in-app"];
-  const invalidChannels = channels.filter((ch) => !validChannels.includes(ch));
+  const invalidChannels = channels.filter(ch => !validChannels.includes(ch));
   if (invalidChannels.length > 0) {
     throw new ApiError(400, `Invalid channels: ${invalidChannels.join(", ")}`);
   }
@@ -2792,7 +2791,7 @@ async function generateBulkActionPreview(action, userIds, data) {
     totalUsers: userIds.length,
     foundUsers: users.length,
     missingUsers: userIds.length - users.length,
-    affectedUsers: users.map((user) => ({
+    affectedUsers: users.map(user => ({
       id: user._id,
       username: user.username,
       email: user.email,
@@ -2810,18 +2809,18 @@ function generateActionEstimate(action, users, data) {
   switch (action) {
     case "suspend":
       return {
-        usersToSuspend: users.filter((u) => u.isActive).length,
-        alreadySuspended: users.filter((u) => !u.isActive).length,
+        usersToSuspend: users.filter(u => u.isActive).length,
+        alreadySuspended: users.filter(u => !u.isActive).length,
       };
     case "activate":
       return {
-        usersToActivate: users.filter((u) => !u.isActive).length,
-        alreadyActive: users.filter((u) => u.isActive).length,
+        usersToActivate: users.filter(u => !u.isActive).length,
+        alreadyActive: users.filter(u => u.isActive).length,
       };
     case "updateRole":
       return {
-        roleChanges: users.filter((u) => u.role !== data.role).length,
-        noChange: users.filter((u) => u.role === data.role).length,
+        roleChanges: users.filter(u => u.role !== data.role).length,
+        noChange: users.filter(u => u.role === data.role).length,
         newRole: data.role,
       };
     default:
@@ -2887,14 +2886,14 @@ async function processBulkActionBatch(action, userIds, data, adminId, session) {
         throw new Error(`Unsupported action: ${action}`);
     }
     results.successful = result.modifiedCount || result.deletedCount || 0;
-    results.processedUsers = userIds.map((id) => ({ id, status: "success" }));
+    results.processedUsers = userIds.map(id => ({ id, status: "success" }));
   } catch (error) {
     results.failed = userIds.length;
     results.errors.push({
       batch: userIds,
       error: error.message,
     });
-    results.processedUsers = userIds.map((id) => ({
+    results.processedUsers = userIds.map(id => ({
       id,
       status: "failed",
       error: error.message,

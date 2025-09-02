@@ -32,10 +32,10 @@ class AuthService {
 
     // Check conflicts
     const emailExists = existingUsers.find(
-      (u) => u.email === email.toLowerCase(),
+      u => u.email === email.toLowerCase(),
     );
     const usernameExists = existingUsers.find(
-      (u) => u.username === username.toLowerCase(),
+      u => u.username === username.toLowerCase(),
     );
 
     if (emailExists || usernameExists) {

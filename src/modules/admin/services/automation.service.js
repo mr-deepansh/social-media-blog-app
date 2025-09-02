@@ -94,17 +94,17 @@ export class AutomationService {
     ];
     let filteredRules = rules;
     if (status !== "all") {
-      filteredRules = filteredRules.filter((rule) => rule.status === status);
+      filteredRules = filteredRules.filter(rule => rule.status === status);
     }
     if (type !== "all") {
-      filteredRules = filteredRules.filter((rule) => rule.type === type);
+      filteredRules = filteredRules.filter(rule => rule.type === type);
     }
     return {
       rules: filteredRules,
       total: filteredRules.length,
       summary: {
-        active: rules.filter((r) => r.status === "active").length,
-        inactive: rules.filter((r) => r.status === "inactive").length,
+        active: rules.filter(r => r.status === "active").length,
+        inactive: rules.filter(r => r.status === "inactive").length,
         totalExecutions: rules.reduce((sum, r) => sum + r.executionCount, 0),
         averageSuccessRate: Math.round(
           rules.reduce((sum, r) => sum + r.successRate, 0) / rules.length,

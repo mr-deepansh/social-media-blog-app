@@ -6,7 +6,7 @@ import mongoose from "mongoose";
 const BlockedIP = {
   find: () => ({ lean: () => [], limit: () => ({ skip: () => [] }) }),
   countDocuments: () => 0,
-  create: (data) => ({
+  create: data => ({
     ...data,
     _id: new mongoose.Types.ObjectId(),
     createdAt: new Date(),
@@ -163,7 +163,7 @@ export class SecurityService {
       User.aggregate([
         ...pipeline.slice(0, -2), // Remove skip and limit
         { $count: "total" },
-      ]).then((result) => result[0]?.total || 0),
+      ]).then(result => result[0]?.total || 0),
     ]);
     return {
       accounts,
@@ -175,9 +175,9 @@ export class SecurityService {
       },
       summary: {
         totalSuspicious: totalCount,
-        highRisk: accounts.filter((a) => a.riskLevel === "HIGH").length,
-        mediumRisk: accounts.filter((a) => a.riskLevel === "MEDIUM").length,
-        lowRisk: accounts.filter((a) => a.riskLevel === "LOW").length,
+        highRisk: accounts.filter(a => a.riskLevel === "HIGH").length,
+        mediumRisk: accounts.filter(a => a.riskLevel === "MEDIUM").length,
+        lowRisk: accounts.filter(a => a.riskLevel === "LOW").length,
       },
     };
   }
@@ -210,10 +210,10 @@ export class SecurityService {
     );
     const filteredAttempts =
 			status === "all"
-			  ? mockAttempts
-			  : mockAttempts.filter((attempt) =>
-			    status === "success" ? attempt.success : !attempt.success,
-			  );
+				? mockAttempts
+				: mockAttempts.filter(attempt =>
+						status === "success" ? attempt.success : !attempt.success,
+				);
     return {
       attempts: filteredAttempts,
       pagination: {
@@ -224,8 +224,8 @@ export class SecurityService {
       },
       summary: {
         total: filteredAttempts.length,
-        successful: filteredAttempts.filter((a) => a.success).length,
-        failed: filteredAttempts.filter((a) => !a.success).length,
+        successful: filteredAttempts.filter(a => a.success).length,
+        failed: filteredAttempts.filter(a => !a.success).length,
         timeRange,
       },
     };
@@ -287,8 +287,8 @@ export class SecurityService {
         duration: Math.random() > 0.5 ? "permanent" : "24h",
         expiresAt:
 					Math.random() > 0.5
-					  ? null
-					  : new Date(Date.now() + 24 * 60 * 60 * 1000),
+						? null
+						: new Date(Date.now() + 24 * 60 * 60 * 1000),
         blockedAt: new Date(
           Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000,
         ),
@@ -305,8 +305,8 @@ export class SecurityService {
       },
       summary: {
         total: mockBlockedIPs.length,
-        active: mockBlockedIPs.filter((ip) => ip.isActive).length,
-        expired: mockBlockedIPs.filter((ip) => !ip.isActive).length,
+        active: mockBlockedIPs.filter(ip => ip.isActive).length,
+        expired: mockBlockedIPs.filter(ip => !ip.isActive).length,
       },
     };
   }

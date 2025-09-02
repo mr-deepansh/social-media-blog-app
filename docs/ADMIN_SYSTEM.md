@@ -282,10 +282,10 @@ const adminFeatures = {
 
 ```javascript
 // GET /admin/analytics/overview?timeRange=30d
-const response = await fetch("/admin/analytics/overview?timeRange=30d", {
+const response = await fetch('/admin/analytics/overview?timeRange=30d', {
 	headers: {
 		Authorization: `Bearer ${adminToken}`,
-		"Content-Type": "application/json",
+		'Content-Type': 'application/json',
 	},
 });
 
@@ -297,47 +297,47 @@ console.log(analytics.data.overview);
 
 ```javascript
 // POST /admin/security/blocked-ips
-const response = await fetch("/admin/security/blocked-ips", {
-	method: "POST",
+const response = await fetch('/admin/security/blocked-ips', {
+	method: 'POST',
 	headers: {
 		Authorization: `Bearer ${adminToken}`,
-		"Content-Type": "application/json",
+		'Content-Type': 'application/json',
 	},
 	body: JSON.stringify({
-		ipAddress: "192.168.1.100",
-		reason: "Multiple failed login attempts",
-		duration: "24h",
+		ipAddress: '192.168.1.100',
+		reason: 'Multiple failed login attempts',
+		duration: '24h',
 	}),
 });
 
 const result = await response.json();
-console.log("IP blocked:", result.data);
+console.log('IP blocked:', result.data);
 ```
 
 ### 📢 Sending Bulk Notification
 
 ```javascript
 // POST /admin/notifications/send-bulk
-const response = await fetch("/admin/notifications/send-bulk", {
-	method: "POST",
+const response = await fetch('/admin/notifications/send-bulk', {
+	method: 'POST',
 	headers: {
 		Authorization: `Bearer ${adminToken}`,
-		"Content-Type": "application/json",
+		'Content-Type': 'application/json',
 	},
 	body: JSON.stringify({
-		recipients: "active",
-		template: "system_update",
-		channels: ["email", "in-app"],
-		priority: "normal",
+		recipients: 'active',
+		template: 'system_update',
+		channels: ['email', 'in-app'],
+		priority: 'normal',
 		customMessage: {
-			title: "System Maintenance Notice",
-			content: "Scheduled maintenance on Sunday 2AM-4AM UTC",
+			title: 'System Maintenance Notice',
+			content: 'Scheduled maintenance on Sunday 2AM-4AM UTC',
 		},
 	}),
 });
 
 const result = await response.json();
-console.log("Notification sent:", result.data);
+console.log('Notification sent:', result.data);
 ```
 
 ## 🔄 Deployment

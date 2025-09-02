@@ -11,7 +11,7 @@ const parseArray = (str, defaultValue = []) => {
   }
   return str
     .split(",")
-    .map((item) => item.trim())
+    .map(item => item.trim())
     .filter(Boolean);
 };
 
@@ -270,7 +270,7 @@ export const validationConfig = {
 // ========================================
 export const validateConfig = () => {
   const required = ["MONGODB_URI", "JWT_SECRET"];
-  const missing = required.filter((key) => !process.env[key]);
+  const missing = required.filter(key => !process.env[key]);
 
   if (missing.length > 0) {
     throw new Error(

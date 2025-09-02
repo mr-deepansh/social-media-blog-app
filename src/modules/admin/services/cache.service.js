@@ -67,7 +67,7 @@ export class CacheService {
           await this.client.del(...keys);
         }
       } else {
-        keys.forEach((key) => this.mockCache.delete(key));
+        keys.forEach(key => this.mockCache.delete(key));
       }
     } catch (error) {
       console.error("Cache delete error:", error.message);
@@ -79,7 +79,7 @@ export class CacheService {
       if (this.client) {
         return await this.client.keys(pattern);
       }
-      return Array.from(this.mockCache.keys()).filter((key) =>
+      return Array.from(this.mockCache.keys()).filter(key =>
         key.includes(pattern.replace("*", "")),
       );
     } catch (error) {
@@ -125,7 +125,7 @@ export class CacheService {
     // Create deterministic cache key from object
     const sortedKeys = Object.keys(data).sort();
     const sortedData = {};
-    sortedKeys.forEach((key) => {
+    sortedKeys.forEach(key => {
       sortedData[key] = data[key];
     });
 
@@ -292,7 +292,7 @@ export class ValidationService {
     const sanitizedUpdates = {};
 
     // Check for forbidden fields
-    const forbiddenFound = Object.keys(updates).filter((key) =>
+    const forbiddenFound = Object.keys(updates).filter(key =>
       forbiddenFields.includes(key),
     );
 
@@ -304,7 +304,7 @@ export class ValidationService {
     }
 
     // Validate and sanitize allowed fields
-    Object.keys(updates).forEach((key) => {
+    Object.keys(updates).forEach(key => {
       if (allowedFields.includes(key)) {
         const value = updates[key];
 
@@ -357,7 +357,7 @@ export class ValidationService {
   trackUserChanges(currentUser, updates) {
     const changes = {};
 
-    Object.keys(updates).forEach((key) => {
+    Object.keys(updates).forEach(key => {
       if (currentUser[key] !== updates[key]) {
         changes[key] = {
           from: currentUser[key],

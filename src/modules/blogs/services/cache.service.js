@@ -16,7 +16,7 @@ class CacheService {
     this.keyPrefix = "blog:";
     this.defaultTTL = 3600;
 
-    this.redis.on("error", (error) => {
+    this.redis.on("error", error => {
       logger.error("Redis error:", error);
     });
   }

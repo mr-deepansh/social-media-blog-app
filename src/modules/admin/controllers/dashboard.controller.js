@@ -269,25 +269,25 @@ class DashboardProcessor {
         suspendedUsers: totalUsers - activeUsers,
         activePercentage:
 					totalUsers > 0
-					  ? ((activeUsers / totalUsers) * 100).toFixed(1)
-					  : "0.0",
+						? ((activeUsers / totalUsers) * 100).toFixed(1)
+						: "0.0",
         verificationRate:
 					totalUsers > 0
-					  ? ((verifiedUsers / totalUsers) * 100).toFixed(1)
-					  : "0.0",
+						? ((verifiedUsers / totalUsers) * 100).toFixed(1)
+						: "0.0",
         healthScore: Math.round((activeUsers / Math.max(totalUsers, 1)) * 100),
         avgLoginFrequency: Math.round(avgLoginFrequency || 0),
       },
       breakdown: {
         usersByRole: Object.fromEntries(
-          roleDistribution.map((item) => [
+          roleDistribution.map(item => [
             item._id || "undefined",
             { total: item.count, active: item.activeCount || 0 },
           ]),
         ),
         monthlyGrowth: this.formatMonthlyGrowth(monthlyGrowth),
         activityDistribution: Object.fromEntries(
-          activityPatterns.map((item) => [item._id, item.count]),
+          activityPatterns.map(item => [item._id, item.count]),
         ),
       },
       activity: {
@@ -310,7 +310,7 @@ class DashboardProcessor {
       "Nov",
       "Dec",
     ];
-    return monthlyGrowth.map((item) => ({
+    return monthlyGrowth.map(item => ({
       year: item._id.year,
       month: item._id.month,
       monthName: monthNames[item._id.month - 1],
@@ -318,12 +318,12 @@ class DashboardProcessor {
       activeUsers: item.activeUsers,
       growthRate:
 				item.newUsers > 0
-				  ? ((item.activeUsers / item.newUsers) * 100).toFixed(1)
-				  : "0.0",
+					? ((item.activeUsers / item.newUsers) * 100).toFixed(1)
+					: "0.0",
     }));
   }
   static formatRecentUsers(recentUsers) {
-    return recentUsers.map((user) => ({
+    return recentUsers.map(user => ({
       id: user._id,
       username: user.username,
       email: user.email,
@@ -336,10 +336,10 @@ class DashboardProcessor {
         (Date.now() - new Date(user.createdAt)) / (24 * 60 * 60 * 1000),
       ),
       daysSinceLogin: user.lastLoginAt
-        ? Math.floor(
-          (Date.now() - new Date(user.lastLoginAt)) / (24 * 60 * 60 * 1000),
-        )
-        : null,
+				? Math.floor(
+				  (Date.now() - new Date(user.lastLoginAt)) / (24 * 60 * 60 * 1000),
+				)
+				: null,
     }));
   }
   static calculatePerformanceGrade(executionTime) {

@@ -117,8 +117,8 @@ export class NotificationHelper {
 
     const isComment = !!commentId;
     const actionUrl = postId
-      ? `/posts/${postId}${isComment ? "#comments" : ""}`
-      : "/";
+			? `/posts/${postId}${isComment ? "#comments" : ""}`
+			: "/";
 
     const notificationData = {
       recipient: mentionedUserId,
@@ -245,7 +245,7 @@ export class NotificationHelper {
 	 * Batch create notifications (for performance)
 	 */
   static async createBatchNotifications(notifications) {
-    const promises = notifications.map((notification) =>
+    const promises = notifications.map(notification =>
       notificationService.createNotification(notification),
     );
 

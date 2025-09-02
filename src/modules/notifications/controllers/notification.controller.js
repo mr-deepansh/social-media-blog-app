@@ -17,10 +17,10 @@ export class NotificationController {
         type: req.query.type,
         isRead:
 					req.query.isRead === "true"
-					  ? true
-					  : req.query.isRead === "false"
-					    ? false
-					    : undefined,
+						? true
+						: req.query.isRead === "false"
+							? false
+							: undefined,
         priority: req.query.priority,
       };
 
@@ -180,11 +180,7 @@ export class NotificationController {
       return res
         .status(200)
         .json(
-          new ApiResponse(
-            200,
-            result,
-            "All notifications cleared successfully",
-          ),
+          new ApiResponse(200, result, "All notifications cleared successfully"),
         );
     } catch (error) {
       next(error);

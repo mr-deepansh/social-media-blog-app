@@ -35,7 +35,7 @@ export const renderEmailTemplate = async (templateName, data) => {
  * @param {string} data.resetUrl - Password reset URL
  * @returns {Promise<string>} - Rendered HTML
  */
-export const generateForgotPasswordEmail = async (data) => {
+export const generateForgotPasswordEmail = async data => {
   return await renderEmailTemplate("forgot-password", data);
 };
 
@@ -49,7 +49,7 @@ export const generateForgotPasswordEmail = async (data) => {
  * @param {string} data.resetTime - Time of password reset
  * @returns {Promise<string>} - Rendered HTML
  */
-export const generatePasswordResetSuccessEmail = async (data) => {
+export const generatePasswordResetSuccessEmail = async data => {
   return await renderEmailTemplate("password-reset-success", data);
 };
 

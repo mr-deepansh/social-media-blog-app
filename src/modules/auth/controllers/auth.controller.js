@@ -54,11 +54,11 @@ const getSecurityOverview = asyncHandler(async (req, res) => {
     },
     recentActivity: {
       lastLogin: user.activityLog
-        .filter((log) => log.action === "login" && log.success)
+        .filter(log => log.action === "login" && log.success)
         .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0],
       lastActive: user.lastActive,
       recentLogins: user.activityLog
-        .filter((log) => log.action === "login")
+        .filter(log => log.action === "login")
         .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
         .slice(0, 5),
     },

@@ -18,10 +18,10 @@ const getLocalIp = () => {
   return "localhost";
 };
 
-const findAvailablePort = (startPort) => {
+const findAvailablePort = startPort => {
   return new Promise((resolve, reject) => {
     const server = http.createServer();
-    server.listen(startPort, (err) => {
+    server.listen(startPort, err => {
       if (err) {
         if (err.code === "EADDRINUSE") {
           // Port is in use, try next port
@@ -69,13 +69,13 @@ const startServer = async () => {
     });
 
     // Enhanced error handling
-    server.on("error", (err) => {
+    server.on("error", err => {
       console.error("❌ Server Error:", err.message);
       process.exit(1);
     });
 
     // Graceful shutdown handling
-    const gracefulShutdown = (signal) => {
+    const gracefulShutdown = signal => {
       console.log(`\n🔄 Received ${signal}. Graceful shutdown...`);
       server.close(() => {
         console.log("✅ Server closed successfully");

@@ -2,15 +2,7 @@ node_modules/
 dist/
 build/
 coverage/
-logs/
-*.min.js
-*.min.css
-public/
-uploads/
-.env
-.env.*
+*.log
+.env*
 package-lock.json
 yarn.lock
-*.log
-.git/
-.husky/
