@@ -1,11 +1,12 @@
 // src/modules/blogs/routes/post/post.routes.js
 import express from "express";
 import {
-	createPost,
-	getPosts,
-	getPostById,
-	updatePost,
-	deletePost,
+  createPost,
+  getPosts,
+  getPostById,
+  updatePost,
+  deletePost,
+  getMyPosts,
 } from "../../controllers/post/post.controller.js";
 import { verifyJWT } from "../../../../shared/middleware/auth.middleware.js";
 import { optionalAuth } from "../../../../shared/middleware/optionalAuth.middleware.js";
@@ -17,6 +18,7 @@ router.get("/", optionalAuth, getPosts);
 router.get("/:id", optionalAuth, getPostById);
 
 // Protected routes
+router.get("/my-posts", verifyJWT, getMyPosts);
 router.post("/", verifyJWT, createPost);
 router.patch("/:id", verifyJWT, updatePost);
 router.delete("/:id", verifyJWT, deletePost);

@@ -8,6 +8,7 @@ import forgotPasswordRoutes from "../modules/auth/routes/forgotPassword.routes.j
 import resetPasswordRoutes from "../modules/auth/routes/resetPassword.routes.js";
 import userRoutes from "../modules/users/routes/user.routes.js";
 import blogRoutes from "../modules/blogs/routes/blog.routes.js";
+import notificationRoutes from "../modules/notifications/routes/notification.routes.js";
 
 const router = express.Router();
 
@@ -29,5 +30,8 @@ router.use("/admin", adminRoutes);
 
 // Blog routes
 router.use("/blogs", blogRoutes);
+
+// Notification routes
+router.use("/notifications", notificationRoutes);
 
 export default router;

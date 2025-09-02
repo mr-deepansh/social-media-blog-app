@@ -1,39 +1,16 @@
-# Dependencies
 node_modules/
-package-lock.json
-yarn.lock
-
-# Build outputs
 dist/
 build/
-out/
 coverage/
-
-# Logs
 logs/
-*.log
-
-# Environment files
-.env*
-
-# IDE files
-.vscode/
-.idea/
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Project specific
-Public/
-redis-data/
 *.min.js
-*.bundle.js
-
-# Generated files
-*.generated.js
-*.auto.js
-
-# Documentation that shouldn't be formatted
-CHANGELOG.md
-LICENSE
+*.min.css
+public/
+uploads/
+.env
+.env.*
+package-lock.json
+yarn.lock
+*.log
+.git/
+.husky/

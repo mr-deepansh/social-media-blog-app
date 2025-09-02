@@ -1,75 +1,33 @@
 {
 	"name": "social-media-blog-app",
 	"version": "1.0.0",
-	"description": "Professional social media blog application with user authentication, password reset, and email notifications",
+	"description": "Social media blog app with notifications like Instagram/X/Threads",
 	"main": "src/server.js",
 	"type": "module",
 	"scripts": {
-		"dev": "nodemon -r dotenv/config src/server.js",
-		"start": "node -r dotenv/config src/server.js",
-		"lint": "eslint . --fix",
+		"dev": "nodemon src/server.js",
+		"start": "node src/server.js",
 		"format": "prettier --write .",
-		"code:fix": "npm run format && npm run lint",
-		"prepare": "husky",
-		"redis:start": "docker run -d --name myredis -p 6379:6379 redis:latest",
-		"redis:stop": "docker stop myredis && docker rm myredis",
-		"redis:logs": "docker logs -f myredis",
-		"ci:test": "npm run lint:check && npm run test:coverage",
-		"release": "standard-version",
-		"migrate": "migrate-mongo up",
-		"migrate:down": "migrate-mongo down",
-		"dev:all": "npm run redis:start && npm run dev",
-		"lint:check": "eslint .",
-		"lint:security": "eslint . --ext .js --config eslint.security.js",
-		"format:check": "prettier --check .",
-		"code:check": "npm run lint:check && npm run format:check",
-		"pre-commit": "lint-staged",
-		"fix:common": "node scripts/fix-common-issues.js",
-		"fix:critical": "node scripts/fix-critical-errors.cjs",
-		"lint:summary": "npm run lint:check 2>&1 | findstr problems || echo No problems found",
-		"test": "jest --detectOpenHandles --forceExit",
-		"test:watch": "jest --watch --detectOpenHandles",
-		"test:coverage": "jest --coverage --detectOpenHandles --forceExit",
-		"clean": "rm -rf node_modules package-lock.json && npm install",
-		"docker:build": "docker build -t social-media-blog .",
-		"docker:run": "docker run -p 5000:5000 --env-file .env social-media-blog",
-		"docker:compose": "docker-compose up -d",
-		"docker:stop": "docker-compose down",
-		"security:audit": "npm audit",
-		"security:fix": "npm audit fix",
-		"deps:update": "npm update",
-		"test:api": "node scripts/blog-api-tester.js",
-		"test:api:optimized": "node scripts/optimized-blog-tester.js",
-		"cleanup": "node scripts/cleanup-for-git.js",
-		"cleanup:win": "scripts\\cleanup.bat",
-		"cleanup:unix": "bash scripts/cleanup.sh",
+		"lint": "eslint . --fix",
 		"lint:staged": "lint-staged",
-		"pre-push": "npm run cleanup && npm run code:check"
+		"commit": "npm run format && npm run lint && git add . && git commit",
+		"redis:start": "docker run -d --name redis -p 6379:6379 redis:latest",
+		"redis:stop": "docker stop redis && docker rm redis",
+		"docker:up": "docker-compose up -d",
+		"docker:down": "docker-compose down",
+		"test": "jest",
+		"clean": "rm -rf node_modules package-lock.json && npm install"
 	},
 	"keywords": [
 		"social-media",
 		"blog",
-		"api",
-		"rest",
+		"notifications",
 		"nodejs",
 		"express",
 		"mongodb",
-		"authentication",
-		"password-reset",
-		"email",
-		"jwt",
-		"backend",
-		"fullstack",
-		"endlesschatt",
+		"redis",
 		"instagram",
-		"facebook",
-		"twitter",
-		"linkedin",
-		"whatsapp",
-		"telegram",
-		"discord",
-		"slack",
-		"youtube"
+		"twitter"
 	],
 	"author": {
 		"name": "Deepansh Gangwar",
@@ -86,18 +44,8 @@
 	},
 	"homepage": "https://github.com/mr-deepansh/social-media-blog-app#readme",
 	"engines": {
-		"node": ">=16.0.0",
-		"npm": ">=8.0.0"
+		"node": ">=18.0.0"
 	},
-	"os": [
-		"linux",
-		"darwin",
-		"win32"
-	],
-	"cpu": [
-		"x64",
-		"arm64"
-	],
 	"dependencies": {
 		"axios": "^1.11.0",
 		"bcrypt": "^5.1.1",
@@ -137,29 +85,13 @@
 		"prettier": "^3.6.2",
 		"supertest": "^7.1.4"
 	},
-	"optionalDependencies": {
-		"compression": "^1.7.4",
-		"express-rate-limit": "^7.1.0",
-		"express-validator": "^7.0.1",
-		"winston": "^3.11.0",
-		"winston-daily-rotate-file": "^4.7.1"
-	},
-	"config": {
-		"port": 5000,
-		"host": "localhost"
-	},
-	"preferGlobal": false,
-	"private": false,
-	"publishConfig": {
-		"access": "public"
-	},
+
 	"lint-staged": {
-		"*.{js,jsx,ts,tsx}": [
-			"eslint --fix",
-			"prettier --write"
-		],
-		"*.{json,md,yml,yaml}": [
-			"prettier --write"
-		]
+		"*.js": ["prettier --write", "eslint --fix"]
+	},
+	"husky": {
+		"hooks": {
+			"pre-commit": "lint-staged"
+		}
 	}
 }
