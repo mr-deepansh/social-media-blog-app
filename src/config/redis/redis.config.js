@@ -4,18 +4,23 @@ import Redis from "ioredis";
 const redisConfig = {
   host: process.env.REDIS_HOST || "localhost",
   port: process.env.REDIS_PORT || 6379,
-  password: process.env.REDIS_PASSWORD,
+  password: process.env.REDIS_PASSWORD || undefined,
   db: process.env.REDIS_DB || 0,
   connectTimeout: 10000,
   commandTimeout: 5000,
   retryDelayOnFailover: 100,
   enableReadyCheck: true,
   maxRetriesPerRequest: 3,
-  enableOfflineQueue: false,
-  lazyConnect: true,
+  enableOfflineQueue: true,
+  lazyConnect: false,
   family: 4,
   keepAlive: true,
-  retryStrategy: times => Math.min(times * 50, 2000),
+  retryStrategy: times => {
+    if (times > 10) {
+      return null;
+    }
+    return Math.min(times * 50, 2000);
+  },
 };
 
 let redisClient;

@@ -3,40 +3,16 @@ import jwt from "jsonwebtoken";
 import { User } from "../../modules/users/models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/AsyncHandler.js";
-import { redisClient, RedisUtils } from "../../config/redis/redis.config.js";
+import { CacheService } from "../../shared/utils/Cache.js";
 
-// Token blacklist with Redis for horizontal scaling
-const isTokenBlacklisted = async token => {
-  try {
-    const result = await redisClient.get(`blacklist:${token}`);
-    return result !== null;
-  } catch (error) {
-    console.error("Redis blacklist check failed:", error);
-    return false; // Fail open for availability
-  }
-};
+// Optimized cache operations for millions of users
+const isTokenBlacklisted = async token =>
+  await CacheService.isTokenBlacklisted(token);
 
-// Cache user data in Redis to reduce DB queries
-const getCachedUser = async userId => {
-  try {
-    const cached = await redisClient.get(`user:${userId}`);
-    if (cached) {
-      return JSON.parse(cached);
-    }
-    return null;
-  } catch (error) {
-    console.error("Redis user cache failed:", error);
-    return null;
-  }
-};
+const getCachedUser = async userId => await CacheService.getCachedUser(userId);
 
-const setCachedUser = async (userId, userData, ttl = 300) => {
-  try {
-    await redisClient.setex(`user:${userId}`, ttl, JSON.stringify(userData));
-  } catch (error) {
-    console.error("Redis user cache set failed:", error);
-  }
-};
+const setCachedUser = async (userId, userData, ttl = 300) =>
+  await CacheService.cacheUser(userId, userData, ttl);
 
 // 🔥 OPTIMIZED AUTH MIDDLEWARE
 export const verifyJWT = asyncHandler(async (req, res, next) => {

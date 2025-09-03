@@ -35,12 +35,13 @@ export const baseOptions = {
  */
 export const metadataSchema = new Schema(
   {
-    device: { type: String, maxlength: 100 },
+    device: { type: String, maxlength: 200 },
     browser: { type: String, maxlength: 100 },
     ip: { type: String, maxlength: 45 }, // IPv6 max length
-    language: { type: String, maxlength: 10 },
+    language: { type: String, maxlength: 50 },
     timezone: { type: String, maxlength: 50 },
     userAgent: { type: String, maxlength: 500 },
+    platform: { type: String, maxlength: 20 },
     location: {
       country: String,
       city: String,

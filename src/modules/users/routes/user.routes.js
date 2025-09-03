@@ -8,6 +8,10 @@ import {
 } from "../../../shared/middleware/validate.middleware.js";
 import { zodValidation } from "../../../shared/validators/zod.validator.js";
 import * as userController from "../controllers/user.controller.js";
+import {
+  getUserProfile,
+  getUserPosts,
+} from "../controllers/profile.controller.js";
 import { asyncHandler } from "../../../shared/utils/AsyncHandler.js";
 import { apiRateLimiter } from "../../../shared/middleware/rateLimit.middleware.js";
 
@@ -113,12 +117,9 @@ router.post(
   asyncHandler(userController.uploadAvatar),
 );
 
-// ✅ Public profile (static route with :username — not ID)
-router.get(
-  "/profile/:username",
-  verifyJWT,
-  asyncHandler(userController.getUserProfileByUsername),
-);
+// ✅ Instagram-like profile routes
+router.get("/profile/:username", verifyJWT, asyncHandler(getUserProfile));
+router.get("/profile/:username/posts", verifyJWT, asyncHandler(getUserPosts));
 
 // ✅ Admin / Verified route: get all users
 router.get(

@@ -1,15 +1,9 @@
 // src/modules/blogs/controllers/post/post.controller.js
-import { Post } from "../../models/index.js";
 import { asyncHandler } from "../../../../shared/utils/AsyncHandler.js";
 import { ApiError } from "../../../../shared/utils/ApiError.js";
 import { ApiResponse } from "../../../../shared/utils/ApiResponse.js";
-import {
-  safeAsyncOperation,
-  handleControllerError,
-} from "../../../../shared/utils/ErrorHandler.js";
-import { calculateApiHealth } from "../../../../shared/utils/ApiHealth.js";
+import { PostService } from "../../services/post.service.js";
 import { Logger } from "../../../../shared/utils/Logger.js";
-import { NotificationHelper } from "../../../notifications/services/notification.helper.js";
 import { User } from "../../../users/models/user.model.js";
 
 const logger = new Logger("PostController");
@@ -19,156 +13,55 @@ const createPost = asyncHandler(async (req, res) => {
   const startTime = Date.now();
   const userId = req.user._id;
 
-  try {
-    // Validate required fields
-    if (!req.body.content) {
-      return res
-        .status(400)
-        .json(new ApiResponse(400, null, "Content is required"));
-    }
+  // Content is optional - depends on user choice
 
-    // Basic post data with minimal required fields
-    const postData = {
-      title: req.body.title || "",
-      content: req.body.content,
-      type: req.body.type || "post",
-      category: req.body.category || "general",
-      tags: req.body.tags || [],
-      hashtags: req.body.hashtags || [],
-      status: req.body.status || "draft",
-      visibility: req.body.visibility || "public",
-      isPublic: req.body.isPublic !== false,
-      scheduledAt: req.body.scheduledAt || null,
-      author: userId,
-      metadata: {
-        device: req.headers["user-agent"] || "unknown",
-        ip: req.ip || "unknown",
-        language: req.headers["accept-language"] || "en",
-      },
-    };
+  const postData = {
+    title: req.body.title || "",
+    content: req.body.content,
+    type: req.body.type || "post",
+    category: req.body.category || "general",
+    tags: req.body.tags || [],
+    status: req.body.status || "draft",
+    visibility: req.body.visibility || "public",
+    media: req.body.media || [],
+    metadata: {
+      device: req.headers["user-agent"],
+      ip: req.ip,
+      language: req.headers["accept-language"],
+      platform: req.body.metadata?.platform || "web",
+    },
+  };
 
-    // Create post
-    const post = await Post.create(postData);
+  const post = await PostService.createPost(postData, userId);
+  const executionTime = Date.now() - startTime;
 
-    const executionTime = Date.now() - startTime;
-    logger.info("Post created", { postId: post._id, userId, executionTime });
+  logger.info("Post created", { postId: post._id, userId, executionTime });
 
-    res.status(201).json(
-      new ApiResponse(201, post, "Post created successfully", true, {
-        executionTime: `${executionTime}ms`,
-        apiHealth: calculateApiHealth(executionTime),
-        timestamp: new Date().toISOString(),
-      }),
-    );
-  } catch (error) {
-    const executionTime = Date.now() - startTime;
-    logger.error("Post creation failed", {
-      error: error.message,
-      userId,
-      executionTime,
-    });
-
-    res.status(500).json(
-      new ApiResponse(
-        500,
-        null,
-        error.message || "Internal server error",
-        false,
-        {
-          path: req.originalUrl,
-          method: req.method,
-          executionTime: `${executionTime}ms`,
-          timestamp: new Date().toISOString(),
-        },
-      ),
-    );
-  }
+  res.status(201).json(
+    new ApiResponse(201, post, "Post created successfully", true, {
+      executionTime: `${executionTime}ms`,
+    }),
+  );
 });
 
 // Get posts with advanced filtering
 const getPosts = asyncHandler(async (req, res) => {
   const startTime = Date.now();
+  const filters = req.query;
+  const { page = 1, limit = 20 } = req.query;
 
-  try {
-    const {
-      page = 1,
-      limit = 20,
-      type,
-      category,
-      tags,
-      author,
-      status,
-      visibility,
-      sortBy = "createdAt",
-      sortOrder = "desc",
-    } = req.query;
+  const result = await PostService.getPosts(
+    filters,
+    parseInt(page),
+    parseInt(limit),
+  );
+  const executionTime = Date.now() - startTime;
 
-    const query = {};
-    // Only add filters if they are explicitly provided
-    if (status) {
-      query.status = status;
-    }
-    if (visibility) {
-      query.visibility = visibility;
-    }
-    if (type) {
-      query.type = type;
-    }
-    if (category) {
-      query.category = category;
-    }
-    if (tags) {
-      query.tags = { $in: tags.split(",") };
-    }
-    if (author) {
-      query.author = author;
-    }
-
-    // If no status is provided, default to published for public API
-    if (!status) {
-      query.status = "published";
-      query.visibility = "public";
-    }
-
-    const skip = (page - 1) * limit;
-    const sort = { [sortBy]: sortOrder === "desc" ? -1 : 1 };
-
-    const [posts, total] = await Promise.all([
-      Post.find(query)
-        .populate("author", "fullName username avatar verified")
-        .populate("media", "url thumbnail type")
-        .sort(sort)
-        .skip(skip)
-        .limit(parseInt(limit))
-        .lean(),
-      Post.countDocuments(query),
-    ]);
-
-    const executionTime = Date.now() - startTime;
-
-    res.status(200).json(
-      new ApiResponse(
-        200,
-        {
-          posts,
-          pagination: {
-            currentPage: parseInt(page),
-            totalPages: Math.ceil(total / limit),
-            totalPosts: total,
-            hasNext: page * limit < total,
-            hasPrev: page > 1,
-          },
-          meta: {
-            executionTime: `${executionTime}ms`,
-            apiHealth: calculateApiHealth(executionTime),
-          },
-        },
-        "Posts retrieved successfully",
-      ),
-    );
-  } catch (error) {
-    handleControllerError(error, req, res, startTime, logger);
-  }
+  res.status(200).json(
+    new ApiResponse(200, result, "Posts retrieved successfully", true, {
+      executionTime: `${executionTime}ms`,
+    }),
+  );
 });
 
 // Get single post by ID
@@ -176,34 +69,17 @@ const getPostById = asyncHandler(async (req, res) => {
   const startTime = Date.now();
   const { id } = req.params;
 
-  try {
-    const post = await Post.findById(id)
-      .populate("author", "fullName username avatar verified")
-      .populate("media", "url thumbnail type")
-      .lean();
-
-    if (!post) {
-      throw new ApiError(404, "Post not found");
-    }
-
-    const executionTime = Date.now() - startTime;
-
-    res.status(200).json(
-      new ApiResponse(
-        200,
-        {
-          ...post,
-          meta: {
-            executionTime: `${executionTime}ms`,
-            apiHealth: calculateApiHealth(executionTime),
-          },
-        },
-        "Post retrieved successfully",
-      ),
-    );
-  } catch (error) {
-    handleControllerError(error, req, res, startTime, logger);
+  const post = await PostService.getPostById(id);
+  if (!post) {
+    throw new ApiError(404, "Post not found");
   }
+
+  const executionTime = Date.now() - startTime;
+  res.status(200).json(
+    new ApiResponse(200, post, "Post retrieved successfully", true, {
+      executionTime: `${executionTime}ms`,
+    }),
+  );
 });
 
 // Update post
@@ -212,61 +88,16 @@ const updatePost = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const userId = req.user._id;
 
-  try {
-    const post = await Post.findById(id);
-    if (!post) {
-      throw new ApiError(404, "Post not found");
-    }
+  const updatedPost = await PostService.updatePost(id, req.body, userId);
+  const executionTime = Date.now() - startTime;
 
-    // Check if user owns the post
-    if (post.author.toString() !== userId.toString()) {
-      throw new ApiError(403, "You can only update your own posts");
-    }
+  logger.info("Post updated", { postId: id, userId, executionTime });
 
-    const updateData = {
-      ...req.body,
-      updatedAt: new Date(),
-    };
-
-    // Add edit history if content changed
-    if (req.body.content && req.body.content !== post.content) {
-      if (!post.editHistory) {
-        post.editHistory = [];
-      }
-      post.editHistory.push({
-        previousContent: post.content,
-        editedAt: new Date(),
-        reason: req.body.editReason || "Content updated",
-      });
-      updateData.editHistory = post.editHistory;
-    }
-
-    const updatedPost = await Post.findByIdAndUpdate(id, updateData, {
-      new: true,
-      runValidators: true,
-    })
-      .populate("author", "fullName username avatar")
-      .populate("media");
-
-    const executionTime = Date.now() - startTime;
-    logger.info("Post updated", { postId: id, userId, executionTime });
-
-    res.status(200).json(
-      new ApiResponse(
-        200,
-        {
-          ...updatedPost.toObject(),
-          meta: {
-            executionTime: `${executionTime}ms`,
-            apiHealth: calculateApiHealth(executionTime),
-          },
-        },
-        "Post updated successfully",
-      ),
-    );
-  } catch (error) {
-    handleControllerError(error, req, res, startTime, logger);
-  }
+  res.status(200).json(
+    new ApiResponse(200, updatedPost, "Post updated successfully", true, {
+      executionTime: `${executionTime}ms`,
+    }),
+  );
 });
 
 // Delete post
@@ -275,195 +106,114 @@ const deletePost = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const userId = req.user._id;
 
-  try {
-    const post = await Post.findById(id);
-    if (!post) {
-      throw new ApiError(404, "Post not found");
-    }
+  await PostService.deletePost(id, userId);
+  const executionTime = Date.now() - startTime;
 
-    // Check if user owns the post
-    if (post.author.toString() !== userId.toString()) {
-      throw new ApiError(403, "You can only delete your own posts");
-    }
+  logger.info("Post deleted", { postId: id, userId, executionTime });
 
-    await Post.findByIdAndDelete(id);
-
-    const executionTime = Date.now() - startTime;
-    logger.info("Post deleted", { postId: id, userId, executionTime });
-
-    res.status(200).json(
-      new ApiResponse(
-        200,
-        {
-          meta: {
-            executionTime: `${executionTime}ms`,
-            apiHealth: calculateApiHealth(executionTime),
-          },
-        },
-        "Post deleted successfully",
-      ),
-    );
-  } catch (error) {
-    handleControllerError(error, req, res, startTime, logger);
-  }
+  res.status(200).json(
+    new ApiResponse(200, {}, "Post deleted successfully", true, {
+      executionTime: `${executionTime}ms`,
+    }),
+  );
 });
 
-// Get current user's posts with enterprise error handling
+// Get current user's posts
 const getMyPosts = asyncHandler(async (req, res) => {
   const startTime = Date.now();
   const userId = req.user?._id;
 
-  try {
-    // Validate user authentication
-    if (!userId) {
-      throw new ApiError(401, "Authentication required");
-    }
-
-    const {
-      page = 1,
-      limit = 20,
-      status,
-      sortBy = "createdAt",
-      sortOrder = "desc",
-    } = req.query;
-
-    // Validate pagination parameters
-    const validatedPage = Math.max(1, parseInt(page) || 1);
-    const validatedLimit = Math.min(100, Math.max(1, parseInt(limit) || 20));
-
-    const query = { author: userId, isDeleted: { $ne: true } };
-    if (
-      status &&
-			["draft", "published", "scheduled", "archived"].includes(status)
-    ) {
-      query.status = status;
-    }
-
-    const skip = (validatedPage - 1) * validatedLimit;
-    const validSortFields = ["createdAt", "updatedAt", "publishedAt", "title"];
-    const sortField = validSortFields.includes(sortBy) ? sortBy : "createdAt";
-    const sort = { [sortField]: sortOrder === "desc" ? -1 : 1 };
-
-    // Execute queries with fallback handling
-    const [posts, total] = await safeAsyncOperation(
-      () =>
-        Promise.all([
-          Post.find(query)
-            .populate("author", "fullName username avatar verified")
-            .populate({
-              path: "media",
-              select: "url thumbnail type",
-              options: { strictPopulate: false },
-            })
-            .sort(sort)
-            .skip(skip)
-            .limit(validatedLimit)
-            .lean()
-            .exec(),
-          Post.countDocuments(query).exec(),
-        ]),
-      [[], 0], // Fallback values
-      true,
-    );
-
-    const executionTime = Date.now() - startTime;
-    logger.info("My posts retrieved", {
-      userId,
-      postCount: posts.length,
-      total,
-      executionTime,
-    });
-
-    res.status(200).json(
-      new ApiResponse(
-        200,
-        {
-          posts: posts || [],
-          pagination: {
-            currentPage: validatedPage,
-            totalPages: Math.ceil((total || 0) / validatedLimit),
-            totalPosts: total || 0,
-            hasNext: validatedPage * validatedLimit < (total || 0),
-            hasPrev: validatedPage > 1,
-            limit: validatedLimit,
-          },
-          meta: {
-            executionTime: `${executionTime}ms`,
-            apiHealth: calculateApiHealth(executionTime),
-            dataFreshness: "live",
-            cacheStatus: "miss",
-          },
-          filters: {
-            status: status || "all",
-            sortBy: sortField,
-            sortOrder,
-          },
-        },
-        "My posts retrieved successfully",
-      ),
-    );
-  } catch (error) {
-    // Enhanced fallback strategy for my posts
-    const fallbackResponse = await safeAsyncOperation(
-      () => ({
-        posts: [],
-        pagination: {
-          currentPage: 1,
-          totalPages: 0,
-          totalPosts: 0,
-          hasNext: false,
-          hasPrev: false,
-          limit: 20,
-        },
-        message: "Posts temporarily unavailable",
-        status: "fallback_mode",
-        suggestions: [
-          "Try refreshing the page",
-          "Check your internet connection",
-          "Contact support if issue persists",
-        ],
-      }),
-      null,
-      false,
-    );
-
-    if (error.statusCode === 401 || error.message?.includes("Authentication")) {
-      return res
-        .status(401)
-        .json(
-          new ApiResponse(
-            401,
-            fallbackResponse,
-            "Authentication required to view posts",
-          ),
-        );
-    }
-
-    if (fallbackResponse) {
-      logger.warn("My posts fallback activated", {
-        userId,
-        error: error.message,
-        executionTime: Date.now() - startTime,
-      });
-      return res.status(200).json(
-        new ApiResponse(
-          200,
-          {
-            ...fallbackResponse,
-            meta: {
-              executionTime: `${Date.now() - startTime}ms`,
-              apiHealth: calculateApiHealth(Date.now() - startTime),
-              dataFreshness: "fallback",
-              warning: "Using fallback data due to temporary issues",
-            },
-          },
-          "Posts retrieved with fallback data",
-        ),
-      );
-    }
-
-    handleControllerError(error, req, res, startTime, logger);
+  if (!userId) {
+    throw new ApiError(401, "Authentication required");
   }
+
+  const { page = 1, limit = 12, status, type } = req.query;
+  const result = await PostService.getMyPosts(
+    userId,
+    parseInt(page),
+    parseInt(limit),
+    status,
+  );
+
+  // Clean response - remove sensitive data
+  const cleanPosts = result.posts.map(post => ({
+    id: post._id,
+    title: post.title,
+    content:
+			post.content.length > 150
+				? `${post.content.substring(0, 150)  }...`
+				: post.content,
+    type: post.type,
+    status: post.status,
+    visibility: post.visibility,
+    createdAt: post.createdAt,
+    updatedAt: post.updatedAt,
+    engagement: {
+      likes: post.engagement?.likeCount || 0,
+      comments: post.engagement?.commentCount || 0,
+      shares: post.engagement?.shareCount || 0,
+      views: post.engagement?.viewCount || 0,
+    },
+    media: post.media?.length || 0,
+    tags: post.tags || [],
+    slug: post.slug,
+  }));
+
+  const executionTime = Date.now() - startTime;
+  logger.info("My posts retrieved", {
+    userId,
+    count: result.posts.length,
+    executionTime,
+  });
+
+  res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        user: {
+          id: req.user._id,
+          username: req.user.username,
+          firstName: req.user.firstName,
+          lastName: req.user.lastName,
+          avatar: req.user.avatar || "/assets/default-avatar.png",
+        },
+        posts: cleanPosts,
+        pagination: result.pagination,
+        stats: {
+          total: result.pagination.total,
+          drafts: cleanPosts.filter(p => p.status === "draft").length,
+          published: cleanPosts.filter(p => p.status === "published").length,
+        },
+      },
+      "Posts retrieved successfully",
+      true,
+      {
+        executionTime: `${executionTime}ms`,
+      },
+    ),
+  );
+});
+
+// Get user posts by username
+const getUserPosts = asyncHandler(async (req, res) => {
+  const { username } = req.params;
+  const { page = 1, limit = 12 } = req.query;
+  const currentUserId = req.user?._id;
+
+  const result = await PostService.getUserPostsByUsername(
+    username,
+    parseInt(page),
+    parseInt(limit),
+    currentUserId,
+  );
+
+  if (!result) {
+    throw new ApiError(404, "User not found");
+  }
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, result, "User posts retrieved successfully"));
 });
 
 export {
@@ -473,4 +223,5 @@ export {
   updatePost,
   deletePost,
   getMyPosts,
+  getUserPosts,
 };

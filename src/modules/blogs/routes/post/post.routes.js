@@ -7,19 +7,25 @@ import {
   updatePost,
   deletePost,
   getMyPosts,
+  getUserPosts,
 } from "../../controllers/post/post.controller.js";
 import { verifyJWT } from "../../../../shared/middleware/auth.middleware.js";
 import { optionalAuth } from "../../../../shared/middleware/optionalAuth.middleware.js";
 
 const router = express.Router();
 
+// Protected routes (specific routes first)
+router.post("/", verifyJWT, createPost);
+router.get("/my-posts", verifyJWT, getMyPosts);
+
 // Public routes
 router.get("/", optionalAuth, getPosts);
-router.get("/:id", optionalAuth, getPostById);
 
-// Protected routes
-router.get("/my-posts", verifyJWT, getMyPosts);
-router.post("/", verifyJWT, createPost);
+// Username-based routes
+router.get("/user/:username", optionalAuth, getUserPosts);
+
+// Dynamic routes (must be last)
+router.get("/:id", optionalAuth, getPostById);
 router.patch("/:id", verifyJWT, updatePost);
 router.delete("/:id", verifyJWT, deletePost);
 

@@ -80,13 +80,13 @@ const postSchema = new Schema(
 
     // Content
     title: { type: String, trim: true, maxlength: 280 },
-    content: { type: String, required: true, trim: true, maxlength: 10000 },
+    content: { type: String, required: false, trim: true, maxlength: 10000 },
     excerpt: { type: String, maxlength: 300 },
 
     // Post type and categorization
     type: {
       type: String,
-      enum: ["post", "poll", "media", "quote", "article"],
+      enum: ["post", "poll", "media", "quote", "article", "text"],
       default: "post",
       index: true,
     },
@@ -267,10 +267,33 @@ postSchema.virtual("readTime").get(function () {
   return Math.ceil(wordCount / wordsPerMinute);
 });
 
+// Helper function to generate unique slug
+const generateUniqueSlug = async function (baseSlug, postId = null) {
+  let slug = baseSlug;
+  let counter = 1;
+
+  while (true) {
+    const query = { slug };
+    if (postId) {
+      query._id = { $ne: postId };
+    }
+
+    const existingPost = await mongoose.model("Post").findOne(query);
+    if (!existingPost) {
+      return slug;
+    }
+
+    slug = `${baseSlug}-${counter}`;
+    counter++;
+  }
+};
+
 // Pre-save middleware
-postSchema.pre("save", function (next) {
+postSchema.pre("save", async function (next) {
+  // Content is optional - user's choice
+
   // Auto-generate excerpt
-  if (this.isModified("content") && !this.excerpt) {
+  if (this.isModified("content") && this.content && !this.excerpt) {
     this.excerpt = `${this.content.substring(0, 297)}...`;
   }
 
@@ -285,12 +308,16 @@ postSchema.pre("save", function (next) {
     this.publishedAt = new Date();
   }
 
-  // Generate slug
-  if (this.isModified("title") && this.title && !this.slug) {
-    this.slug = this.title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "");
+  // Generate unique slug
+  if ((this.isModified("title") || this.isNew) && !this.slug) {
+    const title = this.title || "untitled";
+    const baseSlug =
+			title
+			  .toLowerCase()
+			  .replace(/[^a-z0-9]+/g, "-")
+			  .replace(/^-|-$/g, "") || "untitled";
+
+    this.slug = await generateUniqueSlug(baseSlug, this._id);
   }
 
   // Update last activity

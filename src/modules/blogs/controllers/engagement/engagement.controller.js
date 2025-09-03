@@ -147,4 +147,84 @@ const trackView = asyncHandler(async (req, res) => {
   }
 });
 
-export { toggleLike, trackView };
+// Repost functionality
+const repost = asyncHandler(async (req, res) => {
+  const startTime = Date.now();
+  const { postId } = req.params;
+  const userId = req.user._id;
+  const { content } = req.body; // Optional quote content
+
+  try {
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(postId)) {
+      throw new ApiError(400, "Invalid post ID");
+    }
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    // Check if post exists
+    const originalPost = await Post.findById(postId);
+    if (!originalPost) {
+      throw new ApiError(404, "Post not found");
+    }
+
+    // Check if user already reposted
+    const existingRepost = await Post.findOne({
+      author: userId,
+      originalPost: postId,
+      type: content ? "quote" : "post",
+    });
+
+    if (existingRepost) {
+      throw new ApiError(400, "Already reposted");
+    }
+
+    // Create repost
+    const repostData = {
+      author: userId,
+      originalPost: postId,
+      type: content ? "quote" : "post",
+      status: "published",
+      visibility: "public",
+    };
+
+    if (content) {
+      repostData.content = content;
+      repostData.title = "";
+    } else {
+      repostData.content = originalPost.content;
+      repostData.title = originalPost.title;
+    }
+
+    const repost = await Post.create([repostData], { session });
+
+    // Update original post repost count
+    await Post.findByIdAndUpdate(
+      postId,
+      { $inc: { "engagement.repostCount": 1 } },
+      { session },
+    );
+
+    await session.commitTransaction();
+    session.endSession();
+
+    const executionTime = Date.now() - startTime;
+    logger.info("Post reposted", { postId, userId, executionTime });
+
+    res.status(201).json(
+      new ApiResponse(
+        201,
+        {
+          repost: repost[0],
+          meta: { executionTime: `${executionTime}ms` },
+        },
+        "Post reposted successfully",
+      ),
+    );
+  } catch (error) {
+    handleControllerError(error, req, res, startTime, logger);
+  }
+});
+
+export { toggleLike, trackView, repost };

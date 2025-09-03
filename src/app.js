@@ -117,6 +117,7 @@ app.use(apiRateLimiter);
 // STATIC FILES
 // ========================================
 app.use("/public", express.static(path.join(__dirname, "../Public")));
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 app.use(
   "/favicon.ico",
   express.static(path.join(__dirname, "../Public/favicon.ico")),

@@ -1,159 +1,51 @@
 // src/modules/users/controllers/user.controller.js
-import { User } from "../models/user.model.js";
 import { asyncHandler } from "../../../shared/utils/AsyncHandler.js";
 import { ApiError } from "../../../shared/utils/ApiError.js";
 import { ApiResponse } from "../../../shared/utils/ApiResponse.js";
-import { Validator } from "../../../shared/utils/Validator.js";
 import { Logger } from "../../../shared/utils/Logger.js";
-import {
-  safeAsyncOperation,
-  handleControllerError,
-} from "../../../shared/utils/ErrorHandler.js";
+import { UserService } from "../services/user.service.js";
+import { Validator } from "../../../shared/utils/Validator.js";
+import { safeAsyncOperation } from "../../../shared/utils/ErrorHandler.js";
+import { calculateApiHealth } from "../../../shared/utils/ApiHealth.js";
 import { AuthService } from "../../auth/services/auth.service.js";
 import Jwt from "jsonwebtoken";
 import mongoose from "mongoose";
-import { calculateApiHealth } from "../../../shared/utils/ApiHealth.js";
 
 const logger = new Logger("UserController");
 
 const generateAccessAndRefreshTokens = async userId => {
-  try {
-    const user = await User.findById(userId);
-    const accessToken = user.generateAccessToken();
-    const refreshToken = user.generateRefreshToken();
-
-    // Update refresh token using findByIdAndUpdate to avoid triggering pre-save middleware
-    await User.findByIdAndUpdate(userId, { refreshToken }, { new: false });
-
-    return { accessToken, refreshToken };
-  } catch (error) {
-    throw new ApiError(
-      500,
-      "Something went wrong while generating refresh and access token",
-    );
-  }
+  return await AuthService.generateTokens(userId);
 };
-// ================================================
-// 📌 Get all users with pagination + filtering
-// ================================================
+// Get all users with pagination + filtering
 const getAllUsers = asyncHandler(async (req, res) => {
   const startTime = Date.now();
-  try {
-    const {
-      page = 1,
-      limit = 10,
-      search,
-      role,
-      isActive,
-      sortBy = "createdAt",
-      sortOrder = "desc",
-    } = req.query;
+  const filters = req.query;
+  const { page = 1, limit = 10 } = req.query;
 
-    const query = {};
-    // Add search filter
-    if (search) {
-      query.$or = [
-        { username: { $regex: search, $options: "i" } },
-        { email: { $regex: search, $options: "i" } },
-        { firstName: { $regex: search, $options: "i" } },
-        { lastName: { $regex: search, $options: "i" } },
-      ];
-    }
-    // Add role filter
-    if (role) {
-      query.role = role;
-    }
-    // Add active status filter
-    if (isActive !== undefined) {
-      query.isActive = isActive === "true";
-    }
-    const sortOptions = {};
-    sortOptions[sortBy] = sortOrder === "desc" ? -1 : 1;
-    const skip = (page - 1) * limit;
-    // 🚀 Optimized query with indexing support
-    const [users, totalUsers] = await Promise.all([
-      User.find(query)
-        .select("-password -refreshToken")
-        .sort(sortOptions)
-        .skip(skip)
-        .limit(parseInt(limit))
-        .lean(),
-      User.countDocuments(query),
-    ]);
-    const executionTime = Date.now() - startTime;
-    return res.status(200).json(
-      new ApiResponse(
-        200,
-        {
-          users,
-          pagination: {
-            currentPage: parseInt(page),
-            totalPages: Math.ceil(totalUsers / limit),
-            totalUsers,
-            hasNextPage: page * limit < totalUsers,
-            hasPrevPage: page > 1,
-          },
-          meta: {
-            executionTime: `${executionTime}ms`,
-            apiHealth: calculateApiHealth(executionTime),
-            filters: { search, role, isActive },
-          },
-        },
-        "Users fetched successfully",
-      ),
-    );
-  } catch (error) {
-    // Enhanced fallback strategy
-    const fallbackData = await safeAsyncOperation(
-      () => ({
-        users: [],
-        pagination: {
-          currentPage: 1,
-          totalPages: 0,
-          totalUsers: 0,
-          hasNextPage: false,
-          hasPrevPage: false,
-        },
-        suggestions: [
-          "Check database connectivity",
-          "Verify query parameters",
-          "Try again with simpler filters",
-        ],
-      }),
-      null,
-      false,
-    );
-    if (error.message?.includes("timeout") && fallbackData) {
-      return res
-        .status(200)
-        .json(
-          new ApiResponse(
-            200,
-            fallbackData,
-            "Users list temporarily unavailable - using fallback",
-          ),
-        );
-    }
-    handleControllerError(error, req, res, startTime, logger);
-  }
+  const result = await UserService.getAllUsers(
+    filters,
+    parseInt(page),
+    parseInt(limit),
+  );
+  const executionTime = Date.now() - startTime;
+
+  res.status(200).json(
+    new ApiResponse(200, result, "Users fetched successfully", true, {
+      executionTime: `${executionTime}ms`,
+    }),
+  );
 });
-// ================================================
-// 📌 Get user by ID
-// ================================================
+// Get user by ID
 const getUserById = asyncHandler(async (req, res) => {
   const { id } = req.params;
+  const currentUserId = req.user._id;
 
-  // Check if user is trying to access their own profile or is admin
-  if (req.user.role !== "admin" && req.user._id.toString() !== id) {
-    throw new ApiError(403, "You can only access your own profile");
-  }
-  const user = await User.findById(id).select("-password -refreshToken");
+  const user = await UserService.getUserById(id, currentUserId);
   if (!user) {
     throw new ApiError(404, "User not found");
   }
-  return res
-    .status(200)
-    .json(new ApiResponse(200, user, "User fetched successfully"));
+
+  res.status(200).json(new ApiResponse(200, user, "User fetched successfully"));
 });
 // ================================================
 // 📌 Create user (Register)
@@ -204,27 +96,14 @@ const createUser = asyncHandler(async (req, res) => {
 // Update user profile
 const updateUser = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const updateData = req.body;
+  const currentUserId = req.user._id;
 
-  // Check if user is trying to update their own profile or is admin
-  if (req.user.role !== "admin" && req.user._id.toString() !== id) {
-    throw new ApiError(403, "You can only update your own profile");
-  }
-  // Remove sensitive fields that shouldn't be updated directly
-  delete updateData.password;
-  delete updateData.refreshToken;
-  delete updateData.role; // Only admins should be able to change roles
-  const user = await User.findByIdAndUpdate(
-    id,
-    { $set: updateData },
-    { new: true, runValidators: true },
-  ).select("-password -refreshToken");
+  const user = await UserService.updateUser(id, req.body, currentUserId);
   if (!user) {
     throw new ApiError(404, "User not found");
   }
-  return res
-    .status(200)
-    .json(new ApiResponse(200, user, "User updated successfully"));
+
+  res.status(200).json(new ApiResponse(200, user, "User updated successfully"));
 });
 
 // Delete user account
@@ -246,10 +125,11 @@ const deleteUser = asyncHandler(async (req, res) => {
 
 // Get current user profile
 const getCurrentUserProfile = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.user._id).select(
-    "-password -refreshToken",
-  );
-  return res
+  const userId = req.user._id;
+
+  const user = await UserService.getUserById(userId, userId);
+
+  res
     .status(200)
     .json(
       new ApiResponse(200, user, "Current user profile fetched successfully"),
@@ -258,19 +138,11 @@ const getCurrentUserProfile = asyncHandler(async (req, res) => {
 
 // Update current user profile
 const updateCurrentUserProfile = asyncHandler(async (req, res) => {
-  const updateData = req.body;
+  const userId = req.user._id;
 
-  // Remove sensitive fields
-  delete updateData.password;
-  delete updateData.refreshToken;
-  delete updateData.role;
-  delete updateData.isActive;
-  const user = await User.findByIdAndUpdate(
-    req.user._id,
-    { $set: updateData },
-    { new: true, runValidators: true },
-  ).select("-password -refreshToken");
-  return res
+  const user = await UserService.updateUser(userId, req.body, userId);
+
+  res
     .status(200)
     .json(new ApiResponse(200, user, "Profile updated successfully"));
 });
@@ -278,6 +150,7 @@ const updateCurrentUserProfile = asyncHandler(async (req, res) => {
 // Change user password
 const changePassword = asyncHandler(async (req, res) => {
   const { currentPassword, newPassword } = req.body;
+  const userId = req.user._id;
 
   if (!currentPassword || !newPassword) {
     throw new ApiError(400, "Current password and new password are required");
@@ -285,19 +158,10 @@ const changePassword = asyncHandler(async (req, res) => {
   if (newPassword.length < 8) {
     throw new ApiError(400, "Password must be at least 8 characters long");
   }
-  const user = await User.findById(req.user._id);
-  if (!user) {
-    throw new ApiError(404, "User not found");
-  }
-  // Verify current password
-  const isPasswordCorrect = await user.isPasswordCorrect(currentPassword);
-  if (!isPasswordCorrect) {
-    throw new ApiError(400, "Current password is incorrect");
-  }
-  // Update password
-  user.password = newPassword;
-  await user.save({ validateBeforeSave: false });
-  return res
+
+  await UserService.changePassword(userId, currentPassword, newPassword);
+
+  res
     .status(200)
     .json(new ApiResponse(200, {}, "Password changed successfully"));
 });
@@ -308,12 +172,14 @@ const uploadAvatar = asyncHandler(async (req, res) => {
   if (!avatarUrl) {
     throw new ApiError(400, "Avatar URL is required");
   }
-  const user = await User.findByIdAndUpdate(
+
+  const user = await UserService.updateUser(
     req.user._id,
-    { $set: { avatar: avatarUrl } },
-    { new: true },
-  ).select("-password -refreshToken");
-  return res
+    { avatar: avatarUrl },
+    req.user._id,
+  );
+
+  res
     .status(200)
     .json(new ApiResponse(200, user, "Avatar uploaded successfully"));
 });
@@ -1050,209 +916,31 @@ const getUserFollowing = asyncHandler(async (req, res) => {
   );
 });
 
-// searchUsers function
-// Fixed searchUsers controller with debugging
+// Search users
 const searchUsers = asyncHandler(async (req, res) => {
-  const {
-    search,
-    username,
-    firstName,
-    lastName,
-    page = 1,
-    limit = 10,
-    sortBy = "relevance",
-    includePrivate = false,
-  } = req.query;
+  const { search, page = 1, limit = 10 } = req.query;
 
-  // Input validation
-  if (!search && !username && !firstName && !lastName) {
-    console.log("❌ No search parameters provided");
-    throw new ApiError(
-      400,
-      "At least one search parameter is required (search, username, firstName, or lastName)",
-    );
-  }
-
-  if (search && search.trim().length < 2) {
-    console.log("❌ Search query too short:", search);
+  if (!search || search.trim().length < 2) {
     throw new ApiError(400, "Search query must be at least 2 characters long");
   }
 
-  const pageNum = Math.max(1, parseInt(page, 10) || 1);
-  const limitNum = Math.min(50, Math.max(1, parseInt(limit, 10) || 10));
-  const currentUserId = req.user?._id;
-  const skip = (pageNum - 1) * limitNum;
-  const startTime = Date.now();
+  const result = await UserService.searchUsers(
+    search.trim(),
+    parseInt(page),
+    parseInt(limit),
+  );
 
-  console.log("📊 Search params:", {
-    search,
-    username,
-    firstName,
-    lastName,
-    pageNum,
-    limitNum,
-  });
-
-  try {
-    // Simplified search approach using MongoDB find() instead of aggregation
-    const searchConditions = [];
-    // Helper function to create case-insensitive regex
-    const createRegex = term => {
-      const escapedTerm = term.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      return new RegExp(escapedTerm, "i");
-    };
-    // Build search conditions with OR logic
-    if (search && search.trim()) {
-      const searchRegex = createRegex(search);
-      searchConditions.push(
-        { username: { $regex: searchRegex } },
-        { firstName: { $regex: searchRegex } },
-        { lastName: { $regex: searchRegex } },
-      );
-    }
-    if (username && username.trim()) {
-      searchConditions.push({ username: { $regex: createRegex(username) } });
-    }
-    if (firstName && firstName.trim()) {
-      searchConditions.push({ firstName: { $regex: createRegex(firstName) } });
-    }
-    if (lastName && lastName.trim()) {
-      searchConditions.push({ lastName: { $regex: createRegex(lastName) } });
-    }
-    // Base query conditions
-    const baseQuery = {
-      isActive: { $ne: false },
-      isDeleted: { $ne: true },
-    };
-    // Add privacy filter
-    if (!includePrivate && req.user?.role !== "admin") {
-      baseQuery.isPrivate = { $ne: true };
-    }
-    // Combine search conditions with base query
-    const finalQuery =
-			searchConditions.length > 0
-				? { ...baseQuery, $or: searchConditions }
-				: baseQuery;
-    // Sorting logic
-    let sortOptions = {};
-    switch (sortBy) {
-      case "username":
-        sortOptions = { username: 1 };
-        break;
-      case "newest":
-        sortOptions = { createdAt: -1 };
-        break;
-      case "followers":
-        // For followers sort, we'll use a simple approach
-        sortOptions = { createdAt: -1 }; // Fallback to newest
-        break;
-      default: // relevance - use creation date as proxy
-        sortOptions = { createdAt: -1 };
-    }
-    // Execute optimized queries with timeout
-    const queryPromises = [
-      User.find(finalQuery)
-        .select(
-          "username firstName lastName avatar bio followers following createdAt isVerified isPrivate isActive isDeleted",
-        )
-        .sort(sortOptions)
-        .skip(skip)
-        .limit(limitNum)
-        .maxTimeMS(5000) // Reduced timeout
-        .lean(), // Use lean for better performance
-      User.countDocuments(finalQuery).maxTimeMS(3000),
-    ];
-    const [users, totalCount] = await Promise.all(queryPromises);
-    // Debug: Log first few users found
-    if (users.length > 0) {
-      console.log(
-        "👥 Sample users found:",
-        users.slice(0, 2).map(u => ({
-          username: u.username,
-          firstName: u.firstName,
-          lastName: u.lastName,
-          isActive: u.isActive,
-          isDeleted: u.isDeleted,
-          isPrivate: u.isPrivate,
-        })),
-      );
-    }
-    // Format results
-    const formattedUsers = users.map(user => {
-      const followersCount = Array.isArray(user.followers)
-				? user.followers.length
-				: 0;
-      const followingCount = Array.isArray(user.following)
-				? user.following.length
-				: 0;
-      const isFollowing =
-				currentUserId && Array.isArray(user.followers)
-					? user.followers.some(
-					  id => id.toString() === currentUserId.toString(),
-					)
-					: false;
-      return {
-        _id: user._id,
-        username: user.username,
-        firstName: user.firstName || "",
-        lastName: user.lastName || "",
-        fullName:
-					`${user.firstName || ""} ${user.lastName || ""}`.trim() ||
-					user.username,
-        avatar: user.avatar || "/assets/default-avatar.png",
-        bio: user.bio ? user.bio.substring(0, 150) : "",
-        followersCount,
-        followingCount,
-        isFollowing,
-        isVerified: user.isVerified || false,
-        createdAt: user.createdAt,
-      };
-    });
-    const totalPages = Math.ceil(totalCount / limitNum);
-    const searchTime = Date.now() - startTime;
-    return res.status(200).json(
+  res
+    .status(200)
+    .json(
       new ApiResponse(
         200,
-        {
-          users: formattedUsers,
-          pagination: {
-            currentPage: pageNum,
-            totalPages,
-            totalResults: totalCount,
-            hasMore: pageNum < totalPages,
-            limit: limitNum,
-            hasNext: pageNum < totalPages,
-            hasPrevious: pageNum > 1,
-          },
-          meta: {
-            searchCriteria: {
-              search: search?.trim() || null,
-              username: username?.trim() || null,
-              firstName: firstName?.trim() || null,
-              lastName: lastName?.trim() || null,
-            },
-            resultsCount: formattedUsers.length,
-            searchTime,
-            sortBy,
-          },
-        },
-				formattedUsers.length === 0
+        result,
+				result.users.length === 0
 					? "No users found matching your search criteria"
-					: `Found ${formattedUsers.length} of ${totalCount} users`,
+					: `Found ${result.users.length} users`,
       ),
     );
-  } catch (error) {
-    if (error.message?.includes("maxTimeMS") || error.code === 50) {
-      throw new ApiError(
-        408,
-        "Search timeout - please try a more specific search query",
-      );
-    }
-    if (error instanceof ApiError) {
-      throw error;
-    }
-    throw new ApiError(500, "Search operation failed. Please try again.");
-  }
 });
 
 // Fixed getUserSuggestions function
@@ -2130,143 +1818,32 @@ const getUserProfileByUsername = asyncHandler(async (req, res) => {
   }
 });
 
-// Enhanced follow/unfollow functions with better validation and notifications
+// Follow user
 const followUser = asyncHandler(async (req, res) => {
   const { userId } = req.params;
   const currentUserId = req.user._id;
-  // Enhanced validation
-  if (!mongoose.Types.ObjectId.isValid(userId)) {
-    throw new ApiError(400, "Invalid user ID");
-  }
-  if (userId === currentUserId.toString()) {
-    throw new ApiError(400, "You cannot follow yourself");
-  }
-  try {
-    // Use transaction for data consistency
-    const session = await mongoose.startSession();
 
-    await session.withTransaction(async () => {
-      const [userToFollow, currentUser] = await Promise.all([
-        User.findById(userId).session(session),
-        User.findById(currentUserId).session(session),
-      ]);
+  await UserService.followUser(currentUserId, userId);
 
-      if (!userToFollow) {
-        throw new ApiError(404, "User not found");
-      }
-      if (!userToFollow.isActive || userToFollow.isDeleted) {
-        throw new ApiError(404, "User account is not available");
-      }
-      // Check if already following
-      if (currentUser.following.includes(userId)) {
-        throw new ApiError(400, "You are already following this user");
-      }
-      // Update both users atomically
-      await Promise.all([
-        User.findByIdAndUpdate(
-          currentUserId,
-          { $push: { following: userId } },
-          { session },
-        ),
-        User.findByIdAndUpdate(
-          userId,
-          { $push: { followers: currentUserId } },
-          { session },
-        ),
-      ]);
-    });
-
-    session.endSession();
-
-    // TODO: Add notification creation here
-    // await createNotification({
-    //   type: 'follow',
-    //   fromUser: currentUserId,
-    //   toUser: userId
-    // });
-
-    return res
-      .status(200)
-      .json(
-        new ApiResponse(200, { followed: true }, "User followed successfully"),
-      );
-  } catch (error) {
-    console.error("Follow user error:", error);
-
-    if (error instanceof ApiError) {
-      throw error;
-    }
-
-    throw new ApiError(500, "Failed to follow user");
-  }
+  res
+    .status(200)
+    .json(
+      new ApiResponse(200, { followed: true }, "User followed successfully"),
+    );
 });
 
+// Unfollow user
 const unfollowUser = asyncHandler(async (req, res) => {
   const { userId } = req.params;
   const currentUserId = req.user._id;
 
-  // Enhanced validation
-  if (!mongoose.Types.ObjectId.isValid(userId)) {
-    throw new ApiError(400, "Invalid user ID");
-  }
-  if (userId === currentUserId.toString()) {
-    throw new ApiError(400, "You cannot unfollow yourself");
-  }
+  await UserService.unfollowUser(currentUserId, userId);
 
-  try {
-    // Use transaction for data consistency
-    const session = await mongoose.startSession();
-
-    await session.withTransaction(async () => {
-      const [userToUnfollow, currentUser] = await Promise.all([
-        User.findById(userId).session(session),
-        User.findById(currentUserId).session(session),
-      ]);
-
-      if (!userToUnfollow) {
-        throw new ApiError(404, "User not found");
-      }
-
-      // Check if not following
-      if (!currentUser.following.includes(userId)) {
-        throw new ApiError(400, "You are not following this user");
-      }
-
-      // Update both users atomically
-      await Promise.all([
-        User.findByIdAndUpdate(
-          currentUserId,
-          { $pull: { following: userId } },
-          { session },
-        ),
-        User.findByIdAndUpdate(
-          userId,
-          { $pull: { followers: currentUserId } },
-          { session },
-        ),
-      ]);
-    });
-
-    session.endSession();
-
-    return res
-      .status(200)
-      .json(
-        new ApiResponse(
-          200,
-          { followed: false },
-          "User unfollowed successfully",
-        ),
-      );
-  } catch (error) {
-    console.error("Unfollow user error:", error);
-
-    if (error instanceof ApiError) {
-      throw error;
-    }
-
-    throw new ApiError(500, "Failed to unfollow user");
-  }
+  res
+    .status(200)
+    .json(
+      new ApiResponse(200, { followed: false }, "User unfollowed successfully"),
+    );
 });
 
 // Utility function for time ago calculation
@@ -2291,30 +1868,35 @@ const getTimeAgo = date => {
   return postDate.toLocaleDateString();
 };
 export {
-  registerUser, // ✅
-  loginUser, // ✅
-  logoutUser, // ✅
-  refreshAccessToken, // ✅
-  changeCurrentPassword, // ✅
-  getCurrentUser, // ✅
-  updateAccountDetails, // ✅
-  getUserChannelProfile, // ✅
-  getWatchHistory, // ✅
+  // Auth functions
+  registerUser,
+  loginUser,
+  logoutUser,
+  refreshAccessToken,
+  changeCurrentPassword,
+  getCurrentUser,
+  updateAccountDetails,
+  getUserChannelProfile,
+  getWatchHistory,
+
+  // User management
   getAllUsers,
   getUserById,
-  createUser, // ✅
-  updateUser, // ✅
-  deleteUser, // ✅
+  createUser,
+  updateUser,
+  deleteUser,
   getCurrentUserProfile,
   updateCurrentUserProfile,
-  changePassword, // ✅
+  changePassword,
   uploadAvatar,
-  getUserFeed,
-  getUserProfileByUsername,
-  followUser, // ✅
-  unfollowUser, // ✅
+
+  // Social features
+  followUser,
+  unfollowUser,
   getUserFollowers,
   getUserFollowing,
-  searchUsers, //✅
+  searchUsers,
   getUserSuggestions,
+  getUserFeed,
+  getUserProfileByUsername,
 };
