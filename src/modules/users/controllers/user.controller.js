@@ -10,11 +10,36 @@ import { calculateApiHealth } from "../../../shared/utils/ApiHealth.js";
 import { AuthService } from "../../auth/services/auth.service.js";
 import Jwt from "jsonwebtoken";
 import mongoose from "mongoose";
+import {
+  uploadToCloudinary,
+  deleteFromCloudinary,
+} from "../../../shared/services/cloudinary.service.js";
+import fs from "fs/promises";
+import { User } from "../models/user.model.js";
+import { Post } from "../../blogs/models/post/post.model.js";
 
 const logger = new Logger("UserController");
 
 const generateAccessAndRefreshTokens = async userId => {
   return await AuthService.generateTokens(userId);
+};
+
+// Error handler for controller functions
+const handleControllerError = (error, req, res, startTime, logger) => {
+  const executionTime = Date.now() - startTime;
+  logger.error("Controller error:", {
+    error: error.message,
+    stack: error.stack,
+    executionTime: `${executionTime}ms`,
+    path: req.path,
+    method: req.method,
+  });
+
+  if (error instanceof ApiError) {
+    throw error;
+  }
+
+  throw new ApiError(500, "Internal server error occurred");
 };
 // Get all users with pagination + filtering
 const getAllUsers = asyncHandler(async (req, res) => {
@@ -168,20 +193,74 @@ const changePassword = asyncHandler(async (req, res) => {
 
 // Upload user avatar
 const uploadAvatar = asyncHandler(async (req, res) => {
-  const { avatarUrl } = req.body;
-  if (!avatarUrl) {
-    throw new ApiError(400, "Avatar URL is required");
+  if (!req.file) {
+    throw new ApiError(400, "Avatar file is required");
   }
 
-  const user = await UserService.updateUser(
-    req.user._id,
-    { avatar: avatarUrl },
-    req.user._id,
-  );
+  try {
+    // Upload to Cloudinary
+    const result = await uploadToCloudinary(req.file.path, "avatars");
 
-  res
-    .status(200)
-    .json(new ApiResponse(200, user, "Avatar uploaded successfully"));
+    // Get current user to delete old avatar
+    const currentUser = await User.findById(req.user._id);
+    if (currentUser.avatar?.publicId) {
+      await deleteFromCloudinary(currentUser.avatar.publicId);
+    }
+
+    // Update user with new avatar
+    const user = await UserService.updateUser(
+      req.user._id,
+      { avatar: result },
+      req.user._id,
+    );
+
+    // Delete temp file
+    await fs.unlink(req.file.path).catch(() => {});
+
+    res
+      .status(200)
+      .json(new ApiResponse(200, user, "Avatar uploaded successfully"));
+  } catch (error) {
+    // Delete temp file on error
+    await fs.unlink(req.file.path).catch(() => {});
+    throw error;
+  }
+});
+
+// Upload cover image
+const uploadCoverImage = asyncHandler(async (req, res) => {
+  if (!req.file) {
+    throw new ApiError(400, "Cover image file is required");
+  }
+
+  try {
+    // Upload to Cloudinary
+    const result = await uploadToCloudinary(req.file.path, "covers");
+
+    // Get current user to delete old cover
+    const currentUser = await User.findById(req.user._id);
+    if (currentUser.coverImage?.publicId) {
+      await deleteFromCloudinary(currentUser.coverImage.publicId);
+    }
+
+    // Update user with new cover image
+    const user = await UserService.updateUser(
+      req.user._id,
+      { coverImage: result },
+      req.user._id,
+    );
+
+    // Delete temp file
+    await fs.unlink(req.file.path).catch(() => {});
+
+    res
+      .status(200)
+      .json(new ApiResponse(200, user, "Cover image uploaded successfully"));
+  } catch (error) {
+    // Delete temp file on error
+    await fs.unlink(req.file.path).catch(() => {});
+    throw error;
+  }
 });
 
 // Enterprise-grade user registration with optimized performance
@@ -1406,37 +1485,40 @@ const getUserFeed = asyncHandler(async (req, res) => {
     let totalPosts = 0;
 
     try {
-      // Try to check if Post model exists (assuming you have it imported)
-      // If not, we'll handle the collection directly
-      let postsCollection;
-
+      // Try using Post model first, fallback to collection if needed
       try {
-        // Try using Post model first
-        if (typeof Post !== "undefined") {
-          console.log("📝 Using Post model");
-          const [feedResult, totalCountResult] = await Promise.all([
-            Post.aggregate(pipeline).maxTimeMS(15000),
-            Post.aggregate([
-              { $match: matchConditions },
-              { $count: "total" },
-            ]).maxTimeMS(10000),
-          ]);
-          feed = feedResult;
-          totalPosts =
-						totalCountResult.length > 0 ? totalCountResult[0].total : 0;
-        } else {
-          throw new Error("Post model not available");
-        }
+        console.log("📝 Attempting to use Post model");
+        const [feedResult, totalCountResult] = await Promise.all([
+          Post.aggregate(pipeline).maxTimeMS(15000),
+          Post.aggregate([
+            { $match: matchConditions },
+            { $count: "total" },
+          ]).maxTimeMS(10000),
+        ]);
+        feed = feedResult;
+        totalPosts =
+					totalCountResult.length > 0 ? totalCountResult[0].total : 0;
+        console.log("✅ Successfully used Post model");
       } catch (modelError) {
-        console.log("📄 Post model not available, using collection directly");
+        console.log(
+          "📄 Post model failed, using collection directly:",
+          modelError.message,
+        );
 
         const db = mongoose.connection.db;
+        if (!db) {
+          throw new ApiError(500, "Database connection not available");
+        }
+
         // Check if posts collection exists
         const collections = await db
           .listCollections({ name: "posts" })
           .toArray();
+
         if (collections.length === 0) {
-          console.warn("⚠️ Posts collection does not exist");
+          console.warn(
+            "⚠️ Posts collection does not exist, returning empty feed",
+          );
           return res.status(200).json(
             new ApiResponse(
               200,
@@ -1455,14 +1537,18 @@ const getUserFeed = asyncHandler(async (req, res) => {
                   sortBy: sortField,
                   sortOrder: validSortOrder,
                   followingCount: followingIds.length,
+                  message:
+										"No posts available yet - start following users or create posts",
                 },
               },
-              "Feed is currently empty - no posts collection found",
+              "Feed is currently empty - no posts found",
             ),
           );
         }
 
-        postsCollection = db.collection("posts");
+        console.log("📊 Using posts collection directly");
+        const postsCollection = db.collection("posts");
+
         // Execute both queries in parallel for better performance
         const [feedResult, totalCountResult] = await Promise.all([
           postsCollection.aggregate(pipeline).maxTimeMS(15000).toArray(),
@@ -1471,9 +1557,11 @@ const getUserFeed = asyncHandler(async (req, res) => {
             .maxTimeMS(10000)
             .toArray(),
         ]);
+
         feed = feedResult;
         totalPosts =
 					totalCountResult.length > 0 ? totalCountResult[0].total : 0;
+        console.log("✅ Successfully used posts collection");
       }
     } catch (dbError) {
       console.error("❌ Database error in getUserFeed:", dbError);
@@ -1889,6 +1977,7 @@ export {
   updateCurrentUserProfile,
   changePassword,
   uploadAvatar,
+  uploadCoverImage,
 
   // Social features
   followUser,

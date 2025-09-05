@@ -1,9 +1,9 @@
 // src/shared/services/cache.service.js
-import Redis from "ioredis";
+import { cacheRedis } from "../config/redis.config.js";
 
 class CacheService {
   constructor() {
-    this.redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379");
+    this.redis = cacheRedis;
   }
 
   async get(key) {

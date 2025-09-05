@@ -1,17 +1,12 @@
 // src/modules/blogs/services/cache.service.js
-import Redis from "ioredis";
+import { cacheRedis } from "../../../shared/config/redis.config.js";
 import { Logger } from "../../../shared/utils/Logger.js";
 
 const logger = new Logger("CacheService");
 
 class CacheService {
   constructor() {
-    this.redis = new Redis({
-      host: process.env.REDIS_HOST || "localhost",
-      port: process.env.REDIS_PORT || 6379,
-      password: process.env.REDIS_PASSWORD,
-      lazyConnect: true,
-    });
+    this.redis = cacheRedis;
 
     this.keyPrefix = "blog:";
     this.defaultTTL = 3600;

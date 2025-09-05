@@ -12,17 +12,11 @@ export class CacheService {
 
   async initRedis() {
     try {
-      if (process.env.REDIS_URL) {
-        const { default: Redis } = await import("ioredis");
-        this.client = new Redis(process.env.REDIS_URL, {
-          retryDelayOnFailover: 100,
-          maxRetriesPerRequest: 3,
-          lazyConnect: true,
-        });
-        this.redisInitialized = true;
-      } else {
-        console.warn("Redis not configured, using in-memory cache");
-      }
+      const { cacheRedis } = await import(
+        "../../../shared/config/redis.config.js"
+      );
+      this.client = cacheRedis;
+      this.redisInitialized = true;
     } catch (error) {
       console.warn(
         "Redis initialization failed, using in-memory cache:",

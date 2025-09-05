@@ -11,11 +11,12 @@ import {
 } from "../../controllers/post/post.controller.js";
 import { verifyJWT } from "../../../../shared/middleware/auth.middleware.js";
 import { optionalAuth } from "../../../../shared/middleware/optionalAuth.middleware.js";
+import { upload } from "../../../../shared/middleware/upload.middleware.js";
 
 const router = express.Router();
 
 // Protected routes (specific routes first)
-router.post("/", verifyJWT, createPost);
+router.post("/", verifyJWT, upload.array("files", 5), createPost);
 router.get("/my-posts", verifyJWT, getMyPosts);
 
 // Public routes

@@ -4,7 +4,7 @@ import Redis from "ioredis";
 const redisConfig = {
   host: process.env.REDIS_HOST || "localhost",
   port: process.env.REDIS_PORT || 6379,
-  password: process.env.REDIS_PASSWORD || undefined,
+  password: process.env.REDIS_PASSWORD || null, // password added
   db: process.env.REDIS_DB || 0,
   connectTimeout: 10000,
   commandTimeout: 5000,
@@ -28,10 +28,10 @@ let redisClient;
 try {
   redisClient = new Redis(redisConfig);
 
-  redisClient.on("connect", () => console.log("Redis connected"));
-  redisClient.on("error", err => console.error("Redis error:", err));
+  redisClient.on("connect", () => console.log("✅ Redis connected"));
+  redisClient.on("error", err => console.error("❌ Redis error:", err));
 } catch (error) {
-  console.error("Failed to initialize Redis:", error);
+  console.error("🚨 Failed to initialize Redis:", error);
 }
 
 const RedisUtils = {

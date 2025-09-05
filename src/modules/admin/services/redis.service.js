@@ -1,14 +1,9 @@
 // src/modules/admin/services/redis.service.js
-import Redis from "ioredis";
+import { cacheRedis } from "../../../shared/config/redis.config.js";
 
 class RedisCacheService {
   constructor() {
-    this.redis = new Redis({
-      host: process.env.REDIS_HOST || "localhost",
-      port: process.env.REDIS_PORT || 6379,
-      retryDelayOnFailover: 100,
-      maxRetriesPerRequest: 3,
-    });
+    this.redis = redisClient;
   }
 
   async get(key) {
@@ -24,11 +19,7 @@ class RedisCacheService {
   async set(key, data, ttlSeconds = 300) {
     try {
       const serialized = JSON.stringify(data);
-      if (ttlSeconds) {
-        await this.redis.setex(key, ttlSeconds, serialized);
-      } else {
-        await this.redis.set(key, serialized);
-      }
+      await this.redis.set(key, serialized, "EX", ttlSeconds);
       return true;
     } catch (error) {
       console.warn("Redis set error:", error.message);

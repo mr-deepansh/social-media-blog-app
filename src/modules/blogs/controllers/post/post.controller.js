@@ -5,15 +5,18 @@ import { ApiResponse } from "../../../../shared/utils/ApiResponse.js";
 import { PostService } from "../../services/post.service.js";
 import { Logger } from "../../../../shared/utils/Logger.js";
 import { User } from "../../../users/models/user.model.js";
+import {
+  uploadToCloudinary,
+  deleteFromCloudinary,
+} from "../../../../shared/services/cloudinary.service.js";
+import fs from "fs/promises";
 
 const logger = new Logger("PostController");
 
-// Create post
+// Create post with media upload
 const createPost = asyncHandler(async (req, res) => {
   const startTime = Date.now();
   const userId = req.user._id;
-
-  // Content is optional - depends on user choice
 
   const postData = {
     title: req.body.title || "",
@@ -23,7 +26,8 @@ const createPost = asyncHandler(async (req, res) => {
     tags: req.body.tags || [],
     status: req.body.status || "draft",
     visibility: req.body.visibility || "public",
-    media: req.body.media || [],
+    images: [],
+    videos: [],
     metadata: {
       device: req.headers["user-agent"],
       ip: req.ip,
@@ -31,6 +35,26 @@ const createPost = asyncHandler(async (req, res) => {
       platform: req.body.metadata?.platform || "web",
     },
   };
+
+  // Upload files to Cloudinary
+  if (req.files && req.files.length > 0) {
+    for (const file of req.files) {
+      try {
+        const result = await uploadToCloudinary(file.path, "posts");
+
+        if (file.mimetype.startsWith("image/")) {
+          postData.images.push(result);
+        } else if (file.mimetype.startsWith("video/")) {
+          postData.videos.push(result);
+        }
+
+        // Delete temp file
+        await fs.unlink(file.path).catch(() => {});
+      } catch (error) {
+        logger.error("File upload failed:", error);
+      }
+    }
+  }
 
   const post = await PostService.createPost(postData, userId);
   const executionTime = Date.now() - startTime;
@@ -141,7 +165,7 @@ const getMyPosts = asyncHandler(async (req, res) => {
     title: post.title,
     content:
 			post.content.length > 150
-				? `${post.content.substring(0, 150)  }...`
+				? `${post.content.substring(0, 150)}...`
 				: post.content,
     type: post.type,
     status: post.status,

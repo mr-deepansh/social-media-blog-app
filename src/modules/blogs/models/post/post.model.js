@@ -142,6 +142,20 @@ const postSchema = new Schema(
     media: [{ type: Schema.Types.ObjectId, ref: "Media" }],
     thumbnail: String,
 
+    // Cloudinary media URLs
+    images: [
+      {
+        url: String,
+        publicId: String,
+      },
+    ],
+    videos: [
+      {
+        url: String,
+        publicId: String,
+      },
+    ],
+
     // Location
     location: locationSchema,
 
@@ -272,6 +286,7 @@ const generateUniqueSlug = async function (baseSlug, postId = null) {
   let slug = baseSlug;
   let counter = 1;
 
+  // eslint-disable-next-line no-constant-condition
   while (true) {
     const query = { slug };
     if (postId) {

@@ -12,12 +12,15 @@ import { NotificationService } from "../services/notification.service.js";
 import auditService from "../services/audit.service.js";
 import { ExportImportService } from "../services/exportImport.service.js";
 import { SecurityService } from "../services/security.service.js";
+
 import { log } from "console";
 import { Worker, isMainThread, parentPort } from "worker_threads";
 import Bull from "bull";
 import Redis from "ioredis";
 import { Transform, pipeline } from "stream";
 import { promisify } from "util";
+import { cacheRedis } from "../../../shared/config/redis.config.js";
+import redisConfig from "../../../shared/config/redis.config.js";
 
 // Initialize services
 const cache = new CacheService();
@@ -381,7 +384,7 @@ class PerformanceMonitor {
 }
 
 class EnhancedCacheManager {
-  static redis = new Redis(process.env.REDIS_URL);
+  static redis = cacheRedis;
 
   static async get(key, parseJson = true) {
     try {
@@ -581,10 +584,10 @@ class StreamingProcessor {
 // ==========================================
 
 const exportQueue = new Bull("user-export", {
-  redis: { port: process.env.REDIS_PORT, host: process.env.REDIS_HOST },
+  redis: redisConfig,
 });
 const bulkActionQueue = new Bull("bulk-actions", {
-  redis: { port: process.env.REDIS_PORT, host: process.env.REDIS_HOST },
+  redis: redisConfig,
 });
 
 // * TODO ANALYTICS & DASHBOARD CONTROLLERS ***

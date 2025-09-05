@@ -8,6 +8,7 @@ import {
 } from "../../../shared/middleware/validate.middleware.js";
 import { zodValidation } from "../../../shared/validators/zod.validator.js";
 import * as userController from "../controllers/user.controller.js";
+import { upload } from "../../../shared/middleware/upload.middleware.js";
 import {
   getUserProfile,
   getUserPosts,
@@ -114,7 +115,14 @@ router.post(
 router.post(
   "/upload-avatar",
   verifyJWT,
+  upload.single("avatar"),
   asyncHandler(userController.uploadAvatar),
+);
+router.post(
+  "/upload-cover",
+  verifyJWT,
+  upload.single("cover"),
+  asyncHandler(userController.uploadCoverImage),
 );
 
 // ✅ Instagram-like profile routes

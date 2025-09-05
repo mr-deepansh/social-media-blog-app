@@ -56,12 +56,12 @@ const userSchema = new Schema(
     emailVerificationToken: String,
     emailVerificationExpiry: Date,
     avatar: {
-      type: String,
-      default: "",
+      url: { type: String, default: "" },
+      publicId: { type: String, default: "" },
     },
     coverImage: {
-      type: String,
-      default: "",
+      url: { type: String, default: "" },
+      publicId: { type: String, default: "" },
     },
     followers: [
       {
@@ -217,7 +217,7 @@ userSchema.methods.generateAccessToken = function () {
       firstName: this.firstName,
       lastName: this.lastName,
       bio: this.bio,
-      avatar: this.avatar,
+      avatar: this.avatar?.url || "",
       role: this.role,
       isActive: this.isActive,
     },

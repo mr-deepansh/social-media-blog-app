@@ -5,6 +5,40 @@ import { ApiError } from "../../../shared/utils/ApiError.js";
 import bcrypt from "bcrypt";
 
 export class UserService {
+  // Optimized getAllUsers for production scale
+  static async getAllUsers(filters = {}, page = 1, limit = 10) {
+    // Build query from filters (add more filter logic as needed)
+    const query = { isActive: true };
+    if (filters.search) {
+      query.$or = [
+        { username: { $regex: filters.search, $options: "i" } },
+        { firstName: { $regex: filters.search, $options: "i" } },
+        { lastName: { $regex: filters.search, $options: "i" } },
+      ];
+    }
+    // Pagination
+    const skip = (page - 1) * limit;
+    // Use lean for performance
+    const [users, total] = await Promise.all([
+      User.find(query)
+        .select("username firstName lastName avatar bio followersCount")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      User.countDocuments(query),
+    ]);
+    return {
+      users,
+      pagination: {
+        currentPage: page,
+        totalPages: Math.ceil(total / limit),
+        total,
+        hasNext: page * limit < total,
+        hasPrev: page > 1,
+      },
+    };
+  }
   static async getUserById(userId, currentUserId) {
     // Check permissions
     if (currentUserId !== userId && !(await this.isAdmin(currentUserId))) {
