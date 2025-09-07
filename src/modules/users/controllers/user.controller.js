@@ -152,12 +152,31 @@ const deleteUser = asyncHandler(async (req, res) => {
 const getCurrentUserProfile = asyncHandler(async (req, res) => {
   const userId = req.user._id;
 
-  const user = await UserService.getUserById(userId, userId);
+  const user = await User.findById(userId)
+    .select("-password -refreshToken -security -activityLog")
+    .lean();
+
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  // Ensure avatar URL is properly formatted
+  const formattedUser = {
+    ...user,
+    avatar: user.avatar?.url || null,
+    coverImage: user.coverImage?.url || null,
+    fullName:
+			`${user.firstName || ""} ${user.lastName || ""}`.trim() || user.username,
+  };
 
   res
     .status(200)
     .json(
-      new ApiResponse(200, user, "Current user profile fetched successfully"),
+      new ApiResponse(
+        200,
+        formattedUser,
+        "Current user profile fetched successfully",
+      ),
     );
 });
 
@@ -165,7 +184,11 @@ const getCurrentUserProfile = asyncHandler(async (req, res) => {
 const updateCurrentUserProfile = asyncHandler(async (req, res) => {
   const userId = req.user._id;
 
-  const user = await UserService.updateUser(userId, req.body, userId);
+  const user = await User.findByIdAndUpdate(
+    userId,
+    { $set: req.body },
+    { new: true, runValidators: true },
+  ).select("-password -refreshToken");
 
   res
     .status(200)
@@ -207,12 +230,12 @@ const uploadAvatar = asyncHandler(async (req, res) => {
       await deleteFromCloudinary(currentUser.avatar.publicId);
     }
 
-    // Update user with new avatar
-    const user = await UserService.updateUser(
+    // Update user with new avatar directly
+    const user = await User.findByIdAndUpdate(
       req.user._id,
       { avatar: result },
-      req.user._id,
-    );
+      { new: true },
+    ).select("-password -refreshToken");
 
     // Delete temp file
     await fs.unlink(req.file.path).catch(() => {});
@@ -243,12 +266,12 @@ const uploadCoverImage = asyncHandler(async (req, res) => {
       await deleteFromCloudinary(currentUser.coverImage.publicId);
     }
 
-    // Update user with new cover image
-    const user = await UserService.updateUser(
+    // Update user with new cover image directly
+    const user = await User.findByIdAndUpdate(
       req.user._id,
       { coverImage: result },
-      req.user._id,
-    );
+      { new: true },
+    ).select("-password -refreshToken");
 
     // Delete temp file
     await fs.unlink(req.file.path).catch(() => {});
@@ -506,9 +529,21 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 });
 
 const getCurrentUser = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id)
+    .select("-password -refreshToken -security -activityLog")
+    .lean();
+
+  const formattedUser = {
+    ...user,
+    avatar: user.avatar?.url || null,
+    coverImage: user.coverImage?.url || null,
+    fullName:
+			`${user.firstName || ""} ${user.lastName || ""}`.trim() || user.username,
+  };
+
   return res
     .status(200)
-    .json(new ApiResponse(200, req.user, "User fetched successfully"));
+    .json(new ApiResponse(200, formattedUser, "User fetched successfully"));
 });
 
 const updateAccountDetails = asyncHandler(async (req, res) => {
@@ -1212,7 +1247,7 @@ const getUserSuggestions = asyncHandler(async (req, res) => {
     );
     console.log("⏳ Executing aggregation pipeline...");
     // Execute aggregation with timeout
-    const suggestions = await User.aggregate(pipeline).maxTimeMS(10000);
+    const suggestions = await User.aggregate(pipeline);
     console.log("✅ Suggestions found:", suggestions.length);
     // Enhanced formatting with better suggestion reasons
     const formattedSuggestions = suggestions.map(user => {
@@ -1489,11 +1524,8 @@ const getUserFeed = asyncHandler(async (req, res) => {
       try {
         console.log("📝 Attempting to use Post model");
         const [feedResult, totalCountResult] = await Promise.all([
-          Post.aggregate(pipeline).maxTimeMS(15000),
-          Post.aggregate([
-            { $match: matchConditions },
-            { $count: "total" },
-          ]).maxTimeMS(10000),
+          Post.aggregate(pipeline),
+          Post.aggregate([{ $match: matchConditions }, { $count: "total" }]),
         ]);
         feed = feedResult;
         totalPosts =
@@ -1551,10 +1583,9 @@ const getUserFeed = asyncHandler(async (req, res) => {
 
         // Execute both queries in parallel for better performance
         const [feedResult, totalCountResult] = await Promise.all([
-          postsCollection.aggregate(pipeline).maxTimeMS(15000).toArray(),
+          postsCollection.aggregate(pipeline).toArray(),
           postsCollection
             .aggregate([{ $match: matchConditions }, { $count: "total" }])
-            .maxTimeMS(10000)
             .toArray(),
         ]);
 
@@ -1819,7 +1850,7 @@ const getUserProfileByUsername = asyncHandler(async (req, res) => {
           },
         },
       },
-    ]).maxTimeMS(10000);
+    ]);
 
     if (!userProfile || userProfile.length === 0) {
       throw new ApiError(404, "User not found or account may be deactivated");

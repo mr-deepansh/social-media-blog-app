@@ -227,4 +227,31 @@ const repost = asyncHandler(async (req, res) => {
   }
 });
 
-export { toggleLike, trackView, repost };
+// Toggle bookmark
+const toggleBookmark = asyncHandler(async (req, res) => {
+  const { postId } = req.params;
+  const userId = req.user._id;
+
+  const existingBookmark = await Bookmark.findOne({
+    user: userId,
+    post: postId,
+  });
+
+  let isBookmarked = false;
+
+  if (existingBookmark) {
+    await Bookmark.findByIdAndDelete(existingBookmark._id);
+    isBookmarked = false;
+  } else {
+    await Bookmark.create({ user: userId, post: postId });
+    isBookmarked = true;
+  }
+
+  res
+    .status(200)
+    .json(
+      new ApiResponse(200, { isBookmarked }, "Bookmark toggled successfully"),
+    );
+});
+
+export { toggleLike, trackView, repost, toggleBookmark };

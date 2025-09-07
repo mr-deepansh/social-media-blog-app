@@ -24,7 +24,7 @@ const createPost = asyncHandler(async (req, res) => {
     type: req.body.type || "post",
     category: req.body.category || "general",
     tags: req.body.tags || [],
-    status: req.body.status || "draft",
+    status: req.body.status || "published",
     visibility: req.body.visibility || "public",
     images: [],
     videos: [],
@@ -36,23 +36,33 @@ const createPost = asyncHandler(async (req, res) => {
     },
   };
 
-  // Upload files to Cloudinary
-  if (req.files && req.files.length > 0) {
+  // Handle media uploads (single/multiple/none)
+  if (Array.isArray(req.files) && req.files.length > 0) {
     for (const file of req.files) {
       try {
         const result = await uploadToCloudinary(file.path, "posts");
-
         if (file.mimetype.startsWith("image/")) {
           postData.images.push(result);
         } else if (file.mimetype.startsWith("video/")) {
           postData.videos.push(result);
         }
-
-        // Delete temp file
         await fs.unlink(file.path).catch(() => {});
       } catch (error) {
         logger.error("File upload failed:", error);
       }
+    }
+  } else if (req.file) {
+    // Handle single file upload (multer single)
+    try {
+      const result = await uploadToCloudinary(req.file.path, "posts");
+      if (req.file.mimetype.startsWith("image/")) {
+        postData.images.push(result);
+      } else if (req.file.mimetype.startsWith("video/")) {
+        postData.videos.push(result);
+      }
+      await fs.unlink(req.file.path).catch(() => {});
+    } catch (error) {
+      logger.error("File upload failed:", error);
     }
   }
 
@@ -164,9 +174,9 @@ const getMyPosts = asyncHandler(async (req, res) => {
     id: post._id,
     title: post.title,
     content:
-			post.content.length > 150
+			post.content && post.content.length > 150
 				? `${post.content.substring(0, 150)}...`
-				: post.content,
+				: post.content || "",
     type: post.type,
     status: post.status,
     visibility: post.visibility,
@@ -178,7 +188,7 @@ const getMyPosts = asyncHandler(async (req, res) => {
       shares: post.engagement?.shareCount || 0,
       views: post.engagement?.viewCount || 0,
     },
-    media: post.media?.length || 0,
+    media: (post.media && post.media.length) || 0,
     tags: post.tags || [],
     slug: post.slug,
   }));

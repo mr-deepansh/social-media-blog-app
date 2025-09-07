@@ -211,9 +211,9 @@ export class PostService {
         id: post._id,
         title: post.title,
         content:
-					post.content.length > 150
+					post.content && post.content.length > 150
 						? `${post.content.substring(0, 150)}...`
-						: post.content,
+						: post.content || "",
         type: post.type,
         createdAt: post.createdAt,
         engagement: {
