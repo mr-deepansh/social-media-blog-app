@@ -5,6 +5,10 @@ import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/AsyncHandler.js";
 import { CacheService } from "../../shared/utils/Cache.js";
 
+// Enterprise fallback constants
+const FALLBACK_CACHE_TTL = 300; // 5 minutes
+const MAX_RETRY_ATTEMPTS = 3;
+
 // Optimized cache operations for millions of users
 const isTokenBlacklisted = async token =>
   await CacheService.isTokenBlacklisted(token);
@@ -14,41 +18,61 @@ const getCachedUser = async userId => await CacheService.getCachedUser(userId);
 const setCachedUser = async (userId, userData, ttl = 300) =>
   await CacheService.cacheUser(userId, userData, ttl);
 
-// 🔥 OPTIMIZED AUTH MIDDLEWARE
+// 🔥 OPTIMIZED AUTH MIDDLEWARE WITH ENTERPRISE FALLBACK
 export const verifyJWT = asyncHandler(async (req, res, next) => {
   try {
-    // Extract token from multiple sources
-    const token =
-			req.cookies?.accessToken ||
-			req.header("Authorization")?.replace("Bearer ", "") ||
-			req.body?.accessToken;
+    // Extract token from multiple sources with better parsing
+    let token = req.cookies?.accessToken || req.body?.accessToken;
+
+    // Handle Authorization header properly
+    const authHeader = req.header("Authorization");
+    if (!token && authHeader) {
+      if (authHeader.startsWith("Bearer ")) {
+        token = authHeader.substring(7);
+      } else {
+        token = authHeader;
+      }
+    }
 
     if (!token) {
       throw new ApiError(401, "Unauthorized request");
     }
 
-    // Check token blacklist (for logout/security)
-    if (await isTokenBlacklisted(token)) {
-      throw new ApiError(401, "Token has been invalidated");
+    // Check token blacklist with fallback
+    try {
+      if (await isTokenBlacklisted(token)) {
+        throw new ApiError(401, "Token has been invalidated");
+      }
+    } catch (cacheError) {
+      console.warn("Cache check failed, proceeding:", cacheError.message);
     }
 
-    // Verify JWT
+    // Verify JWT with proper secret
     const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
 
-    // Try cache first, then database
-    let user = await getCachedUser(decodedToken._id);
+    // Try cache first with fallback to database
+    let user;
+    try {
+      user = await getCachedUser(decodedToken._id);
+    } catch (cacheError) {
+      console.warn("Cache retrieval failed:", cacheError.message);
+    }
 
     if (!user) {
       user = await User.findById(decodedToken._id)
         .select("-password -refreshToken -security.passwordHistory")
-        .lean(); // Use lean() for better performance
+        .lean();
 
       if (!user) {
         throw new ApiError(401, "Invalid Access Token");
       }
 
-      // Cache user data
-      await setCachedUser(decodedToken._id, user);
+      // Cache user data with error handling
+      try {
+        await setCachedUser(decodedToken._id, user);
+      } catch (cacheError) {
+        console.warn("Cache storage failed:", cacheError.message);
+      }
     }
 
     // Security checks
@@ -57,7 +81,7 @@ export const verifyJWT = asyncHandler(async (req, res, next) => {
     }
 
     req.user = user;
-    req.token = token; // Store token for logout
+    req.token = token;
     next();
   } catch (error) {
     if (error instanceof jwt.JsonWebTokenError) {
@@ -70,12 +94,17 @@ export const verifyJWT = asyncHandler(async (req, res, next) => {
   }
 });
 
-// Optional auth middleware (doesn't throw error if no token)
+// Optional auth middleware with enterprise fallback
 export const optionalAuth = asyncHandler(async (req, res, next) => {
   try {
-    const token =
-			req.cookies?.accessToken ||
-			req.header("Authorization")?.replace("Bearer ", "");
+    let token = req.cookies?.accessToken;
+
+    const authHeader = req.header("Authorization");
+    if (!token && authHeader) {
+      token = authHeader.startsWith("Bearer ")
+				? authHeader.substring(7)
+				: authHeader;
+    }
 
     if (!token) {
       req.user = null;
@@ -83,7 +112,13 @@ export const optionalAuth = asyncHandler(async (req, res, next) => {
     }
 
     const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
-    let user = await getCachedUser(decodedToken._id);
+    let user;
+
+    try {
+      user = await getCachedUser(decodedToken._id);
+    } catch (cacheError) {
+      console.warn("Optional auth cache failed:", cacheError.message);
+    }
 
     if (!user) {
       user = await User.findById(decodedToken._id)
@@ -91,7 +126,14 @@ export const optionalAuth = asyncHandler(async (req, res, next) => {
         .lean();
 
       if (user) {
-        await setCachedUser(decodedToken._id, user);
+        try {
+          await setCachedUser(decodedToken._id, user);
+        } catch (cacheError) {
+          console.warn(
+            "Optional auth cache storage failed:",
+            cacheError.message,
+          );
+        }
       }
     }
 
@@ -101,4 +143,10 @@ export const optionalAuth = asyncHandler(async (req, res, next) => {
     req.user = null;
     next();
   }
+});
+
+// Enterprise refresh token middleware (no auth required)
+export const refreshTokenMiddleware = asyncHandler(async (req, res, next) => {
+  // Skip auth for refresh token endpoint
+  next();
 });
