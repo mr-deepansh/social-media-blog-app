@@ -15,12 +15,7 @@ const redisConfig = {
   lazyConnect: false,
   family: 4,
   keepAlive: true,
-  retryStrategy: times => {
-    if (times > 10) {
-      return null;
-    }
-    return Math.min(times * 50, 2000);
-  },
+  retryStrategy: times => (times > 10 ? null : Math.min(times * 100, 10000)),
 };
 
 let redisClient;
@@ -29,7 +24,9 @@ try {
   redisClient = new Redis(redisConfig);
 
   redisClient.on("connect", () => console.log("✅ Redis connected"));
+  redisClient.on("ready", () => console.log("⚡ Redis ready"));
   redisClient.on("error", err => console.error("❌ Redis error:", err));
+  redisClient.on("end", () => console.log("🔌 Redis disconnected"));
 } catch (error) {
   console.error("🚨 Failed to initialize Redis:", error);
 }
@@ -84,5 +81,14 @@ const RedisUtils = {
     };
   },
 };
+
+// Graceful shutdown
+process.on("SIGINT", async () => {
+  if (redisClient) {
+    await redisClient.quit();
+    console.log("🔌 Redis connection closed");
+  }
+  process.exit(0);
+});
 
 export { redisClient, RedisUtils };
