@@ -1,13 +1,13 @@
 // src/modules/blogs/routes/post/post.routes.js
 import express from "express";
 import {
-  createPost,
-  getPosts,
-  getPostById,
-  updatePost,
-  deletePost,
-  getMyPosts,
-  getUserPosts,
+	createPost,
+	getPosts,
+	getPostById,
+	updatePost,
+	deletePost,
+	getMyPosts,
+	getUserPosts,
 } from "../../controllers/post/post.controller.js";
 import { verifyJWT } from "../../../../shared/middleware/auth.middleware.js";
 import { optionalAuth } from "../../../../shared/middleware/optionalAuth.middleware.js";

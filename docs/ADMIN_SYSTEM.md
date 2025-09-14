@@ -2,7 +2,8 @@
 
 ## 📋 Overview
 
-This document outlines the production-grade Admin & Super Admin API system with enterprise-level features including advanced analytics, security monitoring, role-based access control, and comprehensive audit logging.
+This document outlines the production-grade Admin & Super Admin API system with enterprise-level features including
+advanced analytics, security monitoring, role-based access control, and comprehensive audit logging.
 
 ## 🎯 Key Features
 
@@ -267,12 +268,12 @@ ANALYTICS_RETENTION_DAYS=365
 
 ```javascript
 const adminFeatures = {
-	advancedAnalytics: true,
-	realTimeMonitoring: true,
-	bulkOperations: true,
-	automationRules: true,
-	experimentFramework: true,
-	threatDetection: true,
+  advancedAnalytics: true,
+  realTimeMonitoring: true,
+  bulkOperations: true,
+  automationRules: true,
+  experimentFramework: true,
+  threatDetection: true,
 };
 ```
 
@@ -282,11 +283,11 @@ const adminFeatures = {
 
 ```javascript
 // GET /admin/analytics/overview?timeRange=30d
-const response = await fetch('/admin/analytics/overview?timeRange=30d', {
-	headers: {
-		Authorization: `Bearer ${adminToken}`,
-		'Content-Type': 'application/json',
-	},
+const response = await fetch("/admin/analytics/overview?timeRange=30d", {
+  headers: {
+    Authorization: `Bearer ${adminToken}`,
+    "Content-Type": "application/json",
+  },
 });
 
 const analytics = await response.json();
@@ -297,47 +298,47 @@ console.log(analytics.data.overview);
 
 ```javascript
 // POST /admin/security/blocked-ips
-const response = await fetch('/admin/security/blocked-ips', {
-	method: 'POST',
-	headers: {
-		Authorization: `Bearer ${adminToken}`,
-		'Content-Type': 'application/json',
-	},
-	body: JSON.stringify({
-		ipAddress: '192.168.1.100',
-		reason: 'Multiple failed login attempts',
-		duration: '24h',
-	}),
+const response = await fetch("/admin/security/blocked-ips", {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${adminToken}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    ipAddress: "192.168.1.100",
+    reason: "Multiple failed login attempts",
+    duration: "24h",
+  }),
 });
 
 const result = await response.json();
-console.log('IP blocked:', result.data);
+console.log("IP blocked:", result.data);
 ```
 
 ### 📢 Sending Bulk Notification
 
 ```javascript
 // POST /admin/notifications/send-bulk
-const response = await fetch('/admin/notifications/send-bulk', {
-	method: 'POST',
-	headers: {
-		Authorization: `Bearer ${adminToken}`,
-		'Content-Type': 'application/json',
-	},
-	body: JSON.stringify({
-		recipients: 'active',
-		template: 'system_update',
-		channels: ['email', 'in-app'],
-		priority: 'normal',
-		customMessage: {
-			title: 'System Maintenance Notice',
-			content: 'Scheduled maintenance on Sunday 2AM-4AM UTC',
-		},
-	}),
+const response = await fetch("/admin/notifications/send-bulk", {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${adminToken}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    recipients: "active",
+    template: "system_update",
+    channels: ["email", "in-app"],
+    priority: "normal",
+    customMessage: {
+      title: "System Maintenance Notice",
+      content: "Scheduled maintenance on Sunday 2AM-4AM UTC",
+    },
+  }),
 });
 
 const result = await response.json();
-console.log('Notification sent:', result.data);
+console.log("Notification sent:", result.data);
 ```
 
 ## 🔄 Deployment
@@ -390,5 +391,5 @@ For technical support or questions about the admin system:
 
 ---
 
-**🏢 Enterprise Social Media Blog Platform - Admin System v2.0**
-_Built with enterprise standards for scalability, security, and performance_
+**🏢 Enterprise Social Media Blog Platform - Admin System v2.0** _Built with enterprise standards for scalability,
+security, and performance_

@@ -1,15 +1,11 @@
 // src/modules/auth/routes/auth.routes.js
 import { Router } from "express";
+import { verifyEmail, resendEmailVerification, getSecurityOverview } from "../controllers/auth.controller.js";
 import {
-  verifyEmail,
-  resendEmailVerification,
-  getSecurityOverview,
-} from "../controllers/auth.controller.js";
-import {
-  getUserActivity,
-  getActivityStats,
-  getLoginLocations,
-  getLocationAnalytics,
+	getUserActivity,
+	getActivityStats,
+	getLoginLocations,
+	getLocationAnalytics,
 } from "../controllers/activity.controller.js";
 import { verifyJWT } from "../../../shared/middleware/auth.middleware.js";
 import securityRoutes from "./security.routes.js";

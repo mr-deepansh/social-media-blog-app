@@ -1,11 +1,6 @@
 // src/modules/blogs/routes/engagement/engagement.routes.js
 import express from "express";
-import {
-  toggleLike,
-  trackView,
-  repost,
-  toggleBookmark,
-} from "../../controllers/engagement/engagement.controller.js";
+import { toggleLike, trackView, repost, toggleBookmark } from "../../controllers/engagement/engagement.controller.js";
 import { verifyJWT } from "../../../../shared/middleware/auth.middleware.js";
 import { optionalAuth } from "../../../../shared/middleware/optionalAuth.middleware.js";
 

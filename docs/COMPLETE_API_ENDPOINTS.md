@@ -30,12 +30,12 @@
 
 ```json
 {
-	"username": "testuser",
-	"email": "test@example.com",
-	"password": "Strong@123",
-	"confirmPassword": "Strong@123",
-	"firstName": "Test",
-	"lastName": "User"
+  "username": "testuser",
+  "email": "test@example.com",
+  "password": "Strong@123",
+  "confirmPassword": "Strong@123",
+  "firstName": "Test",
+  "lastName": "User"
 }
 ```
 
@@ -47,9 +47,9 @@
 
 ```json
 {
-	"identifier": "test@example.com",
-	"password": "Strong@123",
-	"rememberMe": false
+  "identifier": "test@example.com",
+  "password": "Strong@123",
+  "rememberMe": false
 }
 ```
 
@@ -68,7 +68,7 @@
 
 ```json
 {
-	"refreshToken": "your_refresh_token_here"
+  "refreshToken": "your_refresh_token_here"
 }
 ```
 
@@ -80,7 +80,7 @@
 
 ```json
 {
-	"email": "test@example.com"
+  "email": "test@example.com"
 }
 ```
 
@@ -92,8 +92,8 @@
 
 ```json
 {
-	"password": "NewStrong@123",
-	"confirmPassword": "NewStrong@123"
+  "password": "NewStrong@123",
+  "confirmPassword": "NewStrong@123"
 }
 ```
 
@@ -160,10 +160,10 @@
 
 ```json
 {
-	"firstName": "Updated",
-	"lastName": "Name",
-	"bio": "Updated bio",
-	"avatar": "https://example.com/avatar.jpg"
+  "firstName": "Updated",
+  "lastName": "Name",
+  "bio": "Updated bio",
+  "avatar": "https://example.com/avatar.jpg"
 }
 ```
 
@@ -183,8 +183,8 @@
 
 ```json
 {
-	"currentPassword": "Strong@123",
-	"newPassword": "NewStrong@123"
+  "currentPassword": "Strong@123",
+  "newPassword": "NewStrong@123"
 }
 ```
 
@@ -197,7 +197,7 @@
 
 ```json
 {
-	"avatarUrl": "https://example.com/avatar.jpg"
+  "avatarUrl": "https://example.com/avatar.jpg"
 }
 ```
 
@@ -223,9 +223,9 @@
 
 ```json
 {
-	"firstName": "Updated",
-	"lastName": "Name",
-	"bio": "Updated bio"
+  "firstName": "Updated",
+  "lastName": "Name",
+  "bio": "Updated bio"
 }
 ```
 
@@ -307,9 +307,9 @@
 
 ```json
 {
-	"title": "My First Blog",
-	"content": "This is the content of my blog post...",
-	"tags": ["technology", "programming", "nodejs"]
+  "title": "My First Blog",
+  "content": "This is the content of my blog post...",
+  "tags": ["technology", "programming", "nodejs"]
 }
 ```
 
@@ -322,9 +322,9 @@
 
 ```json
 {
-	"title": "Updated Blog Title",
-	"content": "Updated content...",
-	"tags": ["updated", "tags"]
+  "title": "Updated Blog Title",
+  "content": "Updated content...",
+  "tags": ["updated", "tags"]
 }
 ```
 
@@ -346,12 +346,12 @@
 
 ```json
 {
-	"username": "superadmin",
-	"email": "superadmin@example.com",
-	"password": "SuperAdmin@123",
-	"confirmPassword": "SuperAdmin@123",
-	"firstName": "Super",
-	"lastName": "Admin"
+  "username": "superadmin",
+  "email": "superadmin@example.com",
+  "password": "SuperAdmin@123",
+  "confirmPassword": "SuperAdmin@123",
+  "firstName": "Super",
+  "lastName": "Admin"
 }
 ```
 
@@ -407,9 +407,9 @@
 
 ```json
 {
-	"firstName": "Updated",
-	"lastName": "Name",
-	"isActive": true
+  "firstName": "Updated",
+  "lastName": "Name",
+  "isActive": true
 }
 ```
 
@@ -428,7 +428,7 @@
 
 ```json
 {
-	"reason": "Policy violation"
+  "reason": "Policy violation"
 }
 ```
 
@@ -469,10 +469,10 @@
 
 ```json
 {
-	"action": "suspend",
-	"userIds": ["user1", "user2", "user3"],
-	"reason": "Policy violation",
-	"notifyUsers": true
+  "action": "suspend",
+  "userIds": ["user1", "user2", "user3"],
+  "reason": "Policy violation",
+  "notifyUsers": true
 }
 ```
 
@@ -492,10 +492,10 @@
 
 ```json
 {
-	"type": "warning",
-	"title": "Account Warning",
-	"message": "Please review our community guidelines",
-	"channels": ["email", "in-app"]
+  "type": "warning",
+  "title": "Account Warning",
+  "message": "Please review our community guidelines",
+  "channels": ["email", "in-app"]
 }
 ```
 
@@ -508,7 +508,7 @@
 
 ```json
 {
-	"reason": "Security concern"
+  "reason": "Security concern"
 }
 ```
 
@@ -531,11 +531,11 @@
 
 ```json
 {
-	"username": "newadmin",
-	"email": "admin@company.com",
-	"password": "Strong@123!",
-	"role": "admin",
-	"permissions": ["user_management", "content_moderation"]
+  "username": "newadmin",
+  "email": "admin@company.com",
+  "password": "Strong@123!",
+  "role": "admin",
+  "permissions": ["user_management", "content_moderation"]
 }
 ```
 
@@ -554,8 +554,8 @@
 
 ```json
 {
-	"permissions": ["user_management", "content_moderation", "analytics"],
-	"isActive": true
+  "permissions": ["user_management", "content_moderation", "analytics"],
+  "isActive": true
 }
 ```
 
@@ -568,8 +568,8 @@
 
 ```json
 {
-	"confirmPassword": "SuperAdmin@123",
-	"reason": "Admin role no longer required"
+  "confirmPassword": "SuperAdmin@123",
+  "reason": "Admin role no longer required"
 }
 ```
 
@@ -582,8 +582,8 @@
 
 ```json
 {
-	"newRole": "admin",
-	"reason": "Promoting user to admin for content management responsibilities"
+  "newRole": "admin",
+  "reason": "Promoting user to admin for content management responsibilities"
 }
 ```
 
@@ -615,9 +615,9 @@
 
 ```json
 {
-	"reason": "Security breach detected",
-	"duration": "1h",
-	"confirmPassword": "SuperAdmin@123"
+  "reason": "Security breach detected",
+  "duration": "1h",
+  "confirmPassword": "SuperAdmin@123"
 }
 ```
 
@@ -706,9 +706,9 @@
 
 ```json
 {
-	"ipAddress": "192.168.1.100",
-	"reason": "Multiple failed login attempts",
-	"duration": "24h"
+  "ipAddress": "192.168.1.100",
+  "reason": "Multiple failed login attempts",
+  "duration": "24h"
 }
 ```
 
@@ -721,7 +721,7 @@
 
 ```json
 {
-	"reason": "Issue resolved"
+  "reason": "Issue resolved"
 }
 ```
 
@@ -750,11 +750,11 @@
 
 ```json
 {
-	"category": "security",
-	"settings": {
-		"maxLoginAttempts": 5,
-		"lockoutDuration": 1800
-	}
+  "category": "security",
+  "settings": {
+    "maxLoginAttempts": 5,
+    "lockoutDuration": 1800
+  }
 }
 ```
 
@@ -790,14 +790,14 @@
 
 ```json
 {
-	"recipients": "active",
-	"template": "system_update",
-	"channels": ["email", "in-app"],
-	"priority": "normal",
-	"customMessage": {
-		"title": "System Maintenance",
-		"content": "Scheduled maintenance on Sunday 2AM-4AM UTC"
-	}
+  "recipients": "active",
+  "template": "system_update",
+  "channels": ["email", "in-app"],
+  "priority": "normal",
+  "customMessage": {
+    "title": "System Maintenance",
+    "content": "Scheduled maintenance on Sunday 2AM-4AM UTC"
+  }
 }
 ```
 
@@ -821,19 +821,19 @@
 
 ```json
 {
-	"name": "Welcome New Users",
-	"description": "Send welcome email to new registrations",
-	"trigger": "user_created",
-	"conditions": {
-		"isEmailVerified": true
-	},
-	"actions": [
-		{
-			"type": "send_email",
-			"template": "welcome",
-			"delay": 0
-		}
-	]
+  "name": "Welcome New Users",
+  "description": "Send welcome email to new registrations",
+  "trigger": "user_created",
+  "conditions": {
+    "isEmailVerified": true
+  },
+  "actions": [
+    {
+      "type": "send_email",
+      "template": "welcome",
+      "delay": 0
+    }
+  ]
 }
 ```
 
@@ -853,20 +853,20 @@
 
 ```json
 {
-	"name": "New Onboarding Flow",
-	"description": "Testing simplified onboarding process",
-	"variants": [
-		{
-			"name": "control",
-			"description": "Current flow"
-		},
-		{
-			"name": "simplified",
-			"description": "New simplified flow"
-		}
-	],
-	"trafficSplit": [50, 50],
-	"duration": 14
+  "name": "New Onboarding Flow",
+  "description": "Testing simplified onboarding process",
+  "variants": [
+    {
+      "name": "control",
+      "description": "Current flow"
+    },
+    {
+      "name": "simplified",
+      "description": "New simplified flow"
+    }
+  ],
+  "trafficSplit": [50, 50],
+  "duration": 14
 }
 ```
 
@@ -908,8 +908,8 @@
 
 ```json
 {
-	"action": "hide",
-	"reason": "Inappropriate content"
+  "action": "hide",
+  "reason": "Inappropriate content"
 }
 ```
 
@@ -977,13 +977,13 @@ All API responses follow this standard format:
 
 ```json
 {
-	"statusCode": 200,
-	"data": {
-		// Response data here
-	},
-	"message": "Operation successful",
-	"success": true,
-	"timestamp": "2024-01-15T10:30:00.000Z"
+  "statusCode": 200,
+  "data": {
+    // Response data here
+  },
+  "message": "Operation successful",
+  "success": true,
+  "timestamp": "2024-01-15T10:30:00.000Z"
 }
 ```
 
@@ -1032,4 +1032,5 @@ All API responses follow this standard format:
 
 **Total Endpoints: 92**
 
-This comprehensive list covers all available API endpoints in your social media blog application. Use this as your complete reference for Postman testing!
+This comprehensive list covers all available API endpoints in your social media blog application. Use this as your
+complete reference for Postman testing!

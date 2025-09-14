@@ -1,6 +1,7 @@
 # Contributing to Social Media Blog Platform
 
-Thank you for your interest in contributing to our project! This document provides guidelines and information for contributors.
+Thank you for your interest in contributing to our project! This document provides guidelines and information for
+contributors.
 
 ## 🎯 Code of Conduct
 
@@ -147,23 +148,23 @@ npm run test:watch
 
 ```javascript
 // Example unit test
-describe('UserService', () => {
-	describe('createUser', () => {
-		it('should create a new user with valid data', async () => {
-			const userData = {
-				username: 'testuser',
-				email: 'test@example.com',
-				password: 'SecurePass123!',
-			};
+describe("UserService", () => {
+  describe("createUser", () => {
+    it("should create a new user with valid data", async () => {
+      const userData = {
+        username: "testuser",
+        email: "test@example.com",
+        password: "SecurePass123!",
+      };
 
-			const user = await userService.createUser(userData);
+      const user = await userService.createUser(userData);
 
-			expect(user).toBeDefined();
-			expect(user.username).toBe(userData.username);
-			expect(user.email).toBe(userData.email);
-			expect(user.password).not.toBe(userData.password); // Should be hashed
-		});
-	});
+      expect(user).toBeDefined();
+      expect(user.username).toBe(userData.username);
+      expect(user.email).toBe(userData.email);
+      expect(user.password).not.toBe(userData.password); // Should be hashed
+    });
+  });
 });
 ```
 
@@ -207,12 +208,12 @@ service-name/
 Use the shared error utilities:
 
 ```javascript
-import { ApiError } from '@shared/lib/utils/api-error.util.js';
+import { ApiError } from "@shared/lib/utils/api-error.util.js";
 
 // Throw standardized errors
-throw ApiError.badRequest('Invalid input data');
-throw ApiError.unauthorized('Authentication required');
-throw ApiError.notFound('User not found');
+throw ApiError.badRequest("Invalid input data");
+throw ApiError.unauthorized("Authentication required");
+throw ApiError.notFound("User not found");
 ```
 
 ### Response Format
@@ -220,11 +221,11 @@ throw ApiError.notFound('User not found');
 Use the shared response utilities:
 
 ```javascript
-import { ApiResponse } from '@shared/lib/utils/api-response.util.js';
+import { ApiResponse } from "@shared/lib/utils/api-response.util.js";
 
 // Success responses
-return ApiResponse.success(data, 'Operation successful').send(res);
-return ApiResponse.created(user, 'User created successfully').send(res);
+return ApiResponse.success(data, "Operation successful").send(res);
+return ApiResponse.created(user, "User created successfully").send(res);
 
 // Paginated responses
 return ApiResponse.paginated(items, pagination).send(res);
@@ -275,8 +276,7 @@ return ApiResponse.paginated(items, pagination).send(res);
 ### Bug Report Template
 
 ```markdown
-**Bug Description**
-A clear description of the bug.
+**Bug Description** A clear description of the bug.
 
 **Steps to Reproduce**
 
@@ -284,11 +284,9 @@ A clear description of the bug.
 2. Click on '...'
 3. See error
 
-**Expected Behavior**
-What you expected to happen.
+**Expected Behavior** What you expected to happen.
 
-**Actual Behavior**
-What actually happened.
+**Actual Behavior** What actually happened.
 
 **Environment**
 
@@ -296,8 +294,7 @@ What actually happened.
 - Node.js version: [e.g., 20.0.0]
 - Browser: [e.g., Chrome 96.0]
 
-**Additional Context**
-Any other context about the problem.
+**Additional Context** Any other context about the problem.
 ```
 
 ## 💡 Feature Requests
@@ -305,20 +302,15 @@ Any other context about the problem.
 ### Feature Request Template
 
 ```markdown
-**Feature Description**
-A clear description of the feature you'd like to see.
+**Feature Description** A clear description of the feature you'd like to see.
 
-**Problem Statement**
-What problem does this feature solve?
+**Problem Statement** What problem does this feature solve?
 
-**Proposed Solution**
-How would you like this feature to work?
+**Proposed Solution** How would you like this feature to work?
 
-**Alternatives Considered**
-Any alternative solutions you've considered.
+**Alternatives Considered** Any alternative solutions you've considered.
 
-**Additional Context**
-Any other context or screenshots about the feature.
+**Additional Context** Any other context or screenshots about the feature.
 ```
 
 ## 📚 Documentation

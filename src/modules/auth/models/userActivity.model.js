@@ -2,64 +2,64 @@
 import mongoose, { Schema } from "mongoose";
 
 const userActivitySchema = new Schema(
-  {
-    userId: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-      index: true,
-    },
-    email: {
-      type: String,
-      required: true,
-    },
-    action: {
-      type: String,
-      required: true,
-      enum: [
-        "login",
-        "logout",
-        "register",
-        "password_reset",
-        "profile_update",
-        "email_change",
-        "password_change",
-        "account_locked",
-        "account_unlocked",
-        "mfa_enabled",
-        "mfa_disabled",
-      ],
-      index: true,
-    },
-    ip: {
-      type: String,
-      required: true,
-    },
-    location: {
-      country: String,
-      region: String,
-      city: String,
-      timezone: String,
-    },
-    device: {
-      browser: String,
-      version: String,
-      os: String,
-      device: String,
-      userAgent: String,
-    },
-    success: {
-      type: Boolean,
-      default: true,
-    },
-    errorMessage: String,
-    sessionId: String,
-  },
-  {
-    timestamps: true,
-    collection: "useractivities",
-    suppressReservedKeysWarning: true,
-  },
+	{
+		userId: {
+			type: Schema.Types.ObjectId,
+			ref: "User",
+			required: true,
+			index: true,
+		},
+		email: {
+			type: String,
+			required: true,
+		},
+		action: {
+			type: String,
+			required: true,
+			enum: [
+				"login",
+				"logout",
+				"register",
+				"password_reset",
+				"profile_update",
+				"email_change",
+				"password_change",
+				"account_locked",
+				"account_unlocked",
+				"mfa_enabled",
+				"mfa_disabled",
+			],
+			index: true,
+		},
+		ip: {
+			type: String,
+			required: true,
+		},
+		location: {
+			country: String,
+			region: String,
+			city: String,
+			timezone: String,
+		},
+		device: {
+			browser: String,
+			version: String,
+			os: String,
+			device: String,
+			userAgent: String,
+		},
+		success: {
+			type: Boolean,
+			default: true,
+		},
+		errorMessage: String,
+		sessionId: String,
+	},
+	{
+		timestamps: true,
+		collection: "useractivities",
+		suppressReservedKeysWarning: true,
+	},
 );
 
 // Compound indexes for optimal query performance

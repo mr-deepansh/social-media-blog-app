@@ -12,20 +12,14 @@ const __dirname = path.dirname(__filename);
  * @returns {Promise<string>} - Rendered HTML string
  */
 export const renderEmailTemplate = async (templateName, data) => {
-  try {
-    const templatePath = path.join(
-      __dirname,
-      "..",
-      "views",
-      "emails",
-			`${templateName}.ejs`,
-    );
-    const html = await ejs.renderFile(templatePath, data);
-    return html;
-  } catch (error) {
-    console.error(`Error rendering email template ${templateName}:`, error);
-    throw new Error(`Failed to render email template: ${templateName}`);
-  }
+	try {
+		const templatePath = path.join(__dirname, "..", "views", "emails", `${templateName}.ejs`);
+		const html = await ejs.renderFile(templatePath, data);
+		return html;
+	} catch (error) {
+		console.error(`Error rendering email template ${templateName}:`, error);
+		throw new Error(`Failed to render email template: ${templateName}`);
+	}
 };
 
 /**
@@ -36,7 +30,7 @@ export const renderEmailTemplate = async (templateName, data) => {
  * @returns {Promise<string>} - Rendered HTML
  */
 export const generateForgotPasswordEmail = async data => {
-  return await renderEmailTemplate("forgot-password", data);
+	return await renderEmailTemplate("forgot-password", data);
 };
 
 /**
@@ -50,7 +44,7 @@ export const generateForgotPasswordEmail = async data => {
  * @returns {Promise<string>} - Rendered HTML
  */
 export const generatePasswordResetSuccessEmail = async data => {
-  return await renderEmailTemplate("password-reset-success", data);
+	return await renderEmailTemplate("password-reset-success", data);
 };
 
 /**
@@ -60,9 +54,9 @@ export const generatePasswordResetSuccessEmail = async data => {
  * @returns {string} - Plain text version
  */
 export const generatePlainTextEmail = (templateName, data) => {
-  switch (templateName) {
-    case "forgot-password":
-      return `
+	switch (templateName) {
+		case "forgot-password":
+			return `
 Hello ${data.name},
 
 We received a request to reset the password for your account. If you made this request, please click the link below to reset your password:
@@ -77,8 +71,8 @@ Best regards,
 Social Media App Team
             `;
 
-    case "password-reset-success":
-      return `
+		case "password-reset-success":
+			return `
 Hello ${data.name},
 
 Your password has been successfully reset. You can now log in to your account using your new password.
@@ -98,7 +92,7 @@ Best regards,
 Social Media App Team
             `;
 
-    default:
-      return "Email content not available";
-  }
+		default:
+			return "Email content not available";
+	}
 };

@@ -2,8 +2,8 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
@@ -235,7 +235,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Version 2.0.0 - Major Architecture Overhaul
 
-This release represents a complete architectural transformation from a monolithic application to a modern microservices-based platform. Key highlights include:
+This release represents a complete architectural transformation from a monolithic application to a modern
+microservices-based platform. Key highlights include:
 
 **🏗️ Microservices Architecture**
 
@@ -274,7 +275,8 @@ This release represents a complete architectural transformation from a monolithi
 
 ### Migration Guide
 
-For users upgrading from v1.x to v2.0.0, please refer to our [Migration Guide](docs/migration/v1-to-v2.md) for detailed instructions on:
+For users upgrading from v1.x to v2.0.0, please refer to our [Migration Guide](docs/migration/v1-to-v2.md) for detailed
+instructions on:
 
 - Database schema changes
 - API endpoint updates

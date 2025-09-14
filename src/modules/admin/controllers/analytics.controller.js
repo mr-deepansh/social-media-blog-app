@@ -15,25 +15,21 @@ const cache = new CacheService();
  * @access Admin, Super Admin
  */
 export const getAnalyticsOverview = asyncHandler(async (req, res) => {
-  const { timeRange = "30d" } = req.query;
-  const cacheKey = `analytics:overview:${timeRange}`;
+	const { timeRange = "30d" } = req.query;
+	const cacheKey = `analytics:overview:${timeRange}`;
 
-  // Try cache first
-  const cached = await cache.get(cacheKey);
-  if (cached) {
-    return res
-      .status(200)
-      .json(new ApiResponse(200, cached, "Analytics overview from cache"));
-  }
+	// Try cache first
+	const cached = await cache.get(cacheKey);
+	if (cached) {
+		return res.status(200).json(new ApiResponse(200, cached, "Analytics overview from cache"));
+	}
 
-  const overview = await analyticsService.getOverview(timeRange);
+	const overview = await analyticsService.getOverview(timeRange);
 
-  // Cache for 5 minutes
-  await cache.set(cacheKey, overview, 300);
+	// Cache for 5 minutes
+	await cache.set(cacheKey, overview, 300);
 
-  return res
-    .status(200)
-    .json(new ApiResponse(200, overview, "Analytics overview generated"));
+	return res.status(200).json(new ApiResponse(200, overview, "Analytics overview generated"));
 });
 
 /**
@@ -42,23 +38,19 @@ export const getAnalyticsOverview = asyncHandler(async (req, res) => {
  * @access Admin, Super Admin
  */
 export const getUserGrowthAnalytics = asyncHandler(async (req, res) => {
-  const { period = "daily", days = 30 } = req.query;
-  const cacheKey = `analytics:growth:${period}:${days}`;
+	const { period = "daily", days = 30 } = req.query;
+	const cacheKey = `analytics:growth:${period}:${days}`;
 
-  const cached = await cache.get(cacheKey);
-  if (cached) {
-    return res
-      .status(200)
-      .json(new ApiResponse(200, cached, "Growth analytics from cache"));
-  }
+	const cached = await cache.get(cacheKey);
+	if (cached) {
+		return res.status(200).json(new ApiResponse(200, cached, "Growth analytics from cache"));
+	}
 
-  const growth = await analyticsService.getUserGrowth(period, parseInt(days));
+	const growth = await analyticsService.getUserGrowth(period, parseInt(days));
 
-  await cache.set(cacheKey, growth, 600); // 10 minutes
+	await cache.set(cacheKey, growth, 600); // 10 minutes
 
-  return res
-    .status(200)
-    .json(new ApiResponse(200, growth, "User growth analytics generated"));
+	return res.status(200).json(new ApiResponse(200, growth, "User growth analytics generated"));
 });
 
 /**
@@ -67,23 +59,19 @@ export const getUserGrowthAnalytics = asyncHandler(async (req, res) => {
  * @access Admin, Super Admin
  */
 export const getUserRetentionAnalytics = asyncHandler(async (req, res) => {
-  const { cohortPeriod = "monthly" } = req.query;
-  const cacheKey = `analytics:retention:${cohortPeriod}`;
+	const { cohortPeriod = "monthly" } = req.query;
+	const cacheKey = `analytics:retention:${cohortPeriod}`;
 
-  const cached = await cache.get(cacheKey);
-  if (cached) {
-    return res
-      .status(200)
-      .json(new ApiResponse(200, cached, "Retention analytics from cache"));
-  }
+	const cached = await cache.get(cacheKey);
+	if (cached) {
+		return res.status(200).json(new ApiResponse(200, cached, "Retention analytics from cache"));
+	}
 
-  const retention = await analyticsService.getRetentionAnalytics(cohortPeriod);
+	const retention = await analyticsService.getRetentionAnalytics(cohortPeriod);
 
-  await cache.set(cacheKey, retention, 1800); // 30 minutes
+	await cache.set(cacheKey, retention, 1800); // 30 minutes
 
-  return res
-    .status(200)
-    .json(new ApiResponse(200, retention, "Retention analytics generated"));
+	return res.status(200).json(new ApiResponse(200, retention, "Retention analytics generated"));
 });
 
 /**
@@ -92,22 +80,18 @@ export const getUserRetentionAnalytics = asyncHandler(async (req, res) => {
  * @access Admin, Super Admin
  */
 export const getUserDemographics = asyncHandler(async (req, res) => {
-  const cacheKey = "analytics:demographics";
+	const cacheKey = "analytics:demographics";
 
-  const cached = await cache.get(cacheKey);
-  if (cached) {
-    return res
-      .status(200)
-      .json(new ApiResponse(200, cached, "Demographics from cache"));
-  }
+	const cached = await cache.get(cacheKey);
+	if (cached) {
+		return res.status(200).json(new ApiResponse(200, cached, "Demographics from cache"));
+	}
 
-  const demographics = await analyticsService.getDemographics();
+	const demographics = await analyticsService.getDemographics();
 
-  await cache.set(cacheKey, demographics, 3600); // 1 hour
+	await cache.set(cacheKey, demographics, 3600); // 1 hour
 
-  return res
-    .status(200)
-    .json(new ApiResponse(200, demographics, "Demographics generated"));
+	return res.status(200).json(new ApiResponse(200, demographics, "Demographics generated"));
 });
 
 /**
@@ -116,21 +100,17 @@ export const getUserDemographics = asyncHandler(async (req, res) => {
  * @access Admin, Super Admin
  */
 export const getEngagementMetrics = asyncHandler(async (req, res) => {
-  const { timeRange = "7d" } = req.query;
-  const cacheKey = `analytics:engagement:${timeRange}`;
+	const { timeRange = "7d" } = req.query;
+	const cacheKey = `analytics:engagement:${timeRange}`;
 
-  const cached = await cache.get(cacheKey);
-  if (cached) {
-    return res
-      .status(200)
-      .json(new ApiResponse(200, cached, "Engagement metrics from cache"));
-  }
+	const cached = await cache.get(cacheKey);
+	if (cached) {
+		return res.status(200).json(new ApiResponse(200, cached, "Engagement metrics from cache"));
+	}
 
-  const engagement = await analyticsService.getEngagementMetrics(timeRange);
+	const engagement = await analyticsService.getEngagementMetrics(timeRange);
 
-  await cache.set(cacheKey, engagement, 900); // 15 minutes
+	await cache.set(cacheKey, engagement, 900); // 15 minutes
 
-  return res
-    .status(200)
-    .json(new ApiResponse(200, engagement, "Engagement metrics generated"));
+	return res.status(200).json(new ApiResponse(200, engagement, "Engagement metrics generated"));
 });

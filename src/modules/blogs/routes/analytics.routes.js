@@ -1,14 +1,14 @@
 // src/modules/blogs/routes/analytics.routes.js
 import express from "express";
 import {
-  getPostAnalytics,
-  getUserAnalytics,
-  getPlatformAnalytics,
-  getRealtimeEngagement,
-  getScheduledPosts,
-  cancelScheduledPost,
-  reschedulePost,
-  getSchedulingAnalytics,
+	getPostAnalytics,
+	getUserAnalytics,
+	getPlatformAnalytics,
+	getRealtimeEngagement,
+	getScheduledPosts,
+	cancelScheduledPost,
+	reschedulePost,
+	getSchedulingAnalytics,
 } from "../controllers/analytics.controller.js";
 import { verifyJWT } from "../../../shared/middleware/auth.middleware.js";
 
