@@ -75,7 +75,7 @@
 		"pm2:logs": "pm2 logs",
 		"pm2:monit": "pm2 monit",
 		"pm2:status": "pm2 status",
-		"prepare": "husky install",
+		"prepare": "husky",
 		"clean": "rm -rf node_modules package-lock.json && npm install",
 		"clean:all": "npm run clean && cd shared && npm run clean && cd ../gateway && npm run clean && find services -name node_modules -type d -exec rm -rf {} + && find services -name package-lock.json -delete"
 	},
@@ -115,6 +115,8 @@
 		"npm": ">=10.0.0"
 	},
 	"dependencies": {
+		"@eslint/config-array": "^0.21.0",
+		"@eslint/object-schema": "^2.1.6",
 		"axios": "^1.7.9",
 		"bcrypt": "^5.1.1",
 		"bull": "^4.16.5",
@@ -149,11 +151,9 @@
 	},
 	"devDependencies": {
 		"@eslint/js": "^9.33.0",
-		"eslint": "^8.57.0",
-		"eslint-config-airbnb-base": "^15.0.0",
+		"eslint": "^9.35.0",
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-import": "^2.32.0",
-		"eslint-plugin-node": "^11.1.0",
 		"eslint-plugin-prettier": "^5.2.3",
 		"eslint-plugin-security": "^3.0.1",
 		"husky": "^9.1.7",

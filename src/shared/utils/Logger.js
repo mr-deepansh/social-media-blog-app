@@ -10,13 +10,33 @@ class Logger {
   constructor(module = "App") {
     this.module = module;
     this.logDir = path.join(__dirname, "../../../logs");
+    this.streams = {}; // cache write streams
     this.ensureLogDirectory();
+
+    // Clean up on shutdown
+    process.on("exit", () => {
+      Object.values(this.streams).forEach(s => s.end());
+    });
   }
 
   ensureLogDirectory() {
     if (!fs.existsSync(this.logDir)) {
       fs.mkdirSync(this.logDir, { recursive: true });
     }
+  }
+
+  getLogFile(level) {
+    const date = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+    return path.join(this.logDir, `${level}-${date}.log`);
+  }
+
+  getStream(level) {
+    if (!this.streams[level]) {
+      this.streams[level] = fs.createWriteStream(this.getLogFile(level), {
+        flags: "a",
+      });
+    }
+    return this.streams[level];
   }
 
   formatMessage(level, message, meta = {}) {
@@ -30,14 +50,12 @@ class Logger {
   }
 
   writeToFile(level, message, meta) {
-    const logFile = path.join(this.logDir, `${level}.log`);
-    const formattedMessage = this.formatMessage(level, message, meta);
-
-    fs.appendFile(logFile, formattedMessage, err => {
-      if (err) {
-        console.error("Failed to write to log file:", err);
-      }
-    });
+    try {
+      const stream = this.getStream(level);
+      stream.write(this.formatMessage(level, message, meta));
+    } catch (err) {
+      console.error("Failed to write to log file:", err);
+    }
   }
 
   info(message, meta = {}) {

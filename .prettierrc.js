@@ -1,29 +1,32 @@
 // .prettierrc.js - Enterprise Prettier Configuration
 export default {
-  // Basic formatting
   useTabs: true,
-  tabWidth: 1,
-  semi: true,
+  tabWidth: 2,
+
+  // Enforce double quotes
   singleQuote: false,
+
   quoteProps: "as-needed",
-  // Object and array formatting
+  semi: true,
+  trailingComma: "all",
   bracketSpacing: true,
   bracketSameLine: false,
-  trailingComma: "all",
-  // Function formatting
-  arrowParens: "always",
-  // Line formatting
-  printWidth: 100,
+
+  printWidth: 120,
+  proseWrap: "preserve",
+
+  arrowParens: "avoid",
+
   endOfLine: "lf",
-  // HTML/JSX (if needed in future)
-  htmlWhitespaceSensitivity: "css",
-  // Overrides for specific file types
+  insertPragma: false,
+  requirePragma: false,
+
   overrides: [
     {
       files: "*.json",
       options: {
-        useTabs: true,
-        tabWidth: 1,
+        useTabs: false,
+        tabWidth: 2,
       },
     },
     {
@@ -31,11 +34,11 @@ export default {
       options: {
         useTabs: false,
         tabWidth: 2,
-        printWidth: 80,
+        proseWrap: "always",
       },
     },
     {
-      files: "*.yml",
+      files: "package.json",
       options: {
         useTabs: false,
         tabWidth: 2,

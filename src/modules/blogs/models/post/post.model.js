@@ -6,8 +6,9 @@ import {
   metadataSchema,
   auditSchema,
 } from "../shared/base.model.js";
+import { User } from "../../../users/models/user.model.js";
 
-// Location schema with geospatial support
+// Location schema
 const locationSchema = new Schema(
   {
     name: String,
@@ -21,11 +22,14 @@ const locationSchema = new Schema(
 );
 
 // Poll option schema
-const pollOptionSchema = new Schema({
-  text: { type: String, required: true, trim: true, maxlength: 100 },
-  voteCount: { type: Number, default: 0 },
-  percentage: { type: Number, default: 0 },
-});
+const pollOptionSchema = new Schema(
+  {
+    text: { type: String, required: true, trim: true, maxlength: 100 },
+    voteCount: { type: Number, default: 0 },
+    percentage: { type: Number, default: 0 },
+  },
+  { _id: false },
+);
 
 // Poll schema
 const pollSchema = new Schema(
@@ -34,9 +38,7 @@ const pollSchema = new Schema(
     options: {
       type: [pollOptionSchema],
       validate: {
-        validator(v) {
-          return v.length >= 2 && v.length <= 10;
-        },
+        validator: v => v.length >= 2 && v.length <= 10,
         message: "Poll must have 2-10 options",
       },
     },
@@ -48,7 +50,7 @@ const pollSchema = new Schema(
   { _id: false },
 );
 
-// Engagement counters schema
+// Engagement schema
 const engagementCountersSchema = new Schema(
   {
     likeCount: { type: Number, default: 0, min: 0, index: true },
@@ -62,7 +64,7 @@ const engagementCountersSchema = new Schema(
   { _id: false },
 );
 
-// Reach analytics schema
+// Reach schema
 const reachSchema = new Schema(
   {
     organic: { type: Number, default: 0 },
@@ -78,12 +80,10 @@ const postSchema = new Schema(
   {
     ...baseSchema,
 
-    // Content
     title: { type: String, trim: true, maxlength: 280 },
-    content: { type: String, required: false, trim: true, maxlength: 10000 },
+    content: { type: String, trim: true, maxlength: 10000 },
     excerpt: { type: String, maxlength: 300 },
 
-    // Post type and categorization
     type: {
       type: String,
       enum: ["post", "poll", "media", "quote", "article", "text"],
@@ -107,7 +107,6 @@ const postSchema = new Schema(
     tags: [{ type: String, trim: true, maxlength: 50, lowercase: true }],
     hashtags: [{ type: String, lowercase: true }],
 
-    // Author and ownership
     author: {
       type: Schema.Types.ObjectId,
       ref: "User",
@@ -116,7 +115,6 @@ const postSchema = new Schema(
     },
     coAuthors: [{ type: Schema.Types.ObjectId, ref: "User" }],
 
-    // Publishing and visibility
     status: {
       type: String,
       enum: ["draft", "published", "scheduled", "archived", "deleted"],
@@ -133,55 +131,34 @@ const postSchema = new Schema(
     isFeatured: { type: Boolean, default: false, index: true },
     isPinned: { type: Boolean, default: false },
 
-    // Scheduling
     scheduledAt: { type: Date, index: true },
     publishedAt: { type: Date, index: true },
     expiresAt: Date,
 
-    // Media and attachments
     media: [{ type: Schema.Types.ObjectId, ref: "Media" }],
     thumbnail: String,
 
-    // Cloudinary media URLs
-    images: [
-      {
-        url: String,
-        publicId: String,
-      },
-    ],
-    videos: [
-      {
-        url: String,
-        publicId: String,
-      },
-    ],
+    images: [{ url: String, publicId: String }],
+    videos: [{ url: String, publicId: String }],
 
-    // Location
     location: locationSchema,
-
-    // Poll data
     poll: pollSchema,
 
-    // References
     quotedPost: { type: Schema.Types.ObjectId, ref: "Post" },
     originalPost: { type: Schema.Types.ObjectId, ref: "Post" },
     relatedPosts: [{ type: Schema.Types.ObjectId, ref: "Post" }],
 
-    // Engagement
     engagement: { type: engagementCountersSchema, default: () => ({}) },
-
-    // Analytics
     reach: { type: reachSchema, default: () => ({}) },
+
     trendingScore: { type: Number, default: 0, index: true },
     qualityScore: { type: Number, default: 0 },
 
-    // SEO and metadata
     slug: { type: String, unique: true, sparse: true },
     seoTitle: String,
     seoDescription: String,
     canonicalUrl: String,
 
-    // Moderation and safety
     isModerated: { type: Boolean, default: false },
     moderationStatus: {
       type: String,
@@ -192,7 +169,6 @@ const postSchema = new Schema(
     isBlocked: { type: Boolean, default: false },
     blockReason: String,
 
-    // Edit tracking
     isEdited: { type: Boolean, default: false },
     editCount: { type: Number, default: 0 },
     lastEditedAt: Date,
@@ -205,15 +181,12 @@ const postSchema = new Schema(
       },
     ],
 
-    // Metadata and tracking
     metadata: metadataSchema,
     auditLog: [auditSchema],
 
-    // Performance optimization
     lastActivityAt: { type: Date, default: Date.now, index: true },
     hotScore: { type: Number, default: 0, index: true },
 
-    // Language and localization
     language: { type: String, default: "en" },
     translations: [
       {
@@ -227,7 +200,7 @@ const postSchema = new Schema(
   baseOptions,
 );
 
-// Optimized compound indexes for performance
+// Compound indexes
 postSchema.index({ author: 1, status: 1, createdAt: -1 });
 postSchema.index({ status: 1, visibility: 1, publishedAt: -1 });
 postSchema.index({ type: 1, category: 1, createdAt: -1 });
@@ -241,34 +214,25 @@ postSchema.index({ scheduledAt: 1, status: 1 });
 postSchema.index({ isFeatured: -1, publishedAt: -1 });
 postSchema.index({ author: 1, isFeatured: -1, createdAt: -1 });
 
-// Text search index for content discovery
+// Text search index
 postSchema.index(
-  {
-    title: "text",
-    content: "text",
-    tags: "text",
-  },
-  {
-    weights: { title: 10, content: 5, tags: 1 },
-    name: "content_search_index",
-  },
+  { title: "text", content: "text", tags: "text" },
+  { weights: { title: 10, content: 5, tags: 1 }, name: "content_search_index" },
 );
 
-// Geospatial index for location-based queries
+// Geospatial index
 postSchema.index({ "location.coordinates": "2dsphere" });
 
 // Virtuals
 postSchema.virtual("engagementRate").get(function () {
-  if (this.engagement.viewCount === 0) {
+  if (!this.engagement.viewCount) {
     return 0;
   }
-  const totalEngagements =
+  const total =
 		this.engagement.likeCount +
 		this.engagement.commentCount +
 		this.engagement.shareCount;
-  return Number(
-    ((totalEngagements / this.engagement.viewCount) * 100).toFixed(2),
-  );
+  return Number(((total / this.engagement.viewCount) * 100).toFixed(2));
 });
 
 postSchema.virtual("isScheduled").get(function () {
@@ -276,68 +240,51 @@ postSchema.virtual("isScheduled").get(function () {
 });
 
 postSchema.virtual("readTime").get(function () {
-  const wordsPerMinute = 200;
-  const wordCount = this.content.split(" ").length;
-  return Math.ceil(wordCount / wordsPerMinute);
+  if (!this.content) {
+    return 0;
+  }
+  const words = this.content.split(" ").length;
+  return Math.ceil(words / 200);
 });
 
-// Helper function to generate unique slug
-const generateUniqueSlug = async function (baseSlug, postId = null) {
+// Generate unique slug
+const generateUniqueSlug = async (baseSlug, postId = null) => {
   let slug = baseSlug;
   let counter = 1;
-
-  // eslint-disable-next-line no-constant-condition
   while (true) {
     const query = { slug };
     if (postId) {
       query._id = { $ne: postId };
     }
-
-    const existingPost = await mongoose.model("Post").findOne(query);
-    if (!existingPost) {
+    const existing = await mongoose.model("Post").findOne(query);
+    if (!existing) {
       return slug;
     }
-
-    slug = `${baseSlug}-${counter}`;
-    counter++;
+    slug = `${baseSlug}-${counter++}`;
   }
 };
 
 // Pre-save middleware
 postSchema.pre("save", async function (next) {
-  // Content is optional - user's choice
-
-  // Auto-generate excerpt
   if (this.isModified("content") && this.content && !this.excerpt) {
     this.excerpt = `${this.content.substring(0, 297)}...`;
   }
-
-  // Extract hashtags
   if (this.isModified("content")) {
-    this.hashtags = this.content.match(/#\w+/g) || [];
-    this.hashtags = this.hashtags.map(tag => tag.toLowerCase().substring(1));
+    this.hashtags = (this.content.match(/#\w+/g) || []).map(t =>
+      t.toLowerCase().substring(1),
+    );
   }
-
-  // Set published date
   if (this.status === "published" && !this.publishedAt) {
     this.publishedAt = new Date();
   }
-
-  // Generate unique slug
   if ((this.isModified("title") || this.isNew) && !this.slug) {
-    const title = this.title || "untitled";
-    const baseSlug =
-			title
-			  .toLowerCase()
-			  .replace(/[^a-z0-9]+/g, "-")
-			  .replace(/^-|-$/g, "") || "untitled";
-
-    this.slug = await generateUniqueSlug(baseSlug, this._id);
+    const baseSlug = (this.title || "untitled")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+    this.slug = await generateUniqueSlug(baseSlug || "untitled", this._id);
   }
-
-  // Update last activity
   this.lastActivityAt = new Date();
-
   next();
 });
 
