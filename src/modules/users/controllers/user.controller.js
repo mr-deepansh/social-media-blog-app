@@ -175,8 +175,14 @@ const changePassword = asyncHandler(async (req, res) => {
   }
 
   await UserService.changePassword(userId, currentPassword, newPassword);
+  
+  // Invalidate all sessions after password change
+  await AuthService.invalidateAllUserSessions(userId);
 
-  res.status(200).json(new ApiResponse(200, {}, "Password changed successfully"));
+  res.status(200).json(new ApiResponse(200, { 
+    sessionInvalidated: true,
+    message: "Password changed successfully. Please login again with your new password." 
+  }, "Password changed successfully. All sessions have been logged out for security."));
 });
 
 // Upload user avatar
@@ -898,11 +904,23 @@ const getUserFollowing = asyncHandler(async (req, res) => {
 const searchUsers = asyncHandler(async (req, res) => {
   const { search, page = 1, limit = 10 } = req.query;
 
-  if (!search || search.trim().length < 2) {
-    throw new ApiError(400, "Search query must be at least 2 characters long");
+  // Handle malformed search queries
+  if (!search || typeof search !== 'string' || search.trim().length < 2) {
+    return res.status(200).json(
+      new ApiResponse(200, { users: [], pagination: { currentPage: 1, totalPages: 0, totalUsers: 0 } }, "Search query must be at least 2 characters long")
+    );
   }
 
-  const result = await UserService.searchUsers(search.trim(), parseInt(page), parseInt(limit));
+  // Sanitize search query to prevent issues
+  const sanitizedSearch = search.trim().replace(/[<>"'&%]/g, '').substring(0, 50);
+  
+  if (sanitizedSearch.length < 2) {
+    return res.status(200).json(
+      new ApiResponse(200, { users: [], pagination: { currentPage: 1, totalPages: 0, totalUsers: 0 } }, "Invalid search query")
+    );
+  }
+
+  const result = await UserService.searchUsers(sanitizedSearch, parseInt(page), parseInt(limit));
 
   res
     .status(200)

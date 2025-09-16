@@ -709,6 +709,36 @@ class AuthService {
     }
   }
 
+  // 🔥 INVALIDATE ALL USER SESSIONS
+  static async invalidateAllUserSessions(userId) {
+    try {
+      // Clear refresh token from database
+      await User.findByIdAndUpdate(userId, {
+        $unset: { refreshToken: 1 },
+        "security.lastPasswordChange": new Date(),
+      });
+
+      // Clear all user-related cache entries
+      await Promise.all([
+        // Clear user cache
+        redisClient.del(`user:${userId}`).catch(() => {}),
+        // Clear all session patterns
+        redisClient.del(`sessions:${userId}:*`).catch(() => {}),
+        // Clear any cached tokens
+        redisClient.del(`tokens:${userId}:*`).catch(() => {}),
+        // Force logout by clearing refresh token patterns
+        redisClient.del(`refresh:${userId}:*`).catch(() => {}),
+      ]);
+
+      logger.info("All user sessions invalidated", { userId });
+      return true;
+    } catch (error) {
+      logger.error("Session invalidation failed", { error: error.message, userId });
+      // Don't throw - this shouldn't break the password change flow
+      return false;
+    }
+  }
+
   // 🔥 ASYNC ACTIVITY LOGGING (Non-blocking)
   static async logActivity(user, action, req, success = true, errorMessage = null) {
     try {

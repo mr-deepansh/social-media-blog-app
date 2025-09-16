@@ -10,7 +10,7 @@ export class NotificationController {
 	 */
   async getNotifications(req, res, next) {
     try {
-      const userId = req.user.id;
+      const userId = req.user._id;
       const options = {
         page: parseInt(req.query.page) || 1,
         limit: parseInt(req.query.limit) || 20,
@@ -33,7 +33,7 @@ export class NotificationController {
   async markAsRead(req, res, next) {
     try {
       const { notificationId } = req.params;
-      const userId = req.user.id;
+      const userId = req.user._id;
 
       const notification = await notificationService.markAsRead(notificationId, userId);
 
@@ -48,7 +48,7 @@ export class NotificationController {
 	 */
   async markAllAsRead(req, res, next) {
     try {
-      const userId = req.user.id;
+      const userId = req.user._id;
       const result = await notificationService.markAllAsRead(userId);
 
       return res.status(200).json(new ApiResponse(200, result, "All notifications marked as read"));
@@ -63,7 +63,7 @@ export class NotificationController {
   async deleteNotification(req, res, next) {
     try {
       const { notificationId } = req.params;
-      const userId = req.user.id;
+      const userId = req.user._id;
 
       const result = await notificationService.deleteNotification(notificationId, userId);
 
@@ -78,7 +78,7 @@ export class NotificationController {
 	 */
   async getUnreadCount(req, res, next) {
     try {
-      const userId = req.user.id;
+      const userId = req.user._id;
       const result = await notificationService.getUnreadCount(userId);
 
       return res.status(200).json(new ApiResponse(200, result, "Unread count fetched successfully"));
@@ -107,7 +107,7 @@ export class NotificationController {
 	 */
   async getNotificationStats(req, res, next) {
     try {
-      const userId = req.user.id;
+      const userId = req.user._id;
       const stats = await notificationService.getNotificationStats(userId);
 
       return res.status(200).json(new ApiResponse(200, stats, "Notification statistics fetched successfully"));
@@ -121,7 +121,7 @@ export class NotificationController {
 	 */
   async clearAllNotifications(req, res, next) {
     try {
-      const userId = req.user.id;
+      const userId = req.user._id;
       const result = await notificationService.clearAllNotifications(userId);
 
       return res.status(200).json(new ApiResponse(200, result, "All notifications cleared successfully"));
@@ -135,7 +135,7 @@ export class NotificationController {
 	 */
   async getNotificationPreferences(req, res, next) {
     try {
-      const userId = req.user.id;
+      const userId = req.user._id;
       const preferences = await notificationService.getNotificationPreferences(userId);
 
       return res.status(200).json(new ApiResponse(200, preferences, "Notification preferences fetched successfully"));
@@ -149,7 +149,7 @@ export class NotificationController {
 	 */
   async updateNotificationPreferences(req, res, next) {
     try {
-      const userId = req.user.id;
+      const userId = req.user._id;
       const preferences = req.body;
       const result = await notificationService.updateNotificationPreferences(userId, preferences);
 
@@ -164,7 +164,7 @@ export class NotificationController {
 	 */
   async createTestNotification(req, res, next) {
     try {
-      const userId = req.user.id;
+      const userId = req.user._id;
       const { type = "like" } = req.body;
 
       // Create different types of test notifications
