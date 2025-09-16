@@ -29,6 +29,10 @@ router.post(
 router.post("/logout", verifyJWT, asyncHandler(userController.logoutUser));
 router.post("/refresh-token", asyncHandler(userController.refreshAccessToken));
 
+// ✅ Email verification routes (for logged-in users)
+router.post("/verify-email/:token", asyncHandler(userController.verifyEmail));
+router.post("/resend-verification", verifyJWT, asyncHandler(userController.resendEmailVerification));
+
 // ✅ Password reset routes (public)
 router.post("/forgot-password", asyncHandler(userController.forgotPassword));
 router.post("/reset-password/:token", asyncHandler(userController.resetPassword));

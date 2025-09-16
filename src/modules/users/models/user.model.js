@@ -190,10 +190,19 @@ userSchema.virtual("followingCount").get(function () {
   return this.following?.length || 0;
 });
 userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) {
-    return next();
+  // Handle password hashing
+  if (this.isModified("password")) {
+    this.password = await bcrypt.hash(this.password, 10);
   }
-  this.password = await bcrypt.hash(this.password, 10);
+
+  // Fix coverImage and avatar schema migration
+  if (typeof this.coverImage === "string") {
+    this.coverImage = { url: this.coverImage || "", publicId: "" };
+  }
+  if (typeof this.avatar === "string") {
+    this.avatar = { url: this.avatar || "", publicId: "" };
+  }
+
   next();
 });
 

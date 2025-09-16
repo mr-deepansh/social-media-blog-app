@@ -3,6 +3,7 @@ import { asyncHandler } from "../../../shared/utils/AsyncHandler.js";
 import { ApiError } from "../../../shared/utils/ApiError.js";
 import { ApiResponse } from "../../../shared/utils/ApiResponse.js";
 import { AuthService } from "../services/auth.service.js";
+import { User } from "../../users/models/user.model.js";
 
 /**
  * Verify email address
@@ -21,7 +22,21 @@ const verifyEmail = asyncHandler(async (req, res) => {
  * Resend email verification
  */
 const resendEmailVerification = asyncHandler(async (req, res) => {
-  const user = req.user;
+  // First fix the schema issue by updating the document directly
+  await User.updateOne(
+    { _id: req.user._id, coverImage: { $type: "string" } },
+    { $set: { coverImage: { url: "", publicId: "" } } },
+  );
+  await User.updateOne(
+    { _id: req.user._id, avatar: { $type: "string" } },
+    { $set: { avatar: { url: "", publicId: "" } } },
+  );
+
+  // Now fetch the user document
+  const user = await User.findById(req.user._id);
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
 
   if (user.isEmailVerified) {
     throw new ApiError(400, "Email is already verified");
@@ -40,7 +55,13 @@ const resendEmailVerification = asyncHandler(async (req, res) => {
  * Get security overview
  */
 const getSecurityOverview = asyncHandler(async (req, res) => {
-  const user = req.user;
+  const userId = req.user._id;
+
+  // Fetch user with Mongoose methods (not lean)
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
 
   const securityOverview = {
     accountSecurity: {

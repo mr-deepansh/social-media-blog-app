@@ -384,6 +384,7 @@ const loginUser = asyncHandler(async (req, res) => {
             },
           },
           "Login failed - invalid credentials",
+          false,
         ),
       );
     }
@@ -402,8 +403,8 @@ const logoutUser = asyncHandler(async (req, res) => {
     throw new ApiError(401, "Not authenticated");
   }
 
-  // Use enterprise secure logout
-  const result = await AuthService.secureLogout(user, token, req, res);
+  // Use enterprise logout
+  const result = await AuthService.logoutUser(user, token, req);
 
   res.status(200).json(new ApiResponse(200, {}, result.message));
 });
@@ -1784,6 +1785,214 @@ const resetPassword = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, {}, result.message));
 });
 
+// Email Verification (public route)
+const verifyEmail = asyncHandler(async (req, res) => {
+  const startTime = Date.now();
+  const { token } = req.params;
+  const clientIP = req.ip || req.connection.remoteAddress;
+
+  try {
+    // Input validation with sanitization
+    if (!token?.trim() || token.length < 10) {
+      logger.warn("Invalid verification token attempt", { clientIP, tokenLength: token?.length || 0 });
+      throw new ApiError(400, "Valid verification token is required");
+    }
+
+    const sanitizedToken = token.trim();
+
+    // Rate limiting check (basic)
+    const cacheKey = `verify_attempt_${clientIP}`;
+    const attempts = await safeAsyncOperation(() => UserService.getCacheValue(cacheKey), 0, false);
+
+    if (attempts >= 10) {
+      logger.warn("Email verification rate limit exceeded", { clientIP, attempts });
+      throw new ApiError(429, "Too many verification attempts. Please try again later.");
+    }
+
+    // Increment attempt counter
+    await safeAsyncOperation(
+      () => UserService.setCacheValue(cacheKey, attempts + 1, 300), // 5 min expiry
+      null,
+      false,
+    );
+
+    // Verify email with fallback
+    const result = await safeAsyncOperation(() => AuthService.verifyEmail(sanitizedToken, req), null, true);
+
+    if (!result) {
+      logger.error("Email verification service failed", { token: `${sanitizedToken.substring(0, 10)  }...` });
+      throw new ApiError(500, "Verification service temporarily unavailable. Please try again.");
+    }
+
+    const executionTime = Date.now() - startTime;
+    logger.success("Email verification successful", {
+      executionTime: `${executionTime}ms`,
+      clientIP,
+      apiHealth: calculateApiHealth(executionTime),
+    });
+
+    // Clear rate limit on success
+    await safeAsyncOperation(() => UserService.deleteCacheValue(cacheKey), null, false);
+
+    res.status(200).json(new ApiResponse(200, { verified: true }, result.message));
+  } catch (error) {
+    const executionTime = Date.now() - startTime;
+
+    if (error instanceof ApiError) {
+      logger.warn("Email verification failed", {
+        error: error.message,
+        statusCode: error.statusCode,
+        executionTime: `${executionTime}ms`,
+        clientIP,
+      });
+      throw error;
+    }
+
+    logger.error("Unexpected email verification error", {
+      error: error.message,
+      stack: error.stack,
+      executionTime: `${executionTime}ms`,
+      clientIP,
+    });
+
+    throw new ApiError(500, "Email verification failed. Please try again or contact support.");
+  }
+});
+
+// Resend Email Verification (protected route)
+const resendEmailVerification = asyncHandler(async (req, res) => {
+  const startTime = Date.now();
+  const user = req.user;
+  const clientIP = req.ip || req.connection.remoteAddress;
+
+  try {
+    // Pre-validation checks
+    if (!user?._id) {
+      throw new ApiError(401, "Authentication required");
+    }
+
+    if (user.isEmailVerified) {
+      logger.info("Resend verification attempted for verified email", {
+        userId: user._id,
+        email: `${user.email?.substring(0, 3)  }***`,
+      });
+      throw new ApiError(400, "Email is already verified");
+    }
+
+    // Rate limiting for resend attempts
+    const rateLimitKey = `resend_verify_${user._id}`;
+    const recentAttempts = await safeAsyncOperation(() => UserService.getCacheValue(rateLimitKey), 0, false);
+
+    if (recentAttempts >= 3) {
+      logger.warn("Resend verification rate limit exceeded", {
+        userId: user._id,
+        attempts: recentAttempts,
+        clientIP,
+      });
+      throw new ApiError(429, "Too many resend attempts. Please wait 15 minutes before trying again.");
+    }
+
+    // Generate verification token with error handling
+    let verificationToken;
+    try {
+      verificationToken = user.generateEmailVerificationToken();
+      if (!verificationToken) {
+        throw new Error("Token generation failed");
+      }
+    } catch (tokenError) {
+      logger.error("Verification token generation failed", {
+        userId: user._id,
+        error: tokenError.message,
+      });
+      throw new ApiError(500, "Unable to generate verification token. Please try again.");
+    }
+
+    // Save user with retry mechanism
+    const saveResult = await safeAsyncOperation(
+      async () => {
+        await user.save({ validateBeforeSave: false });
+        return true;
+      },
+      null,
+      true,
+    );
+
+    if (!saveResult) {
+      logger.error("Failed to save verification token", { userId: user._id });
+      throw new ApiError(500, "Unable to process verification request. Please try again.");
+    }
+
+    // Send email with fallback
+    const emailResult = await safeAsyncOperation(
+      () => AuthService.sendWelcomeEmail(user, verificationToken, req),
+      null,
+      true,
+    );
+
+    if (!emailResult) {
+      logger.error("Email sending failed", {
+        userId: user._id,
+        email: `${user.email?.substring(0, 3)  }***`,
+      });
+
+      // Fallback: Still return success but log the issue
+      logger.warn("Email service degraded, verification email may be delayed", {
+        userId: user._id,
+      });
+    }
+
+    // Update rate limit counter
+    await safeAsyncOperation(
+      () => UserService.setCacheValue(rateLimitKey, recentAttempts + 1, 900), // 15 min expiry
+      null,
+      false,
+    );
+
+    const executionTime = Date.now() - startTime;
+    logger.success("Verification email resent", {
+      userId: user._id,
+      executionTime: `${executionTime}ms`,
+      apiHealth: calculateApiHealth(executionTime),
+      emailSent: !!emailResult,
+    });
+
+    res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          sent: true,
+          email: user.email?.replace(/(.{2}).*(@.*)/, "$1***$2"),
+          nextResendAvailable: new Date(Date.now() + 300000).toISOString(), // 5 min
+        },
+				emailResult ? "Verification email sent successfully" : "Verification email queued for delivery",
+      ),
+    );
+  } catch (error) {
+    const executionTime = Date.now() - startTime;
+
+    if (error instanceof ApiError) {
+      logger.warn("Resend verification failed", {
+        error: error.message,
+        statusCode: error.statusCode,
+        userId: user?._id,
+        executionTime: `${executionTime}ms`,
+        clientIP,
+      });
+      throw error;
+    }
+
+    logger.error("Unexpected resend verification error", {
+      error: error.message,
+      stack: error.stack,
+      userId: user?._id,
+      executionTime: `${executionTime}ms`,
+      clientIP,
+    });
+
+    throw new ApiError(500, "Unable to resend verification email. Please try again later.");
+  }
+});
+
 export {
   // Auth functions
   registerUser,
@@ -1797,6 +2006,8 @@ export {
   getWatchHistory,
   forgotPassword,
   resetPassword,
+  verifyEmail,
+  resendEmailVerification,
 
   // User management
   getAllUsers,

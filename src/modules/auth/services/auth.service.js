@@ -290,7 +290,7 @@ class AuthService {
     let encryptedToken = cipher.update(resetToken, "utf8", "hex");
     encryptedToken += cipher.final("hex");
     // Prepend IV to encrypted token
-    encryptedToken = `${iv.toString("hex")  }:${  encryptedToken}`;
+    encryptedToken = `${iv.toString("hex")}:${encryptedToken}`;
 
     const resetTokenExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
@@ -511,6 +511,202 @@ class AuthService {
       message: "Password reset successfully. Please login with your new password.",
       redirectTo: "/login",
     };
+  }
+
+  // 🔥 EMAIL VERIFICATION
+  static async sendWelcomeEmail(user, verificationToken, req) {
+    try {
+      const verificationUrl = `${process.env.FRONTEND_URL || "http://localhost:8080"}/verify-email?token=${encodeURIComponent(verificationToken)}`;
+
+      await emailService.sendEmail({
+        to: user.email,
+        subject: "🎉 Welcome to EndlessChatt - Verify Your Email",
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #333; text-align: center;">🎉 Welcome to EndlessChatt!</h2>
+            <p>Hi <strong>${user.firstName || user.username}</strong>,</p>
+            <p>Thank you for joining our community! Please verify your email address to get started.</p>
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${verificationUrl}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Verify Email</a>
+            </div>
+            <p><strong>This link expires in 24 hours</strong> for security.</p>
+            <p>If you didn't create this account, please ignore this email.</p>
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+            <p style="font-size: 12px; color: #666; text-align: center;">EndlessChatt Team</p>
+          </div>
+        `,
+      });
+
+      logger.info("Verification email sent", { email: user.email });
+    } catch (emailError) {
+      logger.error("Verification email failed", { error: emailError.message, email: user.email });
+      throw new ApiError(500, "Failed to send verification email");
+    }
+  }
+
+  // 🔥 VERIFY EMAIL TOKEN
+  static async verifyEmail(token, req = {}) {
+    try {
+      const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+      const user = await User.findOne({
+        emailVerificationToken: hashedToken,
+        emailVerificationExpiry: { $gt: new Date() },
+        isActive: true,
+      });
+
+      if (!user) {
+        throw new ApiError(400, "Invalid or expired verification token");
+      }
+
+      if (user.isEmailVerified) {
+        return { message: "Email is already verified" };
+      }
+
+      // Update user as verified
+      await User.findByIdAndUpdate(user._id, {
+        isEmailVerified: true,
+        $unset: {
+          emailVerificationToken: 1,
+          emailVerificationExpiry: 1,
+        },
+      });
+
+      // Send success email with user details
+      setImmediate(async () => {
+        try {
+          await this.sendEmailVerificationSuccess(user, req);
+        } catch (emailError) {
+          logger.error("Success email failed", { error: emailError.message, email: user.email });
+        }
+      });
+
+      logger.info("Email verified successfully", { userId: user._id, email: user.email });
+      return { message: "Email verified successfully" };
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      logger.error("Email verification failed", { error: error.message });
+      throw new ApiError(500, "Email verification failed");
+    }
+  }
+
+  // 🔥 SEND EMAIL VERIFICATION SUCCESS
+  static async sendEmailVerificationSuccess(user, req) {
+    try {
+      // Extract device and location info
+      const userAgent = req.get ? req.get("User-Agent") : req.headers?.["user-agent"] || "Unknown";
+      const ip = req.ip || req.connection?.remoteAddress || "Unknown";
+
+      // Parse user agent for OS and platform
+      const getDeviceInfo = ua => {
+        const os = ua.includes("Windows")
+					? "Windows"
+					: ua.includes("Mac")
+						? "macOS"
+						: ua.includes("Linux")
+							? "Linux"
+							: ua.includes("Android")
+								? "Android"
+								: ua.includes("iOS")
+									? "iOS"
+									: "Unknown";
+
+        const platform = ua.includes("Mobile") ? "Mobile" : ua.includes("Tablet") ? "Tablet" : "Desktop";
+
+        return { os, platform };
+      };
+
+      const deviceInfo = getDeviceInfo(userAgent);
+      const verificationTime = new Date().toLocaleString("en-US", {
+        timeZone: "UTC",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZoneName: "short",
+      });
+
+      await emailService.sendEmail({
+        to: user.email,
+        subject: "✅ Email Verified Successfully - EndlessChatt",
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="text-align: center; margin-bottom: 30px;">
+              <h2 style="color: #28a745; margin: 0;">✅ Email Verified Successfully!</h2>
+            </div>
+
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+              <p style="margin: 0 0 15px 0;">Hi <strong>${user.firstName || user.username}</strong>,</p>
+              <p style="margin: 0 0 15px 0;">Your email has been successfully verified! Welcome to EndlessChatt.</p>
+            </div>
+
+            <div style="background: #fff; border: 1px solid #dee2e6; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+              <h3 style="color: #495057; margin: 0 0 15px 0; font-size: 16px;">📋 Verification Details:</h3>
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td style="padding: 8px 0; color: #6c757d; width: 30%;">👤 Username:</td>
+                  <td style="padding: 8px 0; font-weight: bold;">${user.username}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #6c757d;">📧 Email:</td>
+                  <td style="padding: 8px 0; font-weight: bold;">${user.email}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #6c757d;">🌐 IP Address:</td>
+                  <td style="padding: 8px 0; font-weight: bold;">${ip}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #6c757d;">💻 Platform:</td>
+                  <td style="padding: 8px 0; font-weight: bold;">${deviceInfo.platform}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #6c757d;">🖥️ OS:</td>
+                  <td style="padding: 8px 0; font-weight: bold;">${deviceInfo.os}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #6c757d;">⏰ Verified At:</td>
+                  <td style="padding: 8px 0; font-weight: bold;">${verificationTime}</td>
+                </tr>
+              </table>
+            </div>
+
+            <div style="background: #e7f3ff; border-left: 4px solid #007bff; padding: 15px; margin-bottom: 20px;">
+              <p style="margin: 0; color: #004085;">🎉 <strong>What's Next?</strong></p>
+              <p style="margin: 5px 0 0 0; color: #004085;">You can now access all features of EndlessChatt. Start creating posts, following users, and engaging with the community!</p>
+            </div>
+
+            <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin-bottom: 20px;">
+              <p style="margin: 0; color: #856404;">🔒 <strong>Security Notice:</strong></p>
+              <p style="margin: 5px 0 0 0; color: #856404;">If you didn't verify this email, please contact our support team immediately.</p>
+            </div>
+
+            <div style="text-align: center; margin-top: 30px;">
+              <a href="${process.env.FRONTEND_URL || "http://localhost:8080"}/login" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Start Exploring</a>
+            </div>
+
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+            <p style="font-size: 12px; color: #666; text-align: center; margin: 0;">EndlessChatt Team</p>
+          </div>
+        `,
+      });
+
+      logger.info("Email verification success email sent", {
+        email: user.email,
+        username: user.username,
+        ip,
+        os: deviceInfo.os,
+        platform: deviceInfo.platform,
+      });
+    } catch (emailError) {
+      logger.error("Email verification success email failed", {
+        error: emailError.message,
+        email: user.email,
+      });
+      // Don't throw - this is a non-critical notification
+    }
   }
 
   // 🔥 ASYNC ACTIVITY LOGGING (Non-blocking)
