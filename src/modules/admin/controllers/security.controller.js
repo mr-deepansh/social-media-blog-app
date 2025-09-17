@@ -16,22 +16,22 @@ const cache = new CacheService();
  * @access Admin, Super Admin
  */
 export const getSuspiciousAccounts = asyncHandler(async (req, res) => {
-	const { page = 1, limit = 20, riskLevel = "all" } = req.query;
+  const { page = 1, limit = 20, riskLevel = "all" } = req.query;
 
-	const result = await securityService.getSuspiciousAccounts({
-		page: parseInt(page),
-		limit: parseInt(limit),
-		riskLevel,
-	});
+  const result = await securityService.getSuspiciousAccounts({
+    page: parseInt(page),
+    limit: parseInt(limit),
+    riskLevel,
+  });
 
-	// Log security monitoring activity
-	await auditService.logAdminActivity({
-		adminId: req.user._id,
-		action: "VIEW_SUSPICIOUS_ACCOUNTS",
-		details: { riskLevel, resultCount: result.accounts.length },
-	});
+  // Log security monitoring activity
+  await auditService.logAdminActivity({
+    adminId: req.user._id,
+    action: "VIEW_SUSPICIOUS_ACCOUNTS",
+    details: { riskLevel, resultCount: result.accounts.length },
+  });
 
-	return res.status(200).json(new ApiResponse(200, result, "Suspicious accounts retrieved"));
+  return res.status(200).json(new ApiResponse(200, result, "Suspicious accounts retrieved"));
 });
 
 /**
@@ -40,16 +40,16 @@ export const getSuspiciousAccounts = asyncHandler(async (req, res) => {
  * @access Admin, Super Admin
  */
 export const getLoginAttempts = asyncHandler(async (req, res) => {
-	const { status = "all", timeRange = "24h", page = 1, limit = 50 } = req.query;
+  const { status = "all", timeRange = "24h", page = 1, limit = 50 } = req.query;
 
-	const result = await securityService.getLoginAttempts({
-		status,
-		timeRange,
-		page: parseInt(page),
-		limit: parseInt(limit),
-	});
+  const result = await securityService.getLoginAttempts({
+    status,
+    timeRange,
+    page: parseInt(page),
+    limit: parseInt(limit),
+  });
 
-	return res.status(200).json(new ApiResponse(200, result, "Login attempts retrieved"));
+  return res.status(200).json(new ApiResponse(200, result, "Login attempts retrieved"));
 });
 
 /**
@@ -58,28 +58,28 @@ export const getLoginAttempts = asyncHandler(async (req, res) => {
  * @access Admin, Super Admin
  */
 export const blockIpAddress = asyncHandler(async (req, res) => {
-	const { ipAddress, reason, duration = "permanent" } = req.body;
+  const { ipAddress, reason, duration = "permanent" } = req.body;
 
-	if (!ipAddress || !reason) {
-		throw new ApiError(400, "IP address and reason are required");
-	}
+  if (!ipAddress || !reason) {
+    throw new ApiError(400, "IP address and reason are required");
+  }
 
-	const result = await securityService.blockIpAddress({
-		ipAddress,
-		reason,
-		duration,
-		blockedBy: req.user._id,
-	});
+  const result = await securityService.blockIpAddress({
+    ipAddress,
+    reason,
+    duration,
+    blockedBy: req.user._id,
+  });
 
-	// Log critical security action
-	await auditService.logAdminActivity({
-		adminId: req.user._id,
-		action: "BLOCK_IP_ADDRESS",
-		details: { ipAddress, reason, duration },
-		criticality: "HIGH",
-	});
+  // Log critical security action
+  await auditService.logAdminActivity({
+    adminId: req.user._id,
+    action: "BLOCK_IP_ADDRESS",
+    details: { ipAddress, reason, duration },
+    criticality: "HIGH",
+  });
 
-	return res.status(200).json(new ApiResponse(200, result, "IP address blocked successfully"));
+  return res.status(200).json(new ApiResponse(200, result, "IP address blocked successfully"));
 });
 
 /**
@@ -88,15 +88,15 @@ export const blockIpAddress = asyncHandler(async (req, res) => {
  * @access Admin, Super Admin
  */
 export const getBlockedIps = asyncHandler(async (req, res) => {
-	const { page = 1, limit = 20, status = "active" } = req.query;
+  const { page = 1, limit = 20, status = "active" } = req.query;
 
-	const result = await securityService.getBlockedIps({
-		page: parseInt(page),
-		limit: parseInt(limit),
-		status,
-	});
+  const result = await securityService.getBlockedIps({
+    page: parseInt(page),
+    limit: parseInt(limit),
+    status,
+  });
 
-	return res.status(200).json(new ApiResponse(200, result, "Blocked IPs retrieved"));
+  return res.status(200).json(new ApiResponse(200, result, "Blocked IPs retrieved"));
 });
 
 /**
@@ -105,19 +105,19 @@ export const getBlockedIps = asyncHandler(async (req, res) => {
  * @access Admin, Super Admin
  */
 export const getThreatDetection = asyncHandler(async (req, res) => {
-	const cacheKey = "security:threat-detection";
+  const cacheKey = "security:threat-detection";
 
-	const cached = await cache.get(cacheKey);
-	if (cached) {
-		return res.status(200).json(new ApiResponse(200, cached, "Threat detection from cache"));
-	}
+  const cached = await cache.get(cacheKey);
+  if (cached) {
+    return res.status(200).json(new ApiResponse(200, cached, "Threat detection from cache"));
+  }
 
-	const threats = await securityService.getThreatDetection();
+  const threats = await securityService.getThreatDetection();
 
-	// Cache for 5 minutes
-	await cache.set(cacheKey, threats, 300);
+  // Cache for 5 minutes
+  await cache.set(cacheKey, threats, 300);
 
-	return res.status(200).json(new ApiResponse(200, threats, "Threat detection summary"));
+  return res.status(200).json(new ApiResponse(200, threats, "Threat detection summary"));
 });
 
 /**
@@ -126,20 +126,20 @@ export const getThreatDetection = asyncHandler(async (req, res) => {
  * @access Admin, Super Admin
  */
 export const unblockIpAddress = asyncHandler(async (req, res) => {
-	const { ipId } = req.params;
-	const { reason } = req.body;
+  const { ipId } = req.params;
+  const { reason } = req.body;
 
-	const result = await securityService.unblockIpAddress({
-		ipId,
-		reason,
-		unblockedBy: req.user._id,
-	});
+  const result = await securityService.unblockIpAddress({
+    ipId,
+    reason,
+    unblockedBy: req.user._id,
+  });
 
-	await auditService.logAdminActivity({
-		adminId: req.user._id,
-		action: "UNBLOCK_IP_ADDRESS",
-		details: { ipId, reason },
-	});
+  await auditService.logAdminActivity({
+    adminId: req.user._id,
+    action: "UNBLOCK_IP_ADDRESS",
+    details: { ipId, reason },
+  });
 
-	return res.status(200).json(new ApiResponse(200, result, "IP address unblocked successfully"));
+  return res.status(200).json(new ApiResponse(200, result, "IP address unblocked successfully"));
 });

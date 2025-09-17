@@ -2,16 +2,16 @@
 import { Router } from "express";
 import { isSuperAdmin } from "../../../shared/middleware/superAdmin.middleware.js";
 import {
-	createSuperAdmin,
-	createAdmin,
-	deleteAdmin,
-	getAllAdmins,
-	updateAdmin,
-	changeUserRole,
-	getSystemConfig,
-	getAuditLogs,
-	getSystemHealth,
-	emergencyLockdown,
+  createSuperAdmin,
+  createAdmin,
+  deleteAdmin,
+  getAllAdmins,
+  updateAdmin,
+  changeUserRole,
+  getSystemConfig,
+  getAuditLogs,
+  getSystemHealth,
+  emergencyLockdown,
 } from "../controllers/super-admin.controller.js";
 
 const router = Router();
