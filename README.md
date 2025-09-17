@@ -1,283 +1,148 @@
-# 🏢 Enterprise Social Media Blog Platform
+# 💬 Social Media Blog Platform
 
 <div align="center">
 
 ![Node.js](https://img.shields.io/badge/Node.js-20+-brightgreen.svg?logo=node.js&logoColor=white)
 ![Express](https://img.shields.io/badge/Express-4.21+-purple.svg?logo=express&logoColor=white)
-![TypeScript](https://img.shields.io/badge/JavaScript-ES6+-yellow.svg?logo=javascript&logoColor=black)
+![JavaScript](https://img.shields.io/badge/JavaScript-ES6+-yellow.svg?logo=javascript&logoColor=black)
 ![MongoDB](https://img.shields.io/badge/MongoDB-8.0+-47A248.svg?logo=mongodb&logoColor=white)
 ![Redis](https://img.shields.io/badge/Redis-7.0+-DC382D.svg?logo=redis&logoColor=white)
-![Microservices](https://img.shields.io/badge/Architecture-Microservices-orange.svg)
 ![Scalability](https://img.shields.io/badge/Scalable-High-darkorange.svg)
 ![Docker](https://img.shields.io/badge/Docker-Ready-0db7ed.svg?logo=docker&logoColor=white)
 ![Postman](https://img.shields.io/badge/Postman-API_Testing-FF6C37.svg?logo=postman&logoColor=white)
-![Analytics](https://img.shields.io/badge/Analytics-Enabled-teal.svg)
 ![Security](https://img.shields.io/badge/Security-Enterprise_Grade-crimson.svg)
-![Tests](https://img.shields.io/badge/Tests-Passing-limegreen.svg)
+![Tests](https://img.shields.io/badge/Tests-Jest-limegreen.svg)
 ![Version](https://img.shields.io/badge/Version-2.0.0-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-gold.svg)
 ![ESLint](https://img.shields.io/badge/Code%20Style-ESLint-4B32C3.svg?logo=eslint&logoColor=white)
 ![Prettier](https://img.shields.io/badge/Formatter-Prettier-F7B93E.svg?logo=prettier&logoColor=black)
-![SonarQube](https://img.shields.io/badge/Code%20Quality-SonarQube-4E9BCD.svg?logo=sonarqube&logoColor=white)
 
-**Production-ready microservices platform for social media blogging with enterprise-grade security, analytics, and
-scalability**
+**Enterprise-grade social media blog platform with advanced user management, comprehensive admin controls, and scalable
+architecture**
 
-[🚀 Quick Start](#-quick-start) • [🏗️ Architecture](#-microservice-architecture) • [📚 Documentation](#-documentation) •
-[🔧 Development](#-development-setup) • [🐳 Deployment](#-deployment)
+[🚀 Quick Start](#-quick-start) • [✨ Features](#-features) • [📚 API Docs](#-api-documentation) •
+[🔧 Development](#-development-setup) • [🤝 Contributing](#-contributing)
 
 </div>
 
 ---
 
-## 📋 Table of Contents
-
-- [🎯 Overview](#-overview)
-- [✨ Features](#-features)
-- [🏗️ Microservice Architecture](#-microservice-architecture)
-- [🚀 Quick Start](#-quick-start)
-- [🔧 Development Setup](#-development-setup)
-- [🐳 Deployment](#-deployment)
-- [📚 Documentation](#-documentation)
-- [🧪 Testing](#-testing)
-- [🔒 Security](#-security)
-- [📊 Monitoring](#-monitoring)
-- [🤝 Contributing](#-contributing)
-- [📄 License](#-license)
-
----
-
 ## 🎯 Overview
 
-### What is this?
+A **modern, scalable social media blog platform** built with Node.js and Express.js, designed for enterprise-level
+applications. Features comprehensive user management, advanced admin controls, real-time notifications, file uploads,
+and robust security measures.
 
-A **modern, scalable social media blog platform** built with microservices architecture, designed for enterprise-level
-applications. Features include user management, content creation, real-time notifications, advanced analytics, and
-comprehensive admin controls.
+### 🌟 Key Highlights
 
-### Key Highlights
-
-- 🏗️ **Microservices Architecture** - Independent, scalable services
-- 🔒 **Enterprise Security** - JWT, RBAC, rate limiting, audit logging
-- 📊 **Advanced Analytics** - Real-time metrics and business intelligence
-- ⚡ **High Performance** - Redis caching, optimized queries, CDN ready
-- 🔄 **Event-Driven** - Async communication between services
-- 🐳 **Container Ready** - Docker & Kubernetes deployment
-- 📱 **API First** - RESTful APIs with comprehensive documentation
-- 🧪 **Test Coverage** - Unit, integration, and E2E testing
-
-### Tech Stack
-
-| Category           | Technologies                |
-| ------------------ | --------------------------- |
-| **Runtime**        | Node.js 20+, ES6+ Modules   |
-| **Framework**      | Express.js, RESTful APIs    |
-| **Database**       | MongoDB 8.0+, Mongoose ODM  |
-| **Cache**          | Redis 7.0+, IORedis         |
-| **Authentication** | JWT, bcrypt, Passport.js    |
-| **Validation**     | Joi, Zod schemas            |
-| **File Upload**    | Multer, Cloudinary          |
-| **Email**          | Nodemailer, EJS templates   |
-| **Queue**          | BullMQ, Redis               |
-| **Monitoring**     | Winston, Morgan, Sentry     |
-| **Testing**        | Jest, Supertest             |
-| **DevOps**         | Docker, Docker Compose, PM2 |
-| **Code Quality**   | ESLint, Prettier, Husky     |
+- **🔒 Enterprise Security** - JWT authentication, RBAC, rate limiting, session tracking
+- **👑 Advanced Admin System** - Comprehensive dashboard, user moderation, analytics
+- **📊 Real-time Analytics** - User engagement, system metrics, business intelligence
+- **📁 File Management** - Cloudinary integration, image optimization, secure uploads
+- **🔔 Notification System** - Email notifications, templates, bulk messaging
+- **⚡ High Performance** - Redis caching, optimized queries, connection pooling
+- **🛡️ Security First** - Input validation, XSS protection, CORS, helmet security
 
 ---
 
 ## ✨ Features
 
-### 🔐 Authentication & Authorization
+### 🔐 Authentication & Security
 
-- JWT-based authentication with refresh tokens
-- Role-based access control (RBAC)
-- Multi-factor authentication (MFA)
-- Password reset with email verification
-- Session management with Redis
-- Account lockout and security policies
+- **JWT Authentication** with access and refresh tokens
+- **Role-based Access Control** (User, Admin, Super Admin)
+- **Session Management** with Redis storage and tracking
+- **Password Security** with bcrypt hashing and strength validation
+- **Email Verification** and password reset functionality
+- **Rate Limiting** and brute force protection
+- **Security Headers** with Helmet.js
 
 ### 👥 User Management
 
-- User registration and profile management
-- Avatar upload with image optimization
-- User preferences and settings
-- Activity tracking and audit logs
-- Social features (follow/unfollow)
-- User analytics and insights
+- **User Registration & Login** with flexible identifier support
+- **Profile Management** with avatar and cover image uploads
+- **Social Features** - Follow/unfollow, user search, feed generation
+- **User Preferences** and privacy settings
+- **Activity Tracking** and audit logs
+- **Account Verification** and status management
 
-### 📝 Content Management
+### 📝 Blog & Content Management
 
-- Rich text blog creation and editing
-- Media upload (images, videos)
-- Content moderation and approval workflow
-- Categories and tags system
-- SEO optimization features
-- Content scheduling and publishing
+- **Blog Post Creation** with rich content support
+- **Comment System** with engagement tracking
+- **Media Integration** for images and videos
+- **Content Analytics** and performance metrics
+- **Post Moderation** and visibility controls
+
+### 👑 Advanced Admin System
+
+- **Comprehensive Dashboard** with real-time statistics
+- **User Management** - suspend, activate, verify accounts
+- **Content Moderation** - post visibility, comment management
+- **Security Monitoring** - suspicious accounts, login attempts, IP blocking
+- **Analytics & Reporting** - user growth, engagement metrics, demographics
+- **System Health** monitoring and database statistics
+- **Bulk Operations** - user export, bulk actions, notifications
 
 ### 🔔 Notification System
 
-- Real-time in-app notifications
-- Email notifications with templates
-- SMS notifications (optional)
-- Push notifications (web/mobile)
-- Notification preferences
-- Bulk notification management
+- **Email Notifications** with EJS templates
+- **Notification Templates** management
+- **Bulk Messaging** capabilities
+- **User Notification Preferences**
+- **Real-time Alerts** for admin actions
 
-### 👑 Admin Dashboard
+### 📁 File & Media Management
 
-- Comprehensive analytics dashboard
-- User management and moderation
-- Content management and moderation
-- System monitoring and health checks
-- Security monitoring and threat detection
-- Bulk operations and data export
-
-### 📊 Analytics & Reporting
-
-- Real-time user analytics
-- Content performance metrics
-- System performance monitoring
-- Custom reports and dashboards
-- Data export (CSV, JSON, PDF)
-- Business intelligence insights
+- **Cloudinary Integration** for image storage and optimization
+- **Secure File Uploads** with validation and size limits
+- **Image Processing** with automatic optimization
+- **CDN Delivery** for global performance
 
 ---
 
-## 🏗️ Microservice Architecture
+## 🏗️ Architecture
 
-### Service Overview
-
-```mermaid
-graph TB
-    Gateway[API Gateway :3000] --> Auth[Auth Service :3001]
-    Gateway --> User[User Service :3002]
-    Gateway --> Blog[Blog Service :3003]
-    Gateway --> Notification[Notification Service :3004]
-    Gateway --> Admin[Admin Service :3005]
-    Gateway --> File[File Service :3006]
-
-    Auth --> MongoDB[(MongoDB)]
-    User --> MongoDB
-    Blog --> MongoDB
-    Notification --> MongoDB
-    Admin --> MongoDB
-    File --> MongoDB
-
-    Auth --> Redis[(Redis)]
-    User --> Redis
-    Blog --> Redis
-    Notification --> Redis
-    Admin --> Redis
-    File --> Redis
-```
-
-### Service Structure
+### Modular Structure
 
 ```
-social-media-blog-app/
-├── 🌐 gateway/                      # API Gateway (Port: 3000)
-│   ├── src/
-│   │   ├── controllers/
-│   │   ├── middleware/
-│   │   ├── routes/
-│   │   ├── services/
-│   │   └── utils/
-│   ├── Dockerfile
-│   └── package.json
-│
-├── 🚀 services/                     # Microservices
-│   ├── 🔐 auth-service/            # Authentication (Port: 3001)
-│   │   ├── src/
-│   │   │   ├── controllers/
-│   │   │   │   ├── auth.controller.js
-│   │   │   │   ├── password.controller.js
-│   │   │   │   └── session.controller.js
-│   │   │   ├── services/
-│   │   │   │   ├── auth.service.js
-│   │   │   │   ├── jwt.service.js
-│   │   │   │   └── password.service.js
-│   │   │   ├── models/
-│   │   │   │   ├── user.model.js
-│   │   │   │   └── session.model.js
-│   │   │   ├── routes/
-│   │   │   ├── middleware/
-│   │   │   ├── validators/
-│   │   │   └── utils/
-│   │   ├── tests/
-│   │   ├── Dockerfile
-│   │   └── package.json
-│   │
-│   ├── 👤 user-service/            # User Management (Port: 3002)
-│   ├── 📝 blog-service/            # Content Management (Port: 3003)
-│   ├── 🔔 notification-service/    # Notifications (Port: 3004)
-│   ├── 👑 admin-service/           # Admin & Analytics (Port: 3005)
-│   └── 📁 file-service/            # File Upload (Port: 3006)
-│
-├── 🔗 shared/                      # Shared Libraries
-│   ├── lib/
-│   │   ├── constants/
-│   │   │   ├── http-status.constant.js
-│   │   │   ├── error-codes.constant.js
-│   │   │   └── app.constant.js
-│   │   ├── utils/
-│   │   │   ├── api-response.util.js
-│   │   │   ├── api-error.util.js
-│   │   │   ├── async-handler.util.js
-│   │   │   └── logger.util.js
-│   │   ├── middleware/
-│   │   │   ├── error-handler.middleware.js
-│   │   │   ├── auth.middleware.js
-│   │   │   └── validation.middleware.js
-│   │   ├── database/
-│   │   │   ├── mongodb.config.js
-│   │   │   └── redis.config.js
-│   │   └── services/
-│   │       ├── cache.service.js
-│   │       └── queue.service.js
-│   └── package.json
-│
-├── 🏗️ infrastructure/              # Infrastructure as Code
-│   ├── docker/
-│   │   ├── docker-compose.yml
-│   │   ├── docker-compose.prod.yml
-│   │   └── docker-compose.dev.yml
-│   ├── kubernetes/
-│   │   ├── deployments/
-│   │   ├── services/
-│   │   └── ingress/
-│   └── monitoring/
-│       ├── prometheus/
-│       └── grafana/
-│
-├── 🧪 tests/                       # Global Tests
-│   ├── integration/
-│   ├── e2e/
-│   └── performance/
-│
-├── 📚 docs/                        # Documentation
-│   ├── api/
-│   ├── architecture/
-│   ├── deployment/
-│   └── postman/
-│
-├── 🔧 scripts/                     # Build & Deployment Scripts
-│   ├── build.sh
-│   ├── deploy.sh
-│   └── setup.sh
-│
-├── 📦 package.json                 # Root package.json
-├── 🐳 docker-compose.yml          # Main docker compose
-├── 📚 README.md                    # This file
-└── 🔧 .env.example                # Environment template
+src/
+├── 📁 modules/                    # Feature modules
+│   ├── 🔐 auth/                  # Authentication system
+│   ├── 👤 users/                 # User management
+│   ├── 📝 blogs/                 # Blog & content system
+│   ├── 👑 admin/                 # Admin dashboard & controls
+│   ├── 🔔 notifications/         # Notification system
+│   └── 📧 email/                 # Email services
+├── 📁 shared/                    # Shared utilities
+│   ├── middleware/               # Custom middleware
+│   ├── utils/                    # Utility functions
+│   ├── validators/               # Input validation
+│   └── services/                 # Shared services
+├── 📁 config/                    # Configuration
+│   ├── database/                 # MongoDB connection
+│   └── redis/                    # Redis configuration
+├── 📄 app.js                     # Express application
+└── 📄 server.js                  # Server initialization
 ```
 
-### Service Communication
+### Technology Stack
 
-- **Synchronous**: REST APIs via API Gateway
-- **Asynchronous**: Event-driven messaging with Redis/BullMQ
-- **Data Consistency**: Event sourcing and SAGA pattern
-- **Service Discovery**: Docker networking and health checks
+| Layer              | Technologies                   |
+| ------------------ | ------------------------------ |
+| **Runtime**        | Node.js 20+, ES6 Modules       |
+| **Framework**      | Express.js 4.21+               |
+| **Database**       | MongoDB 8.0+ with Mongoose ODM |
+| **Cache**          | Redis 7.0+ with IORedis        |
+| **Authentication** | JWT, bcrypt                    |
+| **Validation**     | Joi, Zod, express-validator    |
+| **File Storage**   | Cloudinary, Multer             |
+| **Email**          | Nodemailer with EJS templates  |
+| **Security**       | Helmet, CORS, Rate Limiting    |
+| **Logging**        | Winston, Morgan                |
+| **Testing**        | Jest, Supertest                |
+| **DevOps**         | Docker, PM2                    |
+| **Code Quality**   | ESLint, Prettier, Husky        |
 
 ---
 
@@ -285,11 +150,12 @@ social-media-blog-app/
 
 ### Prerequisites
 
-- **Node.js** 20+ ([Download](https://nodejs.org/))
-- **MongoDB** 8.0+ ([Download](https://www.mongodb.com/try/download/community))
-- **Redis** 7.0+ ([Download](https://redis.io/download))
-- **Docker** 20+ ([Download](https://www.docker.com/get-started))
-- **Git** ([Download](https://git-scm.com/downloads))
+| Requirement | Version | Purpose                     |
+| ----------- | ------- | --------------------------- |
+| **Node.js** | 20+     | Runtime environment         |
+| **MongoDB** | 8.0+    | Primary database            |
+| **Redis**   | 7.0+    | Caching & sessions          |
+| **Docker**  | 20+     | Containerization (optional) |
 
 ### Installation
 
@@ -305,150 +171,146 @@ npm install
 cp .env.example .env
 # Edit .env with your configuration
 
-# 4. Start with Docker (Recommended)
+# 4. Start Redis (using Docker)
 docker-compose up -d
 
-# 5. Verify installation
-curl http://localhost:3000/health
+# 5. Start the application
+npm run dev
+
+# 6. Verify installation
+curl http://localhost:5000/health
 ```
-
-### Manual Setup (Without Docker)
-
-```bash
-# 1. Start MongoDB and Redis
-# MongoDB: mongod --dbpath /data/db
-# Redis: redis-server
-
-# 2. Install shared dependencies
-cd shared && npm install && cd ..
-
-# 3. Start services
-npm run dev:gateway    # Port 3000
-npm run dev:auth       # Port 3001
-npm run dev:user       # Port 3002
-npm run dev:blog       # Port 3003
-npm run dev:notification # Port 3004
-npm run dev:admin      # Port 3005
-npm run dev:file       # Port 3006
-```
-
-### Verification
-
-```bash
-# Check all services
-curl http://localhost:3000/health
-
-# Test API
-curl http://localhost:3000/api/v2
-
-# View logs
-docker-compose logs -f
-```
-
----
-
-## 🔧 Development Setup
 
 ### Environment Configuration
 
 ```bash
-# Copy environment template
-cp .env.example .env
-
-# Required environment variables
+# Server Configuration
 NODE_ENV=development
-PORT=3000
-MONGODB_URI=mongodb://localhost:27017/social_media_blog
-REDIS_URL=redis://localhost:6379
+PORT=5000
+API_VERSION=v2
+CORS_ORIGIN=http://localhost:3000
+
+# Database
+MONGODB_URI=mongodb://localhost:27017/social-media-blog
+MONGODB_DB_NAME=social-media-blog
+
+# JWT Security
 JWT_SECRET=your-super-secret-jwt-key
-JWT_REFRESH_SECRET=your-refresh-secret-key
+ACCESS_TOKEN_SECRET=your-access-token-secret
+REFRESH_TOKEN_SECRET=your-refresh-token-secret
+ACCESS_TOKEN_EXPIRY=24h
+REFRESH_TOKEN_EXPIRY=7d
+
+# Redis Cache
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=administer
+
+# Email Configuration
+EMAIL_SERVICE=gmail
 EMAIL_HOST=smtp.gmail.com
-EMAIL_USER=your-email@gmail.com
-EMAIL_PASS=your-app-password
+EMAIL_PORT=587
+EMAIL_USERNAME=your-email@gmail.com
+EMAIL_PASSWORD=your-app-password
+
+# Cloudinary (File Storage)
 CLOUDINARY_CLOUD_NAME=your-cloud-name
 CLOUDINARY_API_KEY=your-api-key
 CLOUDINARY_API_SECRET=your-api-secret
 ```
 
-### Development Scripts
+---
+
+## 📚 API Documentation
+
+### Base URL
+
+```
+Development: http://localhost:5000/api/v2
+Production: https://your-domain.com/api/v2
+```
+
+### Authentication
+
+```http
+Authorization: Bearer {accessToken}
+Content-Type: application/json
+```
+
+### Core Endpoints
+
+#### Authentication
+
+```http
+POST /api/v2/users/register        # User registration
+POST /api/v2/users/login           # User login
+POST /api/v2/users/logout          # User logout
+POST /api/v2/users/refresh-token   # Refresh access token
+POST /api/v2/users/forgot-password # Password reset request
+POST /api/v2/users/reset-password/{token} # Reset password
+```
+
+#### User Management
+
+```http
+GET  /api/v2/users/profile         # Get current user profile
+PUT  /api/v2/users/profile         # Update profile
+POST /api/v2/users/change-password # Change password
+POST /api/v2/users/upload-avatar   # Upload avatar
+GET  /api/v2/users/search          # Search users
+POST /api/v2/users/follow/{userId} # Follow user
+POST /api/v2/users/unfollow/{userId} # Unfollow user
+```
+
+#### Blog Management
+
+```http
+GET  /api/v2/blogs/posts           # Get all posts
+POST /api/v2/blogs/posts           # Create new post
+GET  /api/v2/blogs/posts/{id}      # Get specific post
+PUT  /api/v2/blogs/posts/{id}      # Update post
+DELETE /api/v2/blogs/posts/{id}    # Delete post
+```
+
+#### Admin Dashboard
+
+```http
+GET  /api/v2/admin/dashboard       # Admin dashboard
+GET  /api/v2/admin/stats           # System statistics
+GET  /api/v2/admin/users           # Manage users
+POST /api/v2/admin/users/{id}/suspend # Suspend user
+GET  /api/v2/admin/analytics/overview # Analytics overview
+```
+
+**📖 Complete API Documentation**: [API Reference](docs/COMPLETE_API_ENDPOINTS.md)
+
+---
+
+## 🧪 Testing
+
+### Test Structure
 
 ```bash
-# Development
-npm run dev              # Start all services in development
-npm run dev:gateway      # Start API Gateway only
-npm run dev:auth         # Start Auth Service only
+# Run all tests
+npm test
 
-# Building
-npm run build            # Build all services
-npm run build:gateway    # Build specific service
+# Run specific test types
+npm run test:unit
+npm run test:integration
+npm run test:e2e
 
-# Testing
-npm test                 # Run all tests
-npm run test:unit        # Unit tests only
-npm run test:integration # Integration tests
-npm run test:e2e         # End-to-end tests
-npm run test:coverage    # Test coverage report
+# Generate coverage report
+npm run test:coverage
 
-# Code Quality
-npm run lint             # ESLint check
-npm run lint:fix         # Fix ESLint issues
-npm run format           # Prettier formatting
-npm run format:check     # Check formatting
-
-# Database
-npm run db:seed          # Seed database with sample data
-npm run db:migrate       # Run database migrations
-npm run db:reset         # Reset database
-
-# Docker
-npm run docker:build     # Build Docker images
-npm run docker:up        # Start with Docker Compose
-npm run docker:down      # Stop Docker containers
+# Watch mode for development
+npm run test:watch
 ```
 
-### Code Style & Standards
+### Test Coverage Goals
 
-- **ESLint**: Airbnb configuration with custom rules
-- **Prettier**: Consistent code formatting
-- **Husky**: Pre-commit hooks for quality checks
-- **Conventional Commits**: Standardized commit messages
-- **JSDoc**: Comprehensive code documentation
-
-### File Naming Conventions
-
-```
-# Controllers
-user.controller.js
-blog.controller.js
-
-# Services
-user.service.js
-email.service.js
-
-# Models
-user.model.js
-blog.model.js
-
-# Routes
-user.routes.js
-auth.routes.js
-
-# Middleware
-auth.middleware.js
-validation.middleware.js
-
-# Utilities
-api-response.util.js
-logger.util.js
-
-# Constants
-http-status.constant.js
-app.constant.js
-
-# Validators
-user.validator.js
-blog.validator.js
-```
+- **Unit Tests**: 90%+ coverage
+- **Integration Tests**: All API endpoints
+- **E2E Tests**: Critical user journeys
 
 ---
 
@@ -457,256 +319,176 @@ blog.validator.js
 ### Docker Deployment
 
 ```bash
-# Development
-docker-compose -f docker-compose.dev.yml up -d
+# Start Redis service
+docker-compose up -d
 
-# Production
-docker-compose -f docker-compose.prod.yml up -d
-
-# Scaling services
-docker-compose up -d --scale user-service=3 --scale blog-service=2
+# Build and run application
+docker build -t social-media-blog .
+docker run -p 5000:5000 social-media-blog
 ```
 
-### Kubernetes Deployment
+### PM2 Production Deployment
 
 ```bash
-# Apply configurations
-kubectl apply -f infrastructure/kubernetes/
+# Install PM2 globally
+npm install -g pm2
 
-# Check deployment status
-kubectl get pods
-kubectl get services
+# Start application with PM2
+npm run pm2:start
+
+# Monitor application
+npm run pm2:monit
 
 # View logs
-kubectl logs -f deployment/auth-service
+npm run pm2:logs
 ```
 
-### Production Checklist
-
-- [ ] Environment variables configured
-- [ ] SSL certificates installed
-- [ ] Database backups scheduled
-- [ ] Monitoring and alerting setup
-- [ ] Load balancer configured
-- [ ] CDN setup for static assets
-- [ ] Security headers configured
-- [ ] Rate limiting enabled
-- [ ] Logging and error tracking
-- [ ] Health checks implemented
-
----
-
-## 📚 Documentation
-
-### API Documentation
-
-- **Postman Collection**: [Import Collection](docs/postman/)
-- **OpenAPI Spec**: [View Swagger](docs/api/swagger.yml)
-- **API Reference**: [docs/api/](docs/api/)
-
-### Architecture Documentation
-
-- **System Design**: [docs/architecture/system-design.md](docs/architecture/system-design.md)
-- **Database Schema**: [docs/architecture/database-schema.md](docs/architecture/database-schema.md)
-- **Service Communication**: [docs/architecture/service-communication.md](docs/architecture/service-communication.md)
-
-### Deployment Documentation
-
-- **Docker Setup**: [docs/deployment/docker.md](docs/deployment/docker.md)
-- **Kubernetes Guide**: [docs/deployment/kubernetes.md](docs/deployment/kubernetes.md)
-- **Production Setup**: [docs/deployment/production.md](docs/deployment/production.md)
-
-### Additional Resources
-
-- **Contributing Guide**: [CONTRIBUTING.md](CONTRIBUTING.md)
-- **Code of Conduct**: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
-- **Security Policy**: [SECURITY.md](SECURITY.md)
-- **Changelog**: [CHANGELOG.md](CHANGELOG.md)
-
----
-
-## 🧪 Testing
-
-### Test Structure
-
-```
-tests/
-├── unit/                    # Unit tests
-│   ├── services/
-│   ├── controllers/
-│   └── utils/
-├── integration/             # Integration tests
-│   ├── auth/
-│   ├── user/
-│   └── blog/
-├── e2e/                     # End-to-end tests
-│   ├── user-journey/
-│   └── admin-workflow/
-├── performance/             # Performance tests
-│   ├── load-testing/
-│   └── stress-testing/
-└── fixtures/                # Test data
-    ├── users.json
-    └── blogs.json
-```
-
-### Running Tests
+### Environment-Specific Scripts
 
 ```bash
-# All tests
-npm test
+# Development
+npm run dev
 
-# Specific test suites
-npm run test:unit
-npm run test:integration
-npm run test:e2e
+# Production
+npm start
 
-# Coverage report
-npm run test:coverage
+# Docker development
+npm run docker:dev
 
-# Watch mode
-npm run test:watch
-
-# Performance tests
-npm run test:performance
+# Health check
+npm run health:check
 ```
 
-### Test Configuration
+---
 
-- **Framework**: Jest
-- **Assertions**: Jest matchers + custom matchers
-- **Mocking**: Jest mocks + MongoDB Memory Server
-- **Coverage**: Istanbul/NYC
-- **E2E**: Supertest + Puppeteer
+## 🔒 Security Features
+
+### Authentication Security
+
+- **JWT Tokens** with secure secret keys
+- **Refresh Token Rotation** for enhanced security
+- **Session Tracking** with Redis storage
+- **Rate Limiting** to prevent brute force attacks
+- **Password Hashing** with bcrypt
+
+### Application Security
+
+- **Input Validation** with Joi and Zod schemas
+- **XSS Protection** with sanitization
+- **CORS Configuration** for cross-origin requests
+- **Security Headers** with Helmet.js
+- **File Upload Security** with type and size validation
+
+### Admin Security
+
+- **Role-based Access Control** (RBAC)
+- **Admin Session Tracking**
+- **IP Blocking** for suspicious activities
+- **Audit Logging** for all admin actions
+- **Security Monitoring** dashboard
 
 ---
 
-## 🔒 Security
+## 📊 Monitoring & Analytics
 
-### Security Features
+### System Monitoring
 
-- **Authentication**: JWT with refresh tokens
-- **Authorization**: Role-based access control (RBAC)
-- **Input Validation**: Joi/Zod schema validation
-- **Rate Limiting**: Express rate limit with Redis
-- **CORS**: Configurable cross-origin resource sharing
-- **Helmet**: Security headers middleware
-- **Data Encryption**: bcrypt for passwords, AES for sensitive data
-- **SQL Injection**: MongoDB injection prevention
-- **XSS Protection**: Input sanitization and CSP headers
-- **CSRF Protection**: CSRF tokens for state-changing operations
+- **Health Check Endpoints** for uptime monitoring
+- **Performance Metrics** tracking
+- **Error Logging** with Winston
+- **Database Connection** monitoring
+- **Redis Cache** performance tracking
 
-### Security Best Practices
+### Business Analytics
 
-- Regular security audits with `npm audit`
-- Dependency vulnerability scanning
-- Environment variable validation
-- Secure session management
-- Audit logging for sensitive operations
-- IP whitelisting for admin operations
-- File upload restrictions and scanning
-
-### Reporting Security Issues
-
-Please report security vulnerabilities to [deepanshgangwar7037@outlook.com](mailto:deepanshgangwar7037@outlook.com)
+- **User Growth** tracking
+- **Engagement Metrics** analysis
+- **Content Performance** statistics
+- **Admin Activity** monitoring
+- **System Usage** reports
 
 ---
 
-## 📊 Monitoring
+## 🔧 Development Setup
 
-### Application Monitoring
+### Development Scripts
 
-- **Health Checks**: `/health` endpoint for each service
-- **Metrics**: Prometheus metrics collection
-- **Logging**: Structured logging with Winston
-- **Error Tracking**: Sentry integration
-- **Performance**: APM with response time tracking
+```bash
+# Start development server
+npm run dev
 
-### Infrastructure Monitoring
+# Code formatting
+npm run format
+npm run format:check
 
-- **System Metrics**: CPU, Memory, Disk usage
-- **Database Monitoring**: MongoDB performance metrics
-- **Cache Monitoring**: Redis performance and hit rates
-- **Network Monitoring**: Request/response metrics
+# Linting
+npm run lint
+npm run lint:check
 
-### Alerting
+# Database operations
+npm run db:seed
+npm run db:migrate
+npm run db:reset
 
-- **Error Rate**: Alert on high error rates
-- **Response Time**: Alert on slow responses
-- **Resource Usage**: Alert on high resource consumption
-- **Service Health**: Alert on service failures
+# Security audit
+npm run security:audit
+```
+
+### Code Quality Tools
+
+- **ESLint** for code linting
+- **Prettier** for code formatting
+- **Husky** for git hooks
+- **Lint-staged** for pre-commit checks
 
 ---
 
 ## 🤝 Contributing
 
+We welcome contributions! Please follow these guidelines:
+
 ### Development Workflow
 
 1. **Fork** the repository
 2. **Create** a feature branch: `git checkout -b feature/amazing-feature`
-3. **Follow** coding standards and conventions
-4. **Write** tests for new functionality
-5. **Commit** changes: `git commit -m 'feat: add amazing feature'`
-6. **Push** to branch: `git push origin feature/amazing-feature`
-7. **Submit** a Pull Request
+3. **Follow** coding standards and write tests
+4. **Commit** with conventional commits: `git commit -m 'feat: add amazing feature'`
+5. **Push** and create a Pull Request
 
 ### Code Standards
 
-- Follow ESLint configuration
-- Write meaningful commit messages
-- Add JSDoc comments for functions
-- Maintain test coverage above 80%
-- Update documentation for new features
+- **JavaScript ES6+** with modules
+- **ESLint** configuration compliance
+- **Comprehensive testing** required
+- **Documentation** updates for new features
 
-### Pull Request Guidelines
-
-- Provide clear description of changes
-- Include relevant issue numbers
-- Ensure all tests pass
-- Update documentation if needed
-- Request review from maintainers
+**📖 Detailed Guide**: [Contributing Guidelines](CONTRIBUTING.md)
 
 ---
 
 ## 📄 License
 
-**MIT License**
+**MIT License** - see [LICENSE](LICENSE) file for details.
 
 Copyright (c) 2024 Deepansh Gangwar
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
-documentation files (the "Software"), to deal in the Software without restriction, including without limitation the
-rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit
-persons to whom the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the
-Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
-WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
 ---
 
-## 📞 Support & Contact
+## 🌟 Support & Community
 
-### 🎯 Support Channels
+### 📞 Get Help
 
 - **📧 Email**: [deepanshgangwar7037@outlook.com](mailto:deepanshgangwar7037@outlook.com)
 - **💼 LinkedIn**: [Deepansh Gangwar](https://linkedin.com/in/deepansh-gangwar)
 - **🐛 Issues**: [GitHub Issues](https://github.com/mr-deepansh/social-media-blog-app/issues)
-- **💬 Discussions**: [GitHub Discussions](https://github.com/mr-deepansh/social-media-blog-app/discussions)
 
-### 🌟 Show Your Support
+### 🎯 Roadmap
 
-If this project helps you, please consider:
-
-- ⭐ **Starring** the repository
-- 🐛 **Reporting** bugs and issues
-- 💡 **Suggesting** new features
-- 🤝 **Contributing** to the codebase
-- 📢 **Sharing** with others
+- [ ] **Real-time Chat** - WebSocket integration for messaging
+- [ ] **Mobile API** - Enhanced mobile app support
+- [ ] **Advanced Analytics** - Machine learning insights
+- [ ] **Content Recommendation** - AI-powered content suggestions
+- [ ] **Multi-language Support** - Internationalization
 
 ---
 
@@ -720,21 +502,21 @@ If this project helps you, please consider:
 
 **⭐ Star this repository if it helped you! ⭐**
 
+_Building the future of social media platforms._
+
 </div>
 
 ---
 
-## 📅 Project Information
+## 📊 Project Statistics
 
-| Attribute        | Details            |
-| ---------------- | ------------------ |
-| **Version**      | 2.0.0              |
-| **Last Updated** | January 2024       |
-| **Node.js**      | 20+                |
-| **License**      | MIT                |
-| **Status**       | Active Development |
-| **Architecture** | Microservices      |
-| **Database**     | MongoDB 8.0+       |
-| **Cache**        | Redis 7.0+         |
-| **Deployment**   | Docker, Kubernetes |
-| **Testing**      | Jest, Supertest    |
+| Metric                   | Value   |
+| ------------------------ | ------- |
+| **Lines of Code**        | 25,000+ |
+| **API Endpoints**        | 50+     |
+| **Modules**              | 6       |
+| **Middleware**           | 15+     |
+| **Database Models**      | 10+     |
+| **Admin Features**       | 30+     |
+| **Security Features**    | 20+     |
+| **File Types Supported** | 5+      |

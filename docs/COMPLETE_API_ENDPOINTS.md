@@ -1,1036 +1,297 @@
-# 🚀 Complete API Endpoints for Postman Testing
+# 🚀 EndlessChatt API Documentation
 
-**Base URL:** `http://localhost:5000/api/v1`
+**Complete API Reference for EndlessChatt Social Media Platform**
+
+_Version: 2.0.0 | Base URL: `http://localhost:5000/api/v2`_
 
 ---
 
 ## 📋 Table of Contents
 
-1. [🔐 Authentication & Password Management](#-authentication--password-management)
-2. [👤 User Management](#-user-management)
-3. [📝 Blog Management](#-blog-management)
-4. [🛡️ Admin Routes](#️-admin-routes)
-5. [👑 Super Admin Routes](#-super-admin-routes)
-6. [📊 Analytics & Monitoring](#-analytics--monitoring)
-7. [🔒 Security & Moderation](#-security--moderation)
-8. [⚙️ System Configuration](#️-system-configuration)
-9. [📢 Notifications](#-notifications)
-10. [🔄 Automation & Workflows](#-automation--workflows)
-11. [🌟 Business Intelligence](#-business-intelligence)
+- [🔐 Authentication & Security](#-authentication--security)
+- [👤 User Management](#-user-management)
+- [💬 Chat & Messaging](#-chat--messaging)
+- [📁 Media & File Management](#-media--file-management)
+- [🔔 Notifications](#-notifications)
+- [👑 Admin & Moderation](#-admin--moderation)
+- [📊 Analytics & Insights](#-analytics--insights)
+- [⚙️ System & Configuration](#️-system--configuration)
+- [🔍 Search & Discovery](#-search--discovery)
+- [🌐 Social Features](#-social-features)
 
 ---
 
-## 🔐 Authentication & Password Management
+## 🔐 Authentication & Security
 
-### 1. User Registration
-
-- **URL:** `POST /api/v1/users/register`
-- **Folder:** Authentication
-- **Body:**
-
-```json
-{
-  "username": "testuser",
-  "email": "test@example.com",
-  "password": "Strong@123",
-  "confirmPassword": "Strong@123",
-  "firstName": "Test",
-  "lastName": "User"
-}
-```
-
-### 2. User Login
-
-- **URL:** `POST /api/v1/users/login`
-- **Folder:** Authentication
-- **Body:**
-
-```json
-{
-  "identifier": "test@example.com",
-  "password": "Strong@123",
-  "rememberMe": false
-}
-```
-
-### 3. User Logout
-
-- **URL:** `POST /api/v1/users/logout`
-- **Folder:** Authentication
-- **Auth:** Bearer Token Required
-- **Body:** Empty
-
-### 4. Refresh Access Token
-
-- **URL:** `POST /api/v1/users/refresh-token`
-- **Folder:** Authentication
-- **Body:**
-
-```json
-{
-  "refreshToken": "your_refresh_token_here"
-}
-```
-
-### 5. Forgot Password
-
-- **URL:** `POST /api/v1/auth/forgot-password`
-- **Folder:** Authentication
-- **Body:**
-
-```json
-{
-  "email": "test@example.com"
-}
-```
-
-### 6. Reset Password
-
-- **URL:** `POST /api/v1/auth/reset-password/:token`
-- **Folder:** Authentication
-- **Body:**
-
-```json
-{
-  "password": "NewStrong@123",
-  "confirmPassword": "NewStrong@123"
-}
-```
-
-### 7. Verify Email
-
-- **URL:** `POST /api/v1/auth/verify-email/:token`
-- **Folder:** Authentication
-- **Body:** Empty
-
-### 8. Resend Email Verification
-
-- **URL:** `POST /api/v1/auth/resend-verification`
-- **Folder:** Authentication
-- **Auth:** Bearer Token Required
-- **Body:** Empty
-
-### 9. Get Security Overview
-
-- **URL:** `GET /api/v1/auth/security-overview`
-- **Folder:** Authentication
-- **Auth:** Bearer Token Required
-
-### 10. Get User Activity
-
-- **URL:** `GET /api/v1/auth/activity`
-- **Folder:** Authentication
-- **Auth:** Bearer Token Required
-- **Query Params:** `?page=1&limit=20&type=login`
-
-### 11. Get Activity Stats
-
-- **URL:** `GET /api/v1/auth/activity/stats`
-- **Folder:** Authentication
-- **Auth:** Bearer Token Required
-
-### 12. Get Login Locations
-
-- **URL:** `GET /api/v1/auth/activity/locations`
-- **Folder:** Authentication
-- **Auth:** Bearer Token Required
+| #   | Method | URL                                             | Endpoint Name       | Headers Required                                                       | Body Data Type | Body Data                                                                                                                                                                              | Summary                                   |
+| --- | ------ | ----------------------------------------------- | ------------------- | ---------------------------------------------------------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| 1   | POST   | `/api/v2/users/register`                        | User Registration   | Content-Type: application/json                                         | JSON           | `{"username": "johndoe", "email": "john@example.com", "password": "SecurePass123!", "confirmPassword": "SecurePass123!", "firstName": "John", "lastName": "Doe", "acceptTerms": true}` | Register new user account                 |
+| 2   | POST   | `/api/v2/auth/login`                            | User Login          | Content-Type: application/json                                         | JSON           | `{"identifier": "john@example.com", "password": "SecurePass123!", "rememberMe": false, "deviceInfo": {"userAgent": "Mozilla/5.0...", "platform": "web"}}`                              | Authenticate user and get access token    |
+| 3   | POST   | `/api/v2/auth/refresh`                          | Refresh Token       | Authorization: Bearer {refreshToken}<br>Content-Type: application/json | JSON           | `{"refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."}`                                                                                                                          | Refresh expired access token              |
+| 4   | POST   | `/api/v2/users/logout`                          | User Logout         | Authorization: Bearer {accessToken}                                    | JSON           | `{"logoutFromAllDevices": false}`                                                                                                                                                      | Logout user from current device           |
+| 5   | POST   | `/api/v2/users/logout-all`                      | Logout All Devices  | Authorization: Bearer {accessToken}                                    | JSON           | `{}`                                                                                                                                                                                   | Logout user from all devices              |
+| 6   | POST   | `/api/v2/auth/forgot-password`                  | Forgot Password     | Content-Type: application/json                                         | JSON           | `{"email": "john@example.com"}`                                                                                                                                                        | Send password reset email                 |
+| 7   | POST   | `/api/v2/auth/reset-password/{resetToken}`      | Reset Password      | Content-Type: application/json                                         | JSON           | `{"password": "NewSecurePass123!", "confirmPassword": "NewSecurePass123!"}`                                                                                                            | Reset password using token from email     |
+| 8   | PUT    | `/api/v2/users/change-password`                 | Change Password     | Authorization: Bearer {accessToken}<br>Content-Type: application/json  | JSON           | `{"currentPassword": "SecurePass123!", "newPassword": "NewSecurePass123!", "confirmPassword": "NewSecurePass123!"}`                                                                    | Change password for authenticated user    |
+| 9   | POST   | `/api/v2/auth/verify-email/{verificationToken}` | Verify Email        | -                                                                      | -              | -                                                                                                                                                                                      | Verify email address using token          |
+| 10  | POST   | `/api/v2/auth/resend-verification`              | Resend Verification | Authorization: Bearer {accessToken}                                    | JSON           | `{}`                                                                                                                                                                                   | Resend email verification                 |
+| 11  | POST   | `/api/v2/auth/2fa/enable`                       | Enable 2FA          | Authorization: Bearer {accessToken}                                    | JSON           | `{"password": "SecurePass123!"}`                                                                                                                                                       | Enable two-factor authentication          |
+| 12  | POST   | `/api/v2/auth/2fa/verify-setup`                 | Verify 2FA Setup    | Authorization: Bearer {accessToken}                                    | JSON           | `{"token": "123456"}`                                                                                                                                                                  | Verify 2FA setup with token               |
+| 13  | POST   | `/api/v2/auth/2fa/disable`                      | Disable 2FA         | Authorization: Bearer {accessToken}                                    | JSON           | `{"password": "SecurePass123!", "token": "123456"}`                                                                                                                                    | Disable two-factor authentication         |
+| 14  | GET    | `/api/v2/auth/sessions`                         | Get Active Sessions | Authorization: Bearer {accessToken}                                    | -              | -                                                                                                                                                                                      | Get all active user sessions              |
+| 15  | DELETE | `/api/v2/auth/sessions/{sessionId}`             | Revoke Session      | Authorization: Bearer {accessToken}                                    | -              | -                                                                                                                                                                                      | Revoke specific session                   |
+| 16  | GET    | `/api/v2/auth/security-overview`                | Security Overview   | Authorization: Bearer {accessToken}                                    | -              | -                                                                                                                                                                                      | Get security overview and recent activity |
+| 17  | GET    | `/api/v2/auth/login-history`                    | Login History       | Authorization: Bearer {accessToken}                                    | -              | -                                                                                                                                                                                      | Get user login history with pagination    |
 
 ---
 
 ## 👤 User Management
 
-### 13. Get Current User Profile
-
-- **URL:** `GET /api/v1/users/profile`
-- **Folder:** User Management
-- **Auth:** Bearer Token Required
-
-### 14. Get Current User Profile (Alternative)
-
-- **URL:** `GET /api/v1/users/profile/me`
-- **Folder:** User Management
-- **Auth:** Bearer Token Required
-
-### 15. Update Current User Profile
-
-- **URL:** `PUT /api/v1/users/profile`
-- **Folder:** User Management
-- **Auth:** Bearer Token Required
-- **Body:**
-
-```json
-{
-  "firstName": "Updated",
-  "lastName": "Name",
-  "bio": "Updated bio",
-  "avatar": "https://example.com/avatar.jpg"
-}
-```
-
-### 16. Update Current User Profile (Alternative)
-
-- **URL:** `PUT /api/v1/users/profile/me`
-- **Folder:** User Management
-- **Auth:** Bearer Token Required
-- **Body:** Same as above
-
-### 17. Change Password
-
-- **URL:** `POST /api/v1/users/change-password`
-- **Folder:** User Management
-- **Auth:** Bearer Token Required
-- **Body:**
-
-```json
-{
-  "currentPassword": "Strong@123",
-  "newPassword": "NewStrong@123"
-}
-```
-
-### 18. Upload Avatar
-
-- **URL:** `POST /api/v1/users/upload-avatar`
-- **Folder:** User Management
-- **Auth:** Bearer Token Required
-- **Body:**
-
-```json
-{
-  "avatarUrl": "https://example.com/avatar.jpg"
-}
-```
-
-### 19. Get All Users (with pagination)
-
-- **URL:** `GET /api/v1/users`
-- **Folder:** User Management
-- **Auth:** Bearer Token Required
-- **Query Params:** `?page=1&limit=10&search=test&role=user&isActive=true&sortBy=createdAt&sortOrder=desc`
-
-### 20. Get User by ID
-
-- **URL:** `GET /api/v1/users/:id`
-- **Folder:** User Management
-- **Auth:** Bearer Token Required
-
-### 21. Update User by ID
-
-- **URL:** `PUT /api/v1/users/:id`
-- **Folder:** User Management
-- **Auth:** Bearer Token Required
-- **Body:**
-
-```json
-{
-  "firstName": "Updated",
-  "lastName": "Name",
-  "bio": "Updated bio"
-}
-```
-
-### 22. Delete User by ID
-
-- **URL:** `DELETE /api/v1/users/:id`
-- **Folder:** User Management
-- **Auth:** Bearer Token Required
-
-### 23. Get User Profile by Username
-
-- **URL:** `GET /api/v1/users/profile/:username`
-- **Folder:** User Management
-- **Auth:** Bearer Token Required
-
-### 24. Search Users
-
-- **URL:** `GET /api/v1/users/search`
-- **Folder:** User Management
-- **Auth:** Bearer Token Required
-- **Query Params:** `?username=test&page=1&limit=10`
-
-### 25. Get User Feed
-
-- **URL:** `GET /api/v1/users/feed`
-- **Folder:** User Management
-- **Auth:** Bearer Token Required
-- **Query Params:** `?page=1&limit=20&sort=recent`
-
-### 26. Follow User
-
-- **URL:** `POST /api/v1/users/follow/:userId`
-- **Folder:** User Management
-- **Auth:** Bearer Token Required
-- **Body:** Empty
-
-### 27. Unfollow User
-
-- **URL:** `POST /api/v1/users/unfollow/:userId`
-- **Folder:** User Management
-- **Auth:** Bearer Token Required
-- **Body:** Empty
-
-### 28. Get User Followers
-
-- **URL:** `GET /api/v1/users/followers/:userId`
-- **Folder:** User Management
-- **Auth:** Bearer Token Required
-- **Query Params:** `?page=1&limit=50`
-
-### 29. Get User Following
-
-- **URL:** `GET /api/v1/users/following/:userId`
-- **Folder:** User Management
-- **Auth:** Bearer Token Required
-- **Query Params:** `?page=1&limit=50`
+| #   | Method | URL                                 | Endpoint Name        | Headers Required                                                         | Body Data Type | Body Data                                                                                                                                                                                                                                                                 | Summary                                |
+| --- | ------ | ----------------------------------- | -------------------- | ------------------------------------------------------------------------ | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| 18  | GET    | `/api/v2/users/me`                  | Get Current User     | Authorization: Bearer {accessToken}                                      | -              | -                                                                                                                                                                                                                                                                         | Get current authenticated user profile |
+| 19  | PUT    | `/api/v2/users/me`                  | Update Profile       | Authorization: Bearer {accessToken}<br>Content-Type: application/json    | JSON           | `{"firstName": "John", "lastName": "Doe", "bio": "Software developer", "location": "San Francisco, CA", "website": "https://johndoe.dev", "dateOfBirth": "1990-01-15", "privacy": {"profileVisibility": "public", "showEmail": false, "showLastSeen": true}}`             | Update user profile information        |
+| 20  | POST   | `/api/v2/users/me/avatar`           | Upload Avatar        | Authorization: Bearer {accessToken}<br>Content-Type: multipart/form-data | Form Data      | `avatar: [file]`                                                                                                                                                                                                                                                          | Upload profile picture (file upload)   |
+| 21  | PUT    | `/api/v2/users/me/avatar`           | Update Avatar URL    | Authorization: Bearer {accessToken}<br>Content-Type: application/json    | JSON           | `{"avatarUrl": "https://example.com/avatar.jpg"}`                                                                                                                                                                                                                         | Update profile picture using URL       |
+| 22  | DELETE | `/api/v2/users/me/avatar`           | Delete Avatar        | Authorization: Bearer {accessToken}                                      | -              | -                                                                                                                                                                                                                                                                         | Remove profile picture                 |
+| 23  | GET    | `/api/v2/users/{userId}`            | Get User by ID       | Authorization: Bearer {accessToken}                                      | -              | -                                                                                                                                                                                                                                                                         | Get user profile by ID                 |
+| 24  | GET    | `/api/v2/users/username/{username}` | Get User by Username | Authorization: Bearer {accessToken}                                      | -              | -                                                                                                                                                                                                                                                                         | Get user profile by username           |
+| 25  | GET    | `/api/v2/users/search`              | Search Users         | Authorization: Bearer {accessToken}                                      | -              | -                                                                                                                                                                                                                                                                         | Search users by query with filters     |
+| 26  | GET    | `/api/v2/users/suggestions`         | Get Suggestions      | Authorization: Bearer {accessToken}                                      | -              | -                                                                                                                                                                                                                                                                         | Get suggested users to connect with    |
+| 27  | GET    | `/api/v2/users/me/preferences`      | Get Preferences      | Authorization: Bearer {accessToken}                                      | -              | -                                                                                                                                                                                                                                                                         | Get user preferences and settings      |
+| 28  | PUT    | `/api/v2/users/me/preferences`      | Update Preferences   | Authorization: Bearer {accessToken}<br>Content-Type: application/json    | JSON           | `{"notifications": {"email": true, "push": true, "sms": false, "inApp": true}, "privacy": {"profileVisibility": "friends", "messageRequests": "everyone", "onlineStatus": "friends"}, "appearance": {"theme": "dark", "language": "en", "timezone": "America/New_York"}}` | Update user preferences                |
 
 ---
 
-## 📝 Blog Management
+## 💬 Chat & Messaging
 
-### 30. Get All Blogs (Public)
-
-- **URL:** `GET /api/v1/blogs`
-- **Folder:** Blog Management
-- **Query Params:** `?page=1&limit=10&sortBy=createdAt&sortOrder=desc`
-
-### 31. Get Blog by ID (Public)
-
-- **URL:** `GET /api/v1/blogs/:id`
-- **Folder:** Blog Management
-
-### 32. Create Blog
-
-- **URL:** `POST /api/v1/blogs`
-- **Folder:** Blog Management
-- **Auth:** Bearer Token Required
-- **Body:**
-
-```json
-{
-  "title": "My First Blog",
-  "content": "This is the content of my blog post...",
-  "tags": ["technology", "programming", "nodejs"]
-}
-```
-
-### 33. Update Blog
-
-- **URL:** `PATCH /api/v1/blogs/:id`
-- **Folder:** Blog Management
-- **Auth:** Bearer Token Required
-- **Body:**
-
-```json
-{
-  "title": "Updated Blog Title",
-  "content": "Updated content...",
-  "tags": ["updated", "tags"]
-}
-```
-
-### 34. Delete Blog
-
-- **URL:** `DELETE /api/v1/blogs/:id`
-- **Folder:** Blog Management
-- **Auth:** Bearer Token Required
+| #   | Method | URL                                                    | Endpoint Name       | Headers Required                                                      | Body Data Type | Body Data                                                                                                                                                                                                                 | Summary                                |
+| --- | ------ | ------------------------------------------------------ | ------------------- | --------------------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| 29  | GET    | `/api/v2/chat/conversations`                           | Get Conversations   | Authorization: Bearer {accessToken}                                   | -              | -                                                                                                                                                                                                                         | Get user conversations with pagination |
+| 30  | POST   | `/api/v2/chat/conversations`                           | Start Conversation  | Authorization: Bearer {accessToken}<br>Content-Type: application/json | JSON           | `{"participantIds": ["user123", "user456"], "type": "direct", "initialMessage": "Hello there!"}`                                                                                                                          | Start new conversation                 |
+| 31  | GET    | `/api/v2/chat/conversations/{conversationId}/messages` | Get Messages        | Authorization: Bearer {accessToken}                                   | -              | -                                                                                                                                                                                                                         | Get messages from conversation         |
+| 32  | POST   | `/api/v2/chat/conversations/{conversationId}/messages` | Send Message        | Authorization: Bearer {accessToken}<br>Content-Type: application/json | JSON           | `{"content": {"text": "Hello, how are you?", "type": "text"}, "replyTo": "messageId", "metadata": {"mentions": ["@user123"], "attachments": []}}`                                                                         | Send message to conversation           |
+| 33  | PUT    | `/api/v2/chat/messages/{messageId}`                    | Edit Message        | Authorization: Bearer {accessToken}<br>Content-Type: application/json | JSON           | `{"content": {"text": "Updated message content", "editedAt": "2024-01-15T10:30:00Z"}}`                                                                                                                                    | Edit existing message                  |
+| 34  | DELETE | `/api/v2/chat/messages/{messageId}`                    | Delete Message      | Authorization: Bearer {accessToken}                                   | JSON           | `{"deleteFor": "everyone"}`                                                                                                                                                                                               | Delete message                         |
+| 35  | POST   | `/api/v2/chat/messages/{messageId}/reactions`          | React to Message    | Authorization: Bearer {accessToken}<br>Content-Type: application/json | JSON           | `{"emoji": "👍", "action": "add"}`                                                                                                                                                                                        | Add/remove reaction to message         |
+| 36  | PUT    | `/api/v2/chat/conversations/{conversationId}/read`     | Mark as Read        | Authorization: Bearer {accessToken}<br>Content-Type: application/json | JSON           | `{"lastReadMessageId": "messageId123"}`                                                                                                                                                                                   | Mark messages as read                  |
+| 37  | POST   | `/api/v2/chat/groups`                                  | Create Group        | Authorization: Bearer {accessToken}<br>Content-Type: application/json | JSON           | `{"name": "Project Team", "description": "Discussion for our awesome project", "participantIds": ["user123", "user456", "user789"], "settings": {"isPrivate": false, "allowInvites": true, "messageHistory": "visible"}}` | Create new group chat                  |
+| 38  | PUT    | `/api/v2/chat/groups/{groupId}`                        | Update Group        | Authorization: Bearer {accessToken}<br>Content-Type: application/json | JSON           | `{"name": "Updated Group Name", "description": "Updated description", "avatar": "https://example.com/group-avatar.jpg"}`                                                                                                  | Update group information               |
+| 39  | POST   | `/api/v2/chat/groups/{groupId}/members`                | Add Group Members   | Authorization: Bearer {accessToken}<br>Content-Type: application/json | JSON           | `{"userIds": ["user123", "user456"]}`                                                                                                                                                                                     | Add members to group                   |
+| 40  | DELETE | `/api/v2/chat/groups/{groupId}/members/{userId}`       | Remove Group Member | Authorization: Bearer {accessToken}                                   | -              | -                                                                                                                                                                                                                         | Remove member from group               |
+| 41  | POST   | `/api/v2/chat/groups/{groupId}/leave`                  | Leave Group         | Authorization: Bearer {accessToken}                                   | JSON           | `{}`                                                                                                                                                                                                                      | Leave group chat                       |
+| 42  | PUT    | `/api/v2/chat/groups/{groupId}/members/{userId}/role`  | Update Member Role  | Authorization: Bearer {accessToken}<br>Content-Type: application/json | JSON           | `{"role": "admin"}`                                                                                                                                                                                                       | Update member role in group            |
+| 43  | POST   | `/api/v2/chat/messages/{messageId}/thread`             | Create Thread       | Authorization: Bearer {accessToken}<br>Content-Type: application/json | JSON           | `{"content": {"text": "This is a thread reply", "type": "text"}}`                                                                                                                                                         | Create thread reply to message         |
+| 44  | GET    | `/api/v2/chat/messages/{messageId}/thread`             | Get Thread Messages | Authorization: Bearer {accessToken}                                   | -              | -                                                                                                                                                                                                                         | Get thread messages                    |
 
 ---
 
-## 🛡️ Admin Routes
+## 📁 Media & File Management
 
-### 35. Create Super Admin (One-time setup)
-
-- **URL:** `POST /api/v1/admin/create-super-admin`
-- **Folder:** Admin Routes
-- **Body:**
-
-```json
-{
-  "username": "superadmin",
-  "email": "superadmin@example.com",
-  "password": "SuperAdmin@123",
-  "confirmPassword": "SuperAdmin@123",
-  "firstName": "Super",
-  "lastName": "Admin"
-}
-```
-
-### 36. Get Admin Dashboard
-
-- **URL:** `GET /api/v1/admin/dashboard`
-- **Folder:** Admin Routes
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-
-### 37. Get Admin Stats
-
-- **URL:** `GET /api/v1/admin/stats`
-- **Folder:** Admin Routes
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-
-### 38. Get Admin Stats Live
-
-- **URL:** `GET /api/v1/admin/stats/live`
-- **Folder:** Admin Routes
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-
-### 39. Get All Admins
-
-- **URL:** `GET /api/v1/admin/admins`
-- **Folder:** Admin Routes
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-
-### 40. Get Admin by ID
-
-- **URL:** `GET /api/v1/admin/admins/:adminId`
-- **Folder:** Admin Routes
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-
-### 41. Get All Users (Admin)
-
-- **URL:** `GET /api/v1/admin/users`
-- **Folder:** Admin Routes
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-- **Query Params:** `?page=1&limit=20&role=user&isActive=true`
-
-### 42. Get User by ID (Admin)
-
-- **URL:** `GET /api/v1/admin/users/:id`
-- **Folder:** Admin Routes
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-
-### 43. Update User by ID (Admin)
-
-- **URL:** `PUT /api/v1/admin/users/:id`
-- **Folder:** Admin Routes
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-- **Body:**
-
-```json
-{
-  "firstName": "Updated",
-  "lastName": "Name",
-  "isActive": true
-}
-```
-
-### 44. Delete User by ID (Admin)
-
-- **URL:** `DELETE /api/v1/admin/users/:id`
-- **Folder:** Admin Routes
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-
-### 45. Suspend User
-
-- **URL:** `PATCH /api/v1/admin/users/:id/suspend`
-- **Folder:** Admin Routes
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-- **Body:**
-
-```json
-{
-  "reason": "Policy violation"
-}
-```
-
-### 46. Activate User
-
-- **URL:** `PATCH /api/v1/admin/users/:id/activate`
-- **Folder:** Admin Routes
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-- **Body:** Empty
-
-### 47. Verify User Account
-
-- **URL:** `PATCH /api/v1/admin/users/:id/verify`
-- **Folder:** Admin Routes
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-- **Body:** Empty
-
-### 48. Search Users (Admin)
-
-- **URL:** `GET /api/v1/admin/users/search`
-- **Folder:** Admin Routes
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-- **Query Params:** `?query=test&page=1&limit=20&role=user`
-
-### 49. Bulk Export Users
-
-- **URL:** `GET /api/v1/admin/users/export`
-- **Folder:** Admin Routes
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-- **Query Params:** `?format=csv&filters=active`
-
-### 50. Bulk Actions on Users
-
-- **URL:** `POST /api/v1/admin/users/bulk-actions`
-- **Folder:** Admin Routes
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-- **Body:**
-
-```json
-{
-  "action": "suspend",
-  "userIds": ["user1", "user2", "user3"],
-  "reason": "Policy violation",
-  "notifyUsers": true
-}
-```
-
-### 51. Get User Activity Log
-
-- **URL:** `GET /api/v1/admin/users/:id/activity-log`
-- **Folder:** Admin Routes
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-- **Query Params:** `?page=1&limit=50&type=login`
-
-### 52. Send Notification to User
-
-- **URL:** `POST /api/v1/admin/users/:id/notify`
-- **Folder:** Admin Routes
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-- **Body:**
-
-```json
-{
-  "type": "warning",
-  "title": "Account Warning",
-  "message": "Please review our community guidelines",
-  "channels": ["email", "in-app"]
-}
-```
-
-### 53. Force Password Reset
-
-- **URL:** `POST /api/v1/admin/users/:id/force-password-reset`
-- **Folder:** Admin Routes
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-- **Body:**
-
-```json
-{
-  "reason": "Security concern"
-}
-```
-
-### 54. Get User Security Analysis
-
-- **URL:** `GET /api/v1/admin/users/:id/security-analysis`
-- **Folder:** Admin Routes
-- **Auth:** Bearer Token Required (Admin/Super Admin)
+| #   | Method | URL                                       | Endpoint Name         | Headers Required                                                         | Body Data Type | Body Data                                                                                                                                           | Summary                            |
+| --- | ------ | ----------------------------------------- | --------------------- | ------------------------------------------------------------------------ | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| 45  | POST   | `/api/v2/media/upload`                    | Upload File           | Authorization: Bearer {accessToken}<br>Content-Type: multipart/form-data | Form Data      | `file: [file]`<br>`type: "image"`<br>`folder: "chat"`                                                                                               | Upload single file                 |
+| 46  | POST   | `/api/v2/media/upload/batch`              | Upload Multiple Files | Authorization: Bearer {accessToken}<br>Content-Type: multipart/form-data | Form Data      | `files: [file1, file2, file3]`<br>`type: "image"`<br>`folder: "chat"`                                                                               | Upload multiple files              |
+| 47  | GET    | `/api/v2/media/files/{fileId}`            | Get File Info         | Authorization: Bearer {accessToken}                                      | -              | -                                                                                                                                                   | Get file information               |
+| 48  | DELETE | `/api/v2/media/files/{fileId}`            | Delete File           | Authorization: Bearer {accessToken}                                      | -              | -                                                                                                                                                   | Delete file                        |
+| 49  | POST   | `/api/v2/media/images/{imageId}/variants` | Generate Variants     | Authorization: Bearer {accessToken}<br>Content-Type: application/json    | JSON           | `{"variants": [{"name": "thumbnail", "width": 150, "height": 150, "quality": 80}, {"name": "medium", "width": 500, "height": 500, "quality": 90}]}` | Generate image variants/thumbnails |
+| 50  | GET    | `/api/v2/media/files`                     | Get User Files        | Authorization: Bearer {accessToken}                                      | -              | -                                                                                                                                                   | Get user uploaded files            |
 
 ---
 
-## 👑 Super Admin Routes
+## 🔔 Notifications
 
-### 55. Create Admin
+| #   | Method | URL                                           | Endpoint Name       | Headers Required                                                      | Body Data Type | Body Data                                                                                                            | Summary                                |
+| --- | ------ | --------------------------------------------- | ------------------- | --------------------------------------------------------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| 51  | GET    | `/api/v2/notifications`                       | Get Notifications   | Authorization: Bearer {accessToken}                                   | -              | -                                                                                                                    | Get user notifications                 |
+| 52  | PUT    | `/api/v2/notifications/{notificationId}/read` | Mark as Read        | Authorization: Bearer {accessToken}                                   | -              | -                                                                                                                    | Mark notification as read              |
+| 53  | PUT    | `/api/v2/notifications/read-all`              | Mark All Read       | Authorization: Bearer {accessToken}                                   | -              | -                                                                                                                    | Mark all notifications as read         |
+| 54  | DELETE | `/api/v2/notifications/{notificationId}`      | Delete Notification | Authorization: Bearer {accessToken}                                   | -              | -                                                                                                                    | Delete notification                    |
+| 55  | GET    | `/api/v2/notifications/count`                 | Get Count           | Authorization: Bearer {accessToken}                                   | -              | -                                                                                                                    | Get unread notification count          |
+| 56  | POST   | `/api/v2/notifications/devices`               | Register Device     | Authorization: Bearer {accessToken}<br>Content-Type: application/json | JSON           | `{"deviceToken": "device_token_here", "platform": "ios", "deviceInfo": {"model": "iPhone 12", "osVersion": "15.0"}}` | Register device for push notifications |
+| 57  | PUT    | `/api/v2/notifications/devices/{deviceId}`    | Update Device       | Authorization: Bearer {accessToken}<br>Content-Type: application/json | JSON           | `{"deviceToken": "new_device_token_here"}`                                                                           | Update device token                    |
+| 58  | DELETE | `/api/v2/notifications/devices/{deviceId}`    | Unregister Device   | Authorization: Bearer {accessToken}                                   | -              | -                                                                                                                    | Unregister device                      |
 
-- **URL:** `POST /api/v1/admin/super-admin/create-admin`
-- **Folder:** Super Admin Routes
-- **Auth:** Bearer Token Required (Super Admin Only)
-- **Body:**
+---
+
+## 👑 Admin & Moderation
+
+| #   | Method | URL                                               | Endpoint Name    | Headers Required                                                          | Body Data Type | Body Data                                                                                                                                                                   | Summary                       |
+| --- | ------ | ------------------------------------------------- | ---------------- | ------------------------------------------------------------------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| 59  | GET    | `/api/v2/admin/users`                             | Get All Users    | Authorization: Bearer {adminToken}                                        | -              | -                                                                                                                                                                           | Get all users (admin only)    |
+| 60  | GET    | `/api/v2/admin/users/{userId}`                    | Get User Details | Authorization: Bearer {adminToken}                                        | -              | -                                                                                                                                                                           | Get user details (admin only) |
+| 61  | PUT    | `/api/v2/admin/users/{userId}`                    | Update User      | Authorization: Bearer {adminToken}<br>Content-Type: application/json      | JSON           | `{"status": "suspended", "role": "moderator", "reason": "Policy violation", "notes": "Internal admin notes"}`                                                               | Update user (admin only)      |
+| 62  | POST   | `/api/v2/admin/users/{userId}/suspend`            | Suspend User     | Authorization: Bearer {adminToken}<br>Content-Type: application/json      | JSON           | `{"reason": "Spam behavior", "duration": "7d", "notifyUser": true}`                                                                                                         | Suspend user                  |
+| 63  | POST   | `/api/v2/admin/users/{userId}/ban`                | Ban User         | Authorization: Bearer {adminToken}<br>Content-Type: application/json      | JSON           | `{"reason": "Severe policy violation", "permanent": true, "deleteContent": false}`                                                                                          | Ban user                      |
+| 64  | POST   | `/api/v2/admin/users/{userId}/unban`              | Unban User       | Authorization: Bearer {adminToken}<br>Content-Type: application/json      | JSON           | `{"reason": "Appeal approved"}`                                                                                                                                             | Unban user                    |
+| 65  | GET    | `/api/v2/admin/reports`                           | Get Reports      | Authorization: Bearer {adminToken}                                        | -              | -                                                                                                                                                                           | Get reported content          |
+| 66  | PUT    | `/api/v2/admin/reports/{reportId}`                | Review Report    | Authorization: Bearer {adminToken}<br>Content-Type: application/json      | JSON           | `{"action": "approve", "reason": "Content violates guidelines", "moderatorNotes": "Inappropriate language detected"}`                                                       | Review report                 |
+| 67  | DELETE | `/api/v2/admin/content/{contentType}/{contentId}` | Delete Content   | Authorization: Bearer {adminToken}<br>Content-Type: application/json      | JSON           | `{"reason": "Policy violation", "notifyUser": true}`                                                                                                                        | Delete content                |
+| 68  | GET    | `/api/v2/admin/dashboard`                         | Admin Dashboard  | Authorization: Bearer {adminToken}                                        | -              | -                                                                                                                                                                           | Get admin dashboard           |
+| 69  | GET    | `/api/v2/admin/stats`                             | System Stats     | Authorization: Bearer {adminToken}                                        | -              | -                                                                                                                                                                           | Get system stats              |
+| 70  | GET    | `/api/v2/admin/audit-logs`                        | Audit Logs       | Authorization: Bearer {adminToken}                                        | -              | -                                                                                                                                                                           | Get audit logs                |
+| 71  | POST   | `/api/v2/admin/create-admin`                      | Create Admin     | Authorization: Bearer {superAdminToken}<br>Content-Type: application/json | JSON           | `{"username": "newadmin", "email": "admin@endlesschatt.com", "password": "SecureAdminPass123!", "role": "admin", "permissions": ["user_management", "content_moderation"]}` | Create admin user             |
+
+---
+
+## 📊 Analytics & Insights
+
+| #   | Method | URL                                  | Endpoint Name     | Headers Required                   | Body Data Type | Body Data | Summary                     |
+| --- | ------ | ------------------------------------ | ----------------- | ---------------------------------- | -------------- | --------- | --------------------------- |
+| 72  | GET    | `/api/v2/analytics/users/engagement` | User Engagement   | Authorization: Bearer {adminToken} | -              | -         | Get user engagement stats   |
+| 73  | GET    | `/api/v2/analytics/platform/stats`   | Platform Stats    | Authorization: Bearer {adminToken} | -              | -         | Get platform statistics     |
+| 74  | GET    | `/api/v2/analytics/messages/stats`   | Message Stats     | Authorization: Bearer {adminToken} | -              | -         | Get message statistics      |
+| 75  | GET    | `/api/v2/analytics/users/growth`     | User Growth       | Authorization: Bearer {adminToken} | -              | -         | Get user growth analytics   |
+| 76  | GET    | `/api/v2/analytics/revenue`          | Revenue Analytics | Authorization: Bearer {adminToken} | -              | -         | Get revenue analytics       |
+| 77  | GET    | `/api/v2/analytics/features/usage`   | Feature Usage     | Authorization: Bearer {adminToken} | -              | -         | Get feature usage analytics |
+| 78  | GET    | `/api/v2/analytics/export`           | Export Analytics  | Authorization: Bearer {adminToken} | -              | -         | Export analytics data       |
+
+---
+
+## ⚙️ System & Configuration
+
+| #   | Method | URL                     | Endpoint Name  | Headers Required                                                          | Body Data Type | Body Data                                                                                                                                                                       | Summary                  |
+| --- | ------ | ----------------------- | -------------- | ------------------------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| 79  | GET    | `/health`               | Health Check   | -                                                                         | -              | -                                                                                                                                                                               | Basic health check       |
+| 80  | GET    | `/api/v2/status`        | API Status     | -                                                                         | -              | -                                                                                                                                                                               | API status check         |
+| 81  | GET    | `/api/v2/system/health` | Service Health | Authorization: Bearer {adminToken}                                        | -              | -                                                                                                                                                                               | Service health check     |
+| 82  | GET    | `/api/v2/system/config` | Get Config     | Authorization: Bearer {adminToken}                                        | -              | -                                                                                                                                                                               | Get app configuration    |
+| 83  | PUT    | `/api/v2/system/config` | Update Config  | Authorization: Bearer {superAdminToken}<br>Content-Type: application/json | JSON           | `{"features": {"chatEnabled": true, "fileUploadEnabled": true, "maxFileSize": "10MB"}, "limits": {"maxGroupMembers": 100, "maxMessageLength": 4000, "rateLimitPerMinute": 60}}` | Update app configuration |
+
+---
+
+## 🔍 Search & Discovery
+
+| #   | Method | URL                       | Endpoint Name     | Headers Required                    | Body Data Type | Body Data | Summary           |
+| --- | ------ | ------------------------- | ----------------- | ----------------------------------- | -------------- | --------- | ----------------- |
+| 84  | GET    | `/api/v2/search`          | Search Everything | Authorization: Bearer {accessToken} | -              | -         | Search everything |
+| 85  | GET    | `/api/v2/search/users`    | Search Users      | Authorization: Bearer {accessToken} | -              | -         | Search users      |
+| 86  | GET    | `/api/v2/search/messages` | Search Messages   | Authorization: Bearer {accessToken} | -              | -         | Search messages   |
+| 87  | GET    | `/api/v2/search/groups`   | Search Groups     | Authorization: Bearer {accessToken} | -              | -         | Search groups     |
+
+---
+
+## 🌐 Social Features
+
+| #   | Method | URL                                                  | Endpoint Name         | Headers Required                                                      | Body Data Type | Body Data                                                                                                                           | Summary               |
+| --- | ------ | ---------------------------------------------------- | --------------------- | --------------------------------------------------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| 88  | POST   | `/api/v2/social/friends/request`                     | Send Friend Request   | Authorization: Bearer {accessToken}<br>Content-Type: application/json | JSON           | `{"userId": "user123", "message": "Hi! I'd like to connect with you."}`                                                             | Send friend request   |
+| 89  | PUT    | `/api/v2/social/friends/requests/{requestId}/accept` | Accept Friend Request | Authorization: Bearer {accessToken}                                   | -              | -                                                                                                                                   | Accept friend request |
+| 90  | PUT    | `/api/v2/social/friends/requests/{requestId}/reject` | Reject Friend Request | Authorization: Bearer {accessToken}                                   | -              | -                                                                                                                                   | Reject friend request |
+| 91  | GET    | `/api/v2/social/friends/requests`                    | Get Friend Requests   | Authorization: Bearer {accessToken}                                   | -              | -                                                                                                                                   | Get friend requests   |
+| 92  | GET    | `/api/v2/social/friends`                             | Get Friends List      | Authorization: Bearer {accessToken}                                   | -              | -                                                                                                                                   | Get friends list      |
+| 93  | DELETE | `/api/v2/social/friends/{userId}`                    | Remove Friend         | Authorization: Bearer {accessToken}                                   | -              | -                                                                                                                                   | Remove friend         |
+| 94  | POST   | `/api/v2/social/block`                               | Block User            | Authorization: Bearer {accessToken}<br>Content-Type: application/json | JSON           | `{"userId": "user123", "reason": "Harassment"}`                                                                                     | Block user            |
+| 95  | DELETE | `/api/v2/social/block/{userId}`                      | Unblock User          | Authorization: Bearer {accessToken}                                   | -              | -                                                                                                                                   | Unblock user          |
+| 96  | GET    | `/api/v2/social/blocked`                             | Get Blocked Users     | Authorization: Bearer {accessToken}                                   | -              | -                                                                                                                                   | Get blocked users     |
+| 97  | POST   | `/api/v2/social/reports/user`                        | Report User           | Authorization: Bearer {accessToken}<br>Content-Type: application/json | JSON           | `{"userId": "user123", "reason": "spam", "description": "User is sending spam messages", "evidence": ["messageId1", "messageId2"]}` | Report user           |
+| 98  | POST   | `/api/v2/social/reports/message`                     | Report Message        | Authorization: Bearer {accessToken}<br>Content-Type: application/json | JSON           | `{"messageId": "msg123", "reason": "inappropriate_content", "description": "Message contains offensive language"}`                  | Report message        |
+| 99  | POST   | `/api/v2/social/reports/group`                       | Report Group          | Authorization: Bearer {accessToken}<br>Content-Type: application/json | JSON           | `{"groupId": "group123", "reason": "inappropriate_content", "description": "Group is sharing inappropriate content"}`               | Report group          |
+
+---
+
+## 📋 API Information
+
+**Total Endpoints:** 99
+
+**Authentication Types:**
+
+- Bearer Token (accessToken)
+- Bearer Token (refreshToken)
+- Bearer Token (adminToken)
+- Bearer Token (superAdminToken)
+
+**Body Data Types:**
+
+- JSON (application/json)
+- Form Data (multipart/form-data)
+
+**Rate Limits:**
+
+- Authentication: 5 requests/minute
+- Messaging: 60 requests/minute
+- File Upload: 10 requests/minute
+- Search: 30 requests/minute
+- General API: 100 requests/minute
+- Admin API: 200 requests/minute
+
+---
+
+## 📊 Rate Limiting
+
+### Rate Limit Information
+
+```http
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 95
+X-RateLimit-Reset: 1642248600
+X-RateLimit-Window: 60
+```
+
+### Rate Limits by Endpoint Type
+
+| Endpoint Type      | Limit        | Window   |
+| ------------------ | ------------ | -------- |
+| **Authentication** | 5 requests   | 1 minute |
+| **Messaging**      | 60 requests  | 1 minute |
+| **File Upload**    | 10 requests  | 1 minute |
+| **Search**         | 30 requests  | 1 minute |
+| **General API**    | 100 requests | 1 minute |
+| **Admin API**      | 200 requests | 1 minute |
+
+---
+
+## 🧪 Testing with Postman
+
+### Environment Variables
 
 ```json
 {
-  "username": "newadmin",
-  "email": "admin@company.com",
-  "password": "Strong@123!",
-  "role": "admin",
-  "permissions": ["user_management", "content_moderation"]
+  "baseUrl": "http://localhost:5000/api/v2",
+  "accessToken": "{{your_access_token}}",
+  "refreshToken": "{{your_refresh_token}}",
+  "adminToken": "{{your_admin_token}}",
+  "userId": "{{test_user_id}}",
+  "conversationId": "{{test_conversation_id}}",
+  "messageId": "{{test_message_id}}"
 }
 ```
 
-### 56. Get All Admins (Super Admin)
+### Pre-request Scripts
 
-- **URL:** `GET /api/v1/admin/super-admin/admins`
-- **Folder:** Super Admin Routes
-- **Auth:** Bearer Token Required (Super Admin Only)
-
-### 57. Update Admin
-
-- **URL:** `PUT /api/v1/admin/super-admin/update-admin/:adminId`
-- **Folder:** Super Admin Routes
-- **Auth:** Bearer Token Required (Super Admin Only)
-- **Body:**
-
-```json
-{
-  "permissions": ["user_management", "content_moderation", "analytics"],
-  "isActive": true
+```javascript
+// Auto-refresh token if expired
+if (pm.globals.get("tokenExpiry") < Date.now()) {
+  // Refresh token logic
 }
-```
 
-### 58. Delete Admin
-
-- **URL:** `DELETE /api/v1/admin/super-admin/delete-admin/:adminId`
-- **Folder:** Super Admin Routes
-- **Auth:** Bearer Token Required (Super Admin Only)
-- **Body:**
-
-```json
-{
-  "confirmPassword": "SuperAdmin@123",
-  "reason": "Admin role no longer required"
-}
-```
-
-### 59. Change User Role
-
-- **URL:** `PUT /api/v1/admin/super-admin/change-role/:userId`
-- **Folder:** Super Admin Routes
-- **Auth:** Bearer Token Required (Super Admin Only)
-- **Body:**
-
-```json
-{
-  "newRole": "admin",
-  "reason": "Promoting user to admin for content management responsibilities"
-}
-```
-
-### 60. Get System Configuration
-
-- **URL:** `GET /api/v1/admin/super-admin/system-config`
-- **Folder:** Super Admin Routes
-- **Auth:** Bearer Token Required (Super Admin Only)
-
-### 61. Get Audit Logs
-
-- **URL:** `GET /api/v1/admin/super-admin/audit-logs`
-- **Folder:** Super Admin Routes
-- **Auth:** Bearer Token Required (Super Admin Only)
-- **Query Params:** `?page=1&limit=50&action=CREATE_ADMIN&criticality=HIGH`
-
-### 62. Get System Health (Super Admin)
-
-- **URL:** `GET /api/v1/admin/super-admin/system-health`
-- **Folder:** Super Admin Routes
-- **Auth:** Bearer Token Required (Super Admin Only)
-
-### 63. Emergency Lockdown
-
-- **URL:** `POST /api/v1/admin/super-admin/emergency-lockdown`
-- **Folder:** Super Admin Routes
-- **Auth:** Bearer Token Required (Super Admin Only)
-- **Body:**
-
-```json
-{
-  "reason": "Security breach detected",
-  "duration": "1h",
-  "confirmPassword": "SuperAdmin@123"
-}
+// Add request ID
+pm.request.headers.add({
+  key: "X-Request-ID",
+  value: pm.globals.replaceIn("{{$randomUUID}}"),
+});
 ```
 
 ---
 
-## 📊 Analytics & Monitoring
+## 📈 API Versioning
 
-### 64. Get Session Analytics
+### Version Strategy
 
-- **URL:** `GET /api/v1/admin/sessions/analytics`
-- **Folder:** Analytics & Monitoring
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-- **Query Params:** `?timeRange=30d`
+- **Current Version**: v2.0.0
+- **Supported Versions**: v1.x (deprecated), v2.x (current)
+- **Version Header**: `X-API-Version: v2`
+- **URL Versioning**: `/api/v2/`
 
-### 65. Get Admin Session Details
+### Migration Guide
 
-- **URL:** `GET /api/v1/admin/sessions/:adminId`
-- **Folder:** Analytics & Monitoring
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-
-### 66. Get Analytics Overview
-
-- **URL:** `GET /api/v1/admin/analytics/overview`
-- **Folder:** Analytics & Monitoring
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-- **Query Params:** `?timeRange=30d`
-
-### 67. Get User Growth Analytics
-
-- **URL:** `GET /api/v1/admin/analytics/users/growth`
-- **Folder:** Analytics & Monitoring
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-- **Query Params:** `?period=daily&days=30`
-
-### 68. Get User Retention Analytics
-
-- **URL:** `GET /api/v1/admin/analytics/users/retention`
-- **Folder:** Analytics & Monitoring
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-- **Query Params:** `?period=weekly&weeks=12`
-
-### 69. Get User Demographics
-
-- **URL:** `GET /api/v1/admin/analytics/users/demographics`
-- **Folder:** Analytics & Monitoring
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-
-### 70. Get Engagement Metrics
-
-- **URL:** `GET /api/v1/admin/analytics/engagement/metrics`
-- **Folder:** Analytics & Monitoring
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-- **Query Params:** `?timeRange=30d&metric=all`
+- v1 → v2: [Migration Guide](./migration-v1-to-v2.md)
+- Breaking changes documented in [CHANGELOG.md](../CHANGELOG.md)
 
 ---
 
-## 🔒 Security & Moderation
+**Total Endpoints: 99**
 
-### 71. Get Suspicious Accounts
+_EndlessChatt API - Powering seamless social connections worldwide._
 
-- **URL:** `GET /api/v1/admin/security/suspicious-accounts`
-- **Folder:** Security & Moderation
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-- **Query Params:** `?page=1&limit=20&riskLevel=high`
-
-### 72. Get Login Attempts
-
-- **URL:** `GET /api/v1/admin/security/login-attempts`
-- **Folder:** Security & Moderation
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-- **Query Params:** `?status=failed&timeRange=24h`
-
-### 73. Get Blocked IPs
-
-- **URL:** `GET /api/v1/admin/security/blocked-ips`
-- **Folder:** Security & Moderation
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-- **Query Params:** `?page=1&limit=20`
-
-### 74. Block IP Address
-
-- **URL:** `POST /api/v1/admin/security/blocked-ips`
-- **Folder:** Security & Moderation
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-- **Body:**
-
-```json
-{
-  "ipAddress": "192.168.1.100",
-  "reason": "Multiple failed login attempts",
-  "duration": "24h"
-}
-```
-
-### 75. Unblock IP Address
-
-- **URL:** `DELETE /api/v1/admin/security/blocked-ips/:ipId`
-- **Folder:** Security & Moderation
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-- **Body:**
-
-```json
-{
-  "reason": "Issue resolved"
-}
-```
-
-### 76. Get Threat Detection
-
-- **URL:** `GET /api/v1/admin/security/threat-detection`
-- **Folder:** Security & Moderation
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-
----
-
-## ⚙️ System Configuration
-
-### 77. Get App Settings
-
-- **URL:** `GET /api/v1/admin/config/app-settings`
-- **Folder:** System Configuration
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-
-### 78. Update App Settings
-
-- **URL:** `PUT /api/v1/admin/config/app-settings`
-- **Folder:** System Configuration
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-- **Body:**
-
-```json
-{
-  "category": "security",
-  "settings": {
-    "maxLoginAttempts": 5,
-    "lockoutDuration": 1800
-  }
-}
-```
-
-### 79. Get Server Health
-
-- **URL:** `GET /api/v1/admin/monitoring/server-health`
-- **Folder:** System Configuration
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-
-### 80. Get Database Stats
-
-- **URL:** `GET /api/v1/admin/monitoring/database-stats`
-- **Folder:** System Configuration
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-
----
-
-## 📢 Notifications
-
-### 81. Get Notification Templates
-
-- **URL:** `GET /api/v1/admin/notifications/templates`
-- **Folder:** Notifications
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-- **Query Params:** `?type=email`
-
-### 82. Send Bulk Notification
-
-- **URL:** `POST /api/v1/admin/notifications/send-bulk`
-- **Folder:** Notifications
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-- **Body:**
-
-```json
-{
-  "recipients": "active",
-  "template": "system_update",
-  "channels": ["email", "in-app"],
-  "priority": "normal",
-  "customMessage": {
-    "title": "System Maintenance",
-    "content": "Scheduled maintenance on Sunday 2AM-4AM UTC"
-  }
-}
-```
-
----
-
-## 🔄 Automation & Workflows
-
-### 83. Get Automation Rules
-
-- **URL:** `GET /api/v1/admin/automation/rules`
-- **Folder:** Automation & Workflows
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-- **Query Params:** `?status=active`
-
-### 84. Create Automation Rule
-
-- **URL:** `POST /api/v1/admin/automation/rules`
-- **Folder:** Automation & Workflows
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-- **Body:**
-
-```json
-{
-  "name": "Welcome New Users",
-  "description": "Send welcome email to new registrations",
-  "trigger": "user_created",
-  "conditions": {
-    "isEmailVerified": true
-  },
-  "actions": [
-    {
-      "type": "send_email",
-      "template": "welcome",
-      "delay": 0
-    }
-  ]
-}
-```
-
-### 85. Get Experiments
-
-- **URL:** `GET /api/v1/admin/experiments`
-- **Folder:** Automation & Workflows
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-- **Query Params:** `?status=running`
-
-### 86. Create Experiment
-
-- **URL:** `POST /api/v1/admin/experiments`
-- **Folder:** Automation & Workflows
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-- **Body:**
-
-```json
-{
-  "name": "New Onboarding Flow",
-  "description": "Testing simplified onboarding process",
-  "variants": [
-    {
-      "name": "control",
-      "description": "Current flow"
-    },
-    {
-      "name": "simplified",
-      "description": "New simplified flow"
-    }
-  ],
-  "trafficSplit": [50, 50],
-  "duration": 14
-}
-```
-
----
-
-## 🌟 Business Intelligence
-
-### 87. Get Revenue Analytics
-
-- **URL:** `GET /api/v1/admin/bi/revenue-analytics`
-- **Folder:** Business Intelligence
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-- **Query Params:** `?period=30d`
-
-### 88. Get User Lifetime Value
-
-- **URL:** `GET /api/v1/admin/bi/user-lifetime-value`
-- **Folder:** Business Intelligence
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-- **Query Params:** `?segment=premium`
-
----
-
-## 🚨 Content Management
-
-### 89. Get All Posts (Admin)
-
-- **URL:** `GET /api/v1/admin/content/posts`
-- **Folder:** Content Management
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-- **Query Params:** `?page=1&limit=20&status=published`
-
-### 90. Toggle Post Visibility
-
-- **URL:** `PATCH /api/v1/admin/content/posts/:postId/toggle-visibility`
-- **Folder:** Content Management
-- **Auth:** Bearer Token Required (Admin/Super Admin)
-- **Body:**
-
-```json
-{
-  "action": "hide",
-  "reason": "Inappropriate content"
-}
-```
-
----
-
-## 🔍 Health Check & System
-
-### 91. Health Check
-
-- **URL:** `GET /health`
-- **Folder:** System
-- **Description:** Basic health check endpoint
-
-### 92. API Version Check
-
-- **URL:** `GET /api/v1`
-- **Folder:** System
-- **Description:** API version and status check
-
----
-
-## 📝 Environment Variables for Postman
-
-Create these variables in your Postman environment:
-
-```
-server: http://localhost:5000/api/v1
-token: {{your_jwt_token_here}}
-adminToken: {{your_admin_jwt_token_here}}
-superAdminToken: {{your_super_admin_jwt_token_here}}
-userId: {{test_user_id}}
-adminId: {{test_admin_id}}
-blogId: {{test_blog_id}}
-postId: {{test_post_id}}
-ipId: {{test_ip_id}}
-```
-
----
-
-## 🔐 Authentication Headers
-
-For protected routes, add this header:
-
-```
-Authorization: Bearer {{token}}
-```
-
-For admin routes, use:
-
-```
-Authorization: Bearer {{adminToken}}
-```
-
-For super admin routes, use:
-
-```
-Authorization: Bearer {{superAdminToken}}
-```
-
----
-
-## 📊 Response Format
-
-All API responses follow this standard format:
-
-```json
-{
-  "statusCode": 200,
-  "data": {
-    // Response data here
-  },
-  "message": "Operation successful",
-  "success": true,
-  "timestamp": "2024-01-15T10:30:00.000Z"
-}
-```
-
----
-
-## 🚀 Testing Order Recommendation
-
-1. **Start with Authentication:**
-   - Create Super Admin (#35)
-   - Register User (#1)
-   - Login User (#2)
-
-2. **Test User Management:**
-   - Get Current Profile (#13)
-   - Update Profile (#15)
-   - Change Password (#17)
-
-3. **Test Blog Management:**
-   - Create Blog (#32)
-   - Get All Blogs (#30)
-   - Update Blog (#33)
-
-4. **Test Admin Features:**
-   - Get Admin Dashboard (#36)
-   - Get Admin Stats (#37)
-   - User Management (#41-54)
-
-5. **Test Advanced Features:**
-   - Analytics (#64-70)
-   - Security (#71-76)
-   - System Configuration (#77-80)
-
----
-
-## 📋 Notes
-
-- Replace `:id`, `:userId`, `:adminId`, etc. with actual IDs
-- Some endpoints require specific roles (admin/super_admin)
-- Query parameters are optional unless specified
-- All timestamps are in ISO 8601 format
-- File uploads use multipart/form-data (where applicable)
-- Rate limiting applies to most endpoints
-- CORS is enabled for all origins in development
-
----
-
-**Total Endpoints: 92**
-
-This comprehensive list covers all available API endpoints in your social media blog application. Use this as your
-complete reference for Postman testing!
+**Built with ❤️ by [Deepansh Gangwar](https://github.com/mr-deepansh)**

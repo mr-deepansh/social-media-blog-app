@@ -1,21 +1,39 @@
-MIT License
+# MIT License
 
-Copyright (c) 2024 Deepansh Gangwar
+## EndlessChatt - Social Media Platform
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+**Copyright (c) 2025 Deepansh Gangwar**
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+---
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE. 
+### License Grant
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+### Conditions
+
+1. **Attribution**: The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+2. **Trademark**: The name "EndlessChatt" and associated logos are trademarks of Deepansh Gangwar. Use of these trademarks requires explicit permission.
+
+3. **Commercial Use**: Commercial use is permitted under this license, but commercial derivatives must clearly distinguish themselves from the original "EndlessChatt" brand.
+
+### Disclaimer
+
+**THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.**
+
+---
+
+### Third-Party Licenses
+
+This project includes third-party libraries and components that are subject to their own licenses. See the `package.json` files and individual component documentation for details.
+
+### Contributing
+
+By contributing to this project, you agree that your contributions will be licensed under the same MIT License.
+
+---
+
+**Built with ❤️ by [Deepansh Gangwar](https://github.com/mr-deepansh)**
+
+_Empowering endless conversations worldwide._

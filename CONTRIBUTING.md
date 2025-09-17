@@ -1,7 +1,7 @@
-# Contributing to Social Media Blog Platform
+# Contributing to EndlessChatt
 
-Thank you for your interest in contributing to our project! This document provides guidelines and information for
-contributors.
+🎉 Thank you for your interest in contributing to **EndlessChatt** - the next-generation social media platform! This
+guide provides comprehensive guidelines for contributors to maintain code quality and project standards.
 
 ## 🎯 Code of Conduct
 
@@ -11,18 +11,21 @@ By participating in this project, you agree to abide by our [Code of Conduct](CO
 
 ### Prerequisites
 
-- Node.js 20+
-- MongoDB 8.0+
-- Redis 7.0+
-- Docker (optional but recommended)
-- Git
+| Requirement  | Version | Purpose                        |
+| ------------ | ------- | ------------------------------ |
+| **Node.js**  | 20+     | Runtime environment            |
+| **MongoDB**  | 8.0+    | Primary database               |
+| **Redis**    | 7.0+    | Caching & sessions             |
+| **Docker**   | 20+     | Containerization (recommended) |
+| **Git**      | Latest  | Version control                |
+| **npm/yarn** | Latest  | Package management             |
 
 ### Development Setup
 
 1. **Fork and Clone**
 
    ```bash
-   git clone https://github.com/YOUR_USERNAME/social-media-blog-app.git
+   git clone :mr-deepansh/social-media-blog-app.git
    cd social-media-blog-app
    ```
 
@@ -89,7 +92,7 @@ app.constant.js
 
 ### Commit Message Format
 
-We follow [Conventional Commits](https://www.conventionalcommits.org/):
+We follow [Conventional Commits](https://www.conventionalcommits.org/) specification:
 
 ```
 <type>[optional scope]: <description>
@@ -99,32 +102,49 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/):
 [optional footer(s)]
 ```
 
-**Types:**
+#### Commit Types
 
-- `feat`: New feature
-- `fix`: Bug fix
-- `docs`: Documentation changes
-- `style`: Code style changes (formatting, etc.)
-- `refactor`: Code refactoring
-- `test`: Adding or updating tests
-- `chore`: Maintenance tasks
+| Type       | Description        | Example                                     |
+| ---------- | ------------------ | ------------------------------------------- |
+| `feat`     | New feature        | `feat(chat): add real-time messaging`       |
+| `fix`      | Bug fix            | `fix(auth): resolve token expiration issue` |
+| `docs`     | Documentation      | `docs(api): update endpoint specifications` |
+| `style`    | Code formatting    | `style: apply prettier formatting`          |
+| `refactor` | Code restructuring | `refactor(user): optimize profile queries`  |
+| `test`     | Testing            | `test(auth): add unit tests for login`      |
+| `chore`    | Maintenance        | `chore: update dependencies`                |
+| `perf`     | Performance        | `perf(db): optimize user search queries`    |
+| `ci`       | CI/CD changes      | `ci: add automated testing workflow`        |
 
-**Examples:**
+#### Scope Examples
 
-```
-feat(auth): add JWT refresh token functionality
-fix(user): resolve profile update validation issue
-docs(api): update authentication endpoints documentation
-```
+- `auth` - Authentication system
+- `user` - User management
+- `chat` - Messaging features
+- `admin` - Admin dashboard
+- `api` - API endpoints
+- `ui` - User interface
+- `db` - Database operations
 
 ## 🧪 Testing
 
 ### Test Requirements
 
-- **Unit Tests**: All new functions must have unit tests
-- **Integration Tests**: API endpoints must have integration tests
-- **Coverage**: Maintain minimum 80% test coverage
-- **E2E Tests**: Critical user flows must have E2E tests
+| Test Type             | Requirement            | Coverage Target |
+| --------------------- | ---------------------- | --------------- |
+| **Unit Tests**        | All new functions      | 90%+            |
+| **Integration Tests** | All API endpoints      | 85%+            |
+| **E2E Tests**         | Critical user flows    | 100%            |
+| **Performance Tests** | High-traffic endpoints | Key metrics     |
+| **Security Tests**    | Authentication flows   | 100%            |
+
+#### Testing Standards
+
+- Write tests before implementing features (TDD)
+- Use descriptive test names
+- Mock external dependencies
+- Test both success and failure scenarios
+- Include edge cases and boundary conditions
 
 ### Running Tests
 
@@ -354,9 +374,20 @@ We follow [Semantic Versioning](https://semver.org/):
 
 ### Getting Help
 
-- **GitHub Issues**: For bugs and feature requests
-- **GitHub Discussions**: For questions and general discussion
-- **Email**: [deepanshgangwar7037@outlook.com](mailto:deepanshgangwar7037@outlook.com)
+| Channel                | Purpose                                                                   | Response Time |
+| ---------------------- | ------------------------------------------------------------------------- | ------------- |
+| **GitHub Issues**      | Bug reports & feature requests                                            | 24-48 hours   |
+| **GitHub Discussions** | Questions & general discussion                                            | 1-3 days      |
+| **Discord**            | Real-time community chat                                                  | Immediate     |
+| **Email**              | [deepanshgangwar7037@outlook.com](mailto:deepanshgangwar7037@outlook.com) | 2-5 days      |
+
+### Community Guidelines
+
+- Be respectful and inclusive
+- Help others learn and grow
+- Share knowledge and best practices
+- Provide constructive feedback
+- Follow our [Code of Conduct](CODE_OF_CONDUCT.md)
 
 ### Recognition
 
@@ -372,4 +403,17 @@ By contributing to this project, you agree that your contributions will be licen
 
 ---
 
-Thank you for contributing to the Social Media Blog Platform! 🎉
+## 🌟 Recognition
+
+Contributors are recognized through:
+
+- **Contributors Hall of Fame** in README.md
+- **Monthly Contributor Spotlight** in releases
+- **Special Discord roles** for active contributors
+- **Swag and merchandise** for significant contributions
+
+---
+
+**Thank you for making EndlessChatt better! 🚀**
+
+_Together, we're building the future of social communication._

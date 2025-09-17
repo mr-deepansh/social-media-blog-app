@@ -12,220 +12,220 @@ const logger = new Logger("PostController");
 
 // Create post with media upload
 const createPost = asyncHandler(async (req, res) => {
-  const startTime = Date.now();
-  const userId = req.user._id;
+	const startTime = Date.now();
+	const userId = req.user._id;
 
-  const postData = {
-    title: req.body.title || "",
-    content: req.body.content,
-    type: req.body.type || "post",
-    category: req.body.category || "general",
-    tags: req.body.tags || [],
-    status: req.body.status || "published",
-    visibility: req.body.visibility || "public",
-    images: [],
-    videos: [],
-    metadata: {
-      device: req.headers["user-agent"],
-      ip: req.ip,
-      language: req.headers["accept-language"],
-      platform: req.body.metadata?.platform || "web",
-    },
-  };
+	const postData = {
+		title: req.body.title || "",
+		content: req.body.content,
+		type: req.body.type || "post",
+		category: req.body.category || "general",
+		tags: req.body.tags || [],
+		status: req.body.status || "published",
+		visibility: req.body.visibility || "public",
+		images: [],
+		videos: [],
+		metadata: {
+			device: req.headers["user-agent"],
+			ip: req.ip,
+			language: req.headers["accept-language"],
+			platform: req.body.metadata?.platform || "web",
+		},
+	};
 
-  // Handle media uploads (single/multiple/none)
-  if (Array.isArray(req.files) && req.files.length > 0) {
-    for (const file of req.files) {
-      try {
-        const result = await uploadToCloudinary(file.path, "posts");
-        if (file.mimetype.startsWith("image/")) {
-          postData.images.push(result);
-        } else if (file.mimetype.startsWith("video/")) {
-          postData.videos.push(result);
-        }
-        await fs.unlink(file.path).catch(() => {});
-      } catch (error) {
-        logger.error("File upload failed:", error);
-      }
-    }
-  } else if (req.file) {
-    // Handle single file upload (multer single)
-    try {
-      const result = await uploadToCloudinary(req.file.path, "posts");
-      if (req.file.mimetype.startsWith("image/")) {
-        postData.images.push(result);
-      } else if (req.file.mimetype.startsWith("video/")) {
-        postData.videos.push(result);
-      }
-      await fs.unlink(req.file.path).catch(() => {});
-    } catch (error) {
-      logger.error("File upload failed:", error);
-    }
-  }
+	// Handle media uploads (single/multiple/none)
+	if (Array.isArray(req.files) && req.files.length > 0) {
+		for (const file of req.files) {
+			try {
+				const result = await uploadToCloudinary(file.path, "posts");
+				if (file.mimetype.startsWith("image/")) {
+					postData.images.push(result);
+				} else if (file.mimetype.startsWith("video/")) {
+					postData.videos.push(result);
+				}
+				await fs.unlink(file.path).catch(() => {});
+			} catch (error) {
+				logger.error("File upload failed:", error);
+			}
+		}
+	} else if (req.file) {
+		// Handle single file upload (multer single)
+		try {
+			const result = await uploadToCloudinary(req.file.path, "posts");
+			if (req.file.mimetype.startsWith("image/")) {
+				postData.images.push(result);
+			} else if (req.file.mimetype.startsWith("video/")) {
+				postData.videos.push(result);
+			}
+			await fs.unlink(req.file.path).catch(() => {});
+		} catch (error) {
+			logger.error("File upload failed:", error);
+		}
+	}
 
-  const post = await PostService.createPost(postData, userId);
-  const executionTime = Date.now() - startTime;
+	const post = await PostService.createPost(postData, userId);
+	const executionTime = Date.now() - startTime;
 
-  logger.info("Post created", { postId: post._id, userId, executionTime });
+	logger.info("Post created", { postId: post._id, userId, executionTime });
 
-  res.status(201).json(
-    new ApiResponse(201, post, "Post created successfully", true, {
-      executionTime: `${executionTime}ms`,
-    }),
-  );
+	res.status(201).json(
+		new ApiResponse(201, post, "Post created successfully", true, {
+			executionTime: `${executionTime}ms`,
+		}),
+	);
 });
 
 // Get posts with advanced filtering
 const getPosts = asyncHandler(async (req, res) => {
-  const startTime = Date.now();
-  const filters = req.query;
-  const { page = 1, limit = 20 } = req.query;
+	const startTime = Date.now();
+	const filters = req.query;
+	const { page = 1, limit = 20 } = req.query;
 
-  const result = await PostService.getPosts(filters, parseInt(page), parseInt(limit));
-  const executionTime = Date.now() - startTime;
+	const result = await PostService.getPosts(filters, parseInt(page), parseInt(limit));
+	const executionTime = Date.now() - startTime;
 
-  res.status(200).json(
-    new ApiResponse(200, result, "Posts retrieved successfully", true, {
-      executionTime: `${executionTime}ms`,
-    }),
-  );
+	res.status(200).json(
+		new ApiResponse(200, result, "Posts retrieved successfully", true, {
+			executionTime: `${executionTime}ms`,
+		}),
+	);
 });
 
 // Get single post by ID
 const getPostById = asyncHandler(async (req, res) => {
-  const startTime = Date.now();
-  const { id } = req.params;
+	const startTime = Date.now();
+	const { id } = req.params;
 
-  const post = await PostService.getPostById(id);
-  if (!post) {
-    throw new ApiError(404, "Post not found");
-  }
+	const post = await PostService.getPostById(id);
+	if (!post) {
+		throw new ApiError(404, "Post not found");
+	}
 
-  const executionTime = Date.now() - startTime;
-  res.status(200).json(
-    new ApiResponse(200, post, "Post retrieved successfully", true, {
-      executionTime: `${executionTime}ms`,
-    }),
-  );
+	const executionTime = Date.now() - startTime;
+	res.status(200).json(
+		new ApiResponse(200, post, "Post retrieved successfully", true, {
+			executionTime: `${executionTime}ms`,
+		}),
+	);
 });
 
 // Update post
 const updatePost = asyncHandler(async (req, res) => {
-  const startTime = Date.now();
-  const { id } = req.params;
-  const userId = req.user._id;
+	const startTime = Date.now();
+	const { id } = req.params;
+	const userId = req.user._id;
 
-  const updatedPost = await PostService.updatePost(id, req.body, userId);
-  const executionTime = Date.now() - startTime;
+	const updatedPost = await PostService.updatePost(id, req.body, userId);
+	const executionTime = Date.now() - startTime;
 
-  logger.info("Post updated", { postId: id, userId, executionTime });
+	logger.info("Post updated", { postId: id, userId, executionTime });
 
-  res.status(200).json(
-    new ApiResponse(200, updatedPost, "Post updated successfully", true, {
-      executionTime: `${executionTime}ms`,
-    }),
-  );
+	res.status(200).json(
+		new ApiResponse(200, updatedPost, "Post updated successfully", true, {
+			executionTime: `${executionTime}ms`,
+		}),
+	);
 });
 
 // Delete post
 const deletePost = asyncHandler(async (req, res) => {
-  const startTime = Date.now();
-  const { id } = req.params;
-  const userId = req.user._id;
+	const startTime = Date.now();
+	const { id } = req.params;
+	const userId = req.user._id;
 
-  await PostService.deletePost(id, userId);
-  const executionTime = Date.now() - startTime;
+	await PostService.deletePost(id, userId);
+	const executionTime = Date.now() - startTime;
 
-  logger.info("Post deleted", { postId: id, userId, executionTime });
+	logger.info("Post deleted", { postId: id, userId, executionTime });
 
-  res.status(200).json(
-    new ApiResponse(200, {}, "Post deleted successfully", true, {
-      executionTime: `${executionTime}ms`,
-    }),
-  );
+	res.status(200).json(
+		new ApiResponse(200, {}, "Post deleted successfully", true, {
+			executionTime: `${executionTime}ms`,
+		}),
+	);
 });
 
 // Get current user's posts
 const getMyPosts = asyncHandler(async (req, res) => {
-  const startTime = Date.now();
-  const userId = req.user?._id;
+	const startTime = Date.now();
+	const userId = req.user?._id;
 
-  if (!userId) {
-    throw new ApiError(401, "Authentication required");
-  }
+	if (!userId) {
+		throw new ApiError(401, "Authentication required");
+	}
 
-  const { page = 1, limit = 12, status, type } = req.query;
-  const result = await PostService.getMyPosts(userId, parseInt(page), parseInt(limit), status);
+	const { page = 1, limit = 12, status, type } = req.query;
+	const result = await PostService.getMyPosts(userId, parseInt(page), parseInt(limit), status);
 
-  // Clean response - remove sensitive data
-  const cleanPosts = result.posts.map(post => ({
-    id: post._id,
-    title: post.title,
-    content: post.content && post.content.length > 150 ? `${post.content.substring(0, 150)}...` : post.content || "",
-    type: post.type,
-    status: post.status,
-    visibility: post.visibility,
-    createdAt: post.createdAt,
-    updatedAt: post.updatedAt,
-    engagement: {
-      likes: post.engagement?.likeCount || 0,
-      comments: post.engagement?.commentCount || 0,
-      shares: post.engagement?.shareCount || 0,
-      views: post.engagement?.viewCount || 0,
-    },
-    media: (post.media && post.media.length) || 0,
-    tags: post.tags || [],
-    slug: post.slug,
-  }));
+	// Clean response - remove sensitive data
+	const cleanPosts = result.posts.map(post => ({
+		id: post._id,
+		title: post.title,
+		content: post.content && post.content.length > 150 ? `${post.content.substring(0, 150)}...` : post.content || "",
+		type: post.type,
+		status: post.status,
+		visibility: post.visibility,
+		createdAt: post.createdAt,
+		updatedAt: post.updatedAt,
+		engagement: {
+			likes: post.engagement?.likeCount || 0,
+			comments: post.engagement?.commentCount || 0,
+			shares: post.engagement?.shareCount || 0,
+			views: post.engagement?.viewCount || 0,
+		},
+		media: (post.media && post.media.length) || 0,
+		tags: post.tags || [],
+		slug: post.slug,
+	}));
 
-  const executionTime = Date.now() - startTime;
-  logger.info("My posts retrieved", {
-    userId,
-    count: result.posts.length,
-    executionTime,
-  });
+	const executionTime = Date.now() - startTime;
+	logger.info("My posts retrieved", {
+		userId,
+		count: result.posts.length,
+		executionTime,
+	});
 
-  res.status(200).json(
-    new ApiResponse(
-      200,
-      {
-        user: {
-          id: req.user._id,
-          username: req.user.username,
-          firstName: req.user.firstName,
-          lastName: req.user.lastName,
-          avatar: req.user.avatar || "/assets/default-avatar.png",
-        },
-        posts: cleanPosts,
-        pagination: result.pagination,
-        stats: {
-          total: result.pagination.total,
-          drafts: cleanPosts.filter(p => p.status === "draft").length,
-          published: cleanPosts.filter(p => p.status === "published").length,
-        },
-      },
-      "Posts retrieved successfully",
-      true,
-      {
-        executionTime: `${executionTime}ms`,
-      },
-    ),
-  );
+	res.status(200).json(
+		new ApiResponse(
+			200,
+			{
+				user: {
+					id: req.user._id,
+					username: req.user.username,
+					firstName: req.user.firstName,
+					lastName: req.user.lastName,
+					avatar: req.user.avatar || "/assets/default-avatar.png",
+				},
+				posts: cleanPosts,
+				pagination: result.pagination,
+				stats: {
+					total: result.pagination.total,
+					drafts: cleanPosts.filter(p => p.status === "draft").length,
+					published: cleanPosts.filter(p => p.status === "published").length,
+				},
+			},
+			"Posts retrieved successfully",
+			true,
+			{
+				executionTime: `${executionTime}ms`,
+			},
+		),
+	);
 });
 
 // Get user posts by username
 const getUserPosts = asyncHandler(async (req, res) => {
-  const { username } = req.params;
-  const { page = 1, limit = 12 } = req.query;
-  const currentUserId = req.user?._id;
+	const { username } = req.params;
+	const { page = 1, limit = 12 } = req.query;
+	const currentUserId = req.user?._id;
 
-  const result = await PostService.getUserPostsByUsername(username, parseInt(page), parseInt(limit), currentUserId);
+	const result = await PostService.getUserPostsByUsername(username, parseInt(page), parseInt(limit), currentUserId);
 
-  if (!result) {
-    throw new ApiError(404, "User not found");
-  }
+	if (!result) {
+		throw new ApiError(404, "User not found");
+	}
 
-  res.status(200).json(new ApiResponse(200, result, "User posts retrieved successfully"));
+	res.status(200).json(new ApiResponse(200, result, "User posts retrieved successfully"));
 });
 
 export { createPost, getPosts, getPostById, updatePost, deletePost, getMyPosts, getUserPosts };
