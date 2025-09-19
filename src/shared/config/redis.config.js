@@ -1,110 +1,337 @@
 // src/shared/config/redis.config.js
 import Redis from "ioredis";
+import { logger } from "../services/logger.service.js";
 
-const DEFAULT_REDIS_PASSWORD = "administer"; // Must match your .env and Redis server password
-
-// Centralized Redis configuration
-const redisConfig = {
-  host: process.env.REDIS_HOST || "localhost",
-  port: parseInt(process.env.REDIS_PORT) || 6379,
-  password: process.env.REDIS_PASSWORD || DEFAULT_REDIS_PASSWORD,
-  db: parseInt(process.env.REDIS_DB) || 0,
-  keyPrefix: process.env.REDIS_KEY_PREFIX || "",
-  retryStrategy: times => {
-    if (times > 10) {
-      console.error("Redis connection failed after 10 retries");
-      return null; // stop retrying
-    }
-    const delay = Math.min(times * 200, 3000); // exponential backoff
-    return delay;
-  },
-  maxRetriesPerRequest: 3,
-  lazyConnect: false, // Changed to false to fail fast if connection issues
-  connectTimeout: 10000,
-  commandTimeout: 5000,
-  enableReadyCheck: true,
-  showFriendlyErrorStack: process.env.NODE_ENV !== "production",
-  tls: process.env.REDIS_TLS === "true" ? {} : undefined,
-  reconnectOnError(err) {
-    const targetError = "READONLY";
-    if (err.message.includes(targetError)) {
-      return true; // reconnect if readonly error
-    }
-    return false;
-  },
+// Security: Remove default password in production
+const getRedisPassword = () => {
+	if (process.env.NODE_ENV === "production" && !process.env.REDIS_PASSWORD) {
+		logger.error("REDIS_PASSWORD must be set in production environment");
+		throw new Error("Redis password required in production");
+	}
+	return process.env.REDIS_PASSWORD || (process.env.NODE_ENV !== "production" ? "administer" : null);
 };
 
-// Create Redis client instance
+// Enhanced Redis configuration with production optimizations
+const createRedisConfig = (options = {}) => {
+	const isProduction = process.env.NODE_ENV === "production";
+	const isDevelopment = process.env.NODE_ENV === "development";
+
+	return {
+		// Connection settings
+		host: process.env.REDIS_HOST || "localhost",
+		port: parseInt(process.env.REDIS_PORT) || 6379,
+		password: getRedisPassword(),
+		db: parseInt(process.env.REDIS_DB) || 0,
+		keyPrefix: process.env.REDIS_KEY_PREFIX || options.keyPrefix || "",
+
+		// Connection pool settings for high performance
+		family: 4, // IPv4
+		keepAlive: true,
+		connectTimeout: isDevelopment ? 10000 : 5000,
+		commandTimeout: isDevelopment ? 10000 : 3000,
+		lazyConnect: true, // Better for production - connect when needed
+
+		// Retry strategy with exponential backoff
+		retryStrategy: times => {
+			const maxRetries = isProduction ? 5 : 10;
+			if (times > maxRetries) {
+				logger.error(`Redis connection failed after ${maxRetries} retries`, {
+					client: options.keyPrefix || "default",
+					environment: process.env.NODE_ENV,
+				});
+				return null; // Stop retrying
+			}
+
+			// Exponential backoff with jitter
+			const baseDelay = Math.min(times * 200, 3000);
+			const jitter = Math.random() * 100; // Add randomness to prevent thundering herd
+			return baseDelay + jitter;
+		},
+
+		// Request settings
+		maxRetriesPerRequest: isProduction ? 2 : 3,
+		enableReadyCheck: true,
+		maxLoadingTimeout: 5000,
+
+		// Error handling
+		showFriendlyErrorStack: !isProduction,
+
+		// TLS configuration for production
+		tls:
+			process.env.REDIS_TLS === "true"
+				? {
+						servername: process.env.REDIS_HOST,
+						rejectUnauthorized: process.env.REDIS_TLS_REJECT_UNAUTHORIZED !== "false",
+					}
+				: undefined,
+
+		// Reconnection strategy
+		reconnectOnError: err => {
+			const targetErrors = ["READONLY", "ECONNRESET", "ETIMEDOUT", "ENOTFOUND"];
+			const shouldReconnect = targetErrors.some(error => err.message.toUpperCase().includes(error));
+
+			if (shouldReconnect) {
+				logger.warn(`Redis reconnecting due to error: ${err.message}`, {
+					client: options.keyPrefix || "default",
+				});
+			}
+
+			return shouldReconnect;
+		},
+
+		// Production optimizations
+		enableAutoPipelining: isProduction, // Automatic command batching
+		maxMemoryPolicy: "allkeys-lru", // Memory management
+
+		// Cluster support (if needed)
+		...(process.env.REDIS_CLUSTER === "true" && {
+			enableReadyCheck: false,
+			redisOptions: {
+				password: getRedisPassword(),
+			},
+		}),
+
+		// Override with custom options
+		...options,
+	};
+};
+
+// Enhanced Redis client factory with health monitoring
 export const createRedisClient = (options = {}) => {
-  const client = new Redis({
-    ...redisConfig,
-    ...options,
-  });
+	const clientId = options.keyPrefix || "default";
+	const config = createRedisConfig(options);
 
-  // Add error handling
-  client.on("error", err => {
-    console.warn(`Redis error (${options.keyPrefix || "default"}):`, err.message);
-  });
+	// Create Redis client (or cluster if configured)
+	let client;
 
-  client.on("connect", () => {
-    console.log(`Redis connected (${options.keyPrefix || "default"})`);
-  });
+	if (process.env.REDIS_CLUSTER === "true") {
+		// Redis Cluster configuration
+		const clusterNodes = process.env.REDIS_CLUSTER_NODES?.split(",") || [`${config.host}:${config.port}`];
 
-  // Add ready handling
-  client.on("ready", () => {
-    console.log(`Redis ready (${options.keyPrefix || "default"})`);
-  });
+		client = new Redis.Cluster(clusterNodes, {
+			redisOptions: config,
+			enableReadyCheck: true,
+			maxRetriesPerRequest: config.maxRetriesPerRequest,
+		});
 
-  client.on("reconnecting", () => {
-    console.log(`Redis reconnecting (${options.keyPrefix || "default"})`);
-  });
+		logger.info(`Redis Cluster client created for ${clientId}`, {
+			nodes: clusterNodes.length,
+			environment: process.env.NODE_ENV,
+		});
+	} else {
+		// Single Redis instance
+		client = new Redis(config);
+		logger.info(`Redis client created for ${clientId}`, {
+			host: config.host,
+			port: config.port,
+			environment: process.env.NODE_ENV,
+		});
+	}
 
-  // Handle connection close
-  client.on("end", () => {
-    console.log(`Redis connection closed (${options.keyPrefix || "default"})`);
-  });
+	// Enhanced event handling with structured logging
+	client.on("error", err => {
+		logger.error(`Redis error (${clientId})`, {
+			error: err.message,
+			code: err.code,
+			command: err.command?.name,
+			timestamp: new Date().toISOString(),
+		});
+	});
 
-  return client;
+	client.on("connect", () => {
+		logger.info(`Redis connected (${clientId})`, {
+			host: config.host,
+			port: config.port,
+			db: config.db,
+		});
+	});
+
+	client.on("ready", () => {
+		logger.info(`Redis ready (${clientId})`, {
+			status: "operational",
+			keyPrefix: config.keyPrefix,
+		});
+	});
+
+	client.on("reconnecting", ms => {
+		logger.warn(`Redis reconnecting (${clientId})`, {
+			delay: `${ms}ms`,
+			attempt: "retry",
+		});
+	});
+
+	client.on("end", () => {
+		logger.warn(`Redis connection closed (${clientId})`, {
+			status: "disconnected",
+		});
+	});
+
+	client.on("close", () => {
+		logger.warn(`Redis connection closed (${clientId})`, {
+			reason: "connection_terminated",
+		});
+	});
+
+	// Add health check method
+	client.healthCheck = async () => {
+		try {
+			const start = Date.now();
+			await client.ping();
+			const latency = Date.now() - start;
+
+			return {
+				status: "healthy",
+				latency: `${latency}ms`,
+				client: clientId,
+				timestamp: new Date().toISOString(),
+			};
+		} catch (error) {
+			return {
+				status: "unhealthy",
+				error: error.message,
+				client: clientId,
+				timestamp: new Date().toISOString(),
+			};
+		}
+	};
+
+	// Add graceful disconnect method
+	client.gracefulDisconnect = async () => {
+		try {
+			logger.info(`Gracefully disconnecting Redis client (${clientId})`);
+			await client.quit();
+		} catch (error) {
+			logger.error(`Error during graceful disconnect (${clientId})`, error);
+			client.disconnect();
+		}
+	};
+
+	return client;
 };
 
-// Lazy initialization of Redis clients
-let _redisClient;
-let _rateLimitRedis;
-let _cacheRedis;
-let _sessionRedis;
+// Client instance management with lazy initialization
+class RedisClientManager {
+	constructor() {
+		this.clients = new Map();
+		this.isShuttingDown = false;
+	}
 
-export const redisClient = () => {
-  if (!_redisClient) {
-    _redisClient = createRedisClient();
-  }
-  return _redisClient;
-};
+	getClient(type, options = {}) {
+		if (this.isShuttingDown) {
+			throw new Error("Redis client manager is shutting down");
+		}
+
+		if (!this.clients.has(type)) {
+			const clientOptions = {
+				keyPrefix: `${type}:`,
+				...options,
+			};
+
+			const client = createRedisClient(clientOptions);
+			this.clients.set(type, client);
+
+			logger.info(`Redis client initialized for ${type}`, {
+				keyPrefix: clientOptions.keyPrefix,
+				environment: process.env.NODE_ENV,
+			});
+		}
+
+		return this.clients.get(type);
+	}
+
+	async healthCheck() {
+		const results = {};
+
+		for (const [type, client] of this.clients.entries()) {
+			results[type] = await client.healthCheck();
+		}
+
+		return results;
+	}
+
+	async gracefulShutdown() {
+		if (this.isShuttingDown) {
+			return;
+		}
+
+		this.isShuttingDown = true;
+		logger.info("Starting Redis clients graceful shutdown");
+
+		const shutdownPromises = Array.from(this.clients.entries()).map(async ([type, client]) => {
+			try {
+				await client.gracefulDisconnect();
+				logger.info(`Redis client ${type} shutdown completed`);
+			} catch (error) {
+				logger.error(`Error shutting down Redis client ${type}`, error);
+			}
+		});
+
+		await Promise.allSettled(shutdownPromises);
+		this.clients.clear();
+		logger.info("All Redis clients shutdown completed");
+	}
+}
+
+// Global client manager instance
+const clientManager = new RedisClientManager();
+
+// Exported client getters with lazy initialization
+export const redisClient = () => clientManager.getClient("default");
 
 export const rateLimitRedis = (() => {
-  if (!_rateLimitRedis) {
-    _rateLimitRedis = createRedisClient({
-      keyPrefix: "rate-limit:",
-    });
-  }
-  return _rateLimitRedis;
+	return clientManager.getClient("rate-limit", {
+		// Optimized for rate limiting - faster timeouts
+		commandTimeout: 1000,
+		connectTimeout: 3000,
+		maxRetriesPerRequest: 1,
+	});
 })();
 
 export const cacheRedis = (() => {
-  if (!_cacheRedis) {
-    _cacheRedis = createRedisClient({
-      keyPrefix: "cache:",
-    });
-  }
-  return _cacheRedis;
+	return clientManager.getClient("cache", {
+		// Optimized for caching - allow longer timeouts for large data
+		commandTimeout: 5000,
+		maxMemoryPolicy: "allkeys-lru",
+	});
 })();
 
 export const sessionRedis = (() => {
-  if (!_sessionRedis) {
-    _sessionRedis = createRedisClient({
-      keyPrefix: "session:",
-    });
-  }
-  return _sessionRedis;
+	return clientManager.getClient("session", {
+		// Optimized for sessions - reliable storage
+		commandTimeout: 3000,
+		maxRetriesPerRequest: 3,
+	});
 })();
 
-export default redisConfig;
+// Health check endpoint helper
+export const getRedisHealth = async () => {
+	return await clientManager.healthCheck();
+};
+
+// Graceful shutdown handler
+const gracefulShutdown = async signal => {
+	logger.info(`Received ${signal}, shutting down Redis clients...`);
+	await clientManager.gracefulShutdown();
+	process.exit(0);
+};
+
+// Register shutdown handlers
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+
+// Handle uncaught exceptions
+process.on("uncaughtException", async error => {
+	logger.error("Uncaught Exception, shutting down Redis clients", error);
+	await clientManager.gracefulShutdown();
+	process.exit(1);
+});
+
+process.on("unhandledRejection", async (reason, promise) => {
+	logger.error("Unhandled Rejection, shutting down Redis clients", { reason, promise });
+	await clientManager.gracefulShutdown();
+	process.exit(1);
+});
+
+// Export configuration for testing
+export { createRedisConfig };
+export default clientManager;
