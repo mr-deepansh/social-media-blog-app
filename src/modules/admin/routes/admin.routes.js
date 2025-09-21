@@ -6,24 +6,24 @@ import { isAdmin, isSuperAdmin } from "../../../shared/middleware/isAdmin.middle
 import { trackAdminSession, updateSessionActivity } from "../../../shared/middleware/sessionTracker.middleware.js";
 import superAdminRoutes from "./super-admin.routes.js";
 import {
-	getAdminStats,
-	getAdminStatsLive,
-	getAllAdmins,
-	getAdminById,
-	getAllUsers,
-	getUserById,
-	deleteUserById,
-	updateUserById,
-	suspendUser,
-	activateUser,
-	searchUsers,
-	bulkExportUsers,
-	bulkActions,
-	getUserActivityLog,
-	sendNotificationToUser,
-	verifyUserAccount,
-	forcePasswordReset,
-	getUserSecurityAnalysis,
+  getAdminStats,
+  getAdminStatsLive,
+  getAllAdmins,
+  getAdminById,
+  getAllUsers,
+  getUserById,
+  deleteUserById,
+  updateUserById,
+  suspendUser,
+  activateUser,
+  searchUsers,
+  bulkExportUsers,
+  bulkActions,
+  getUserActivityLog,
+  sendNotificationToUser,
+  verifyUserAccount,
+  forcePasswordReset,
+  getUserSecurityAnalysis,
 } from "../controllers/admin.controller.js";
 
 // Import super admin controller
@@ -37,39 +37,39 @@ import { getAdminDashboard } from "../controllers/dashboard.controller.js";
 
 // Import analytics controllers
 import {
-	getAnalyticsOverview,
-	getUserGrowthAnalytics,
-	getUserRetentionAnalytics,
-	getUserDemographics,
-	getEngagementMetrics,
+  getAnalyticsOverview,
+  getUserGrowthAnalytics,
+  getUserRetentionAnalytics,
+  getUserDemographics,
+  getEngagementMetrics,
 } from "../controllers/analytics.controller.js";
 
 // Import security controllers
 import {
-	getSuspiciousAccounts,
-	getLoginAttempts,
-	blockIpAddress,
-	getBlockedIps,
-	getThreatDetection,
-	unblockIpAddress,
+  getSuspiciousAccounts,
+  getLoginAttempts,
+  blockIpAddress,
+  getBlockedIps,
+  getThreatDetection,
+  unblockIpAddress,
 } from "../controllers/security.controller.js";
 
 // Import advanced controllers
 import {
-	getAllPosts,
-	togglePostVisibility,
-	getAppSettings,
-	updateAppSettings,
-	getNotificationTemplates,
-	sendBulkNotification,
-	getServerHealth,
-	getDatabaseStats,
-	getAutomationRules,
-	createAutomationRule,
-	getExperiments,
-	createExperiment,
-	getRevenueAnalytics,
-	getUserLifetimeValue,
+  getAllPosts,
+  togglePostVisibility,
+  getAppSettings,
+  updateAppSettings,
+  getNotificationTemplates,
+  sendBulkNotification,
+  getServerHealth,
+  getDatabaseStats,
+  getAutomationRules,
+  createAutomationRule,
+  getExperiments,
+  createExperiment,
+  getRevenueAnalytics,
+  getUserLifetimeValue,
 } from "../controllers/advanced.controller.js";
 
 const router = Router();
@@ -89,26 +89,26 @@ router.use("/super-admin", superAdminRoutes);
 // Admin routes (admin and super_admin can access)
 // Test endpoint before auth middleware
 router.route("/public-test/users").get(async (req, res) => {
-	try {
-		const { User } = await import("../../users/models/user.model.js");
-		const count = await User.countDocuments({});
-		const users = await User.find({}).select("username email role isActive").limit(3).lean();
+  try {
+    const { User } = await import("../../users/models/user.model.js");
+    const count = await User.countDocuments({});
+    const users = await User.find({}).select("username email role isActive").limit(3).lean();
 
-		console.log(`🌐 Public test: Found ${count} total users`);
+    console.log(`🌐 Public test: Found ${count} total users`);
 
-		return res.status(200).json({
-			success: true,
-			totalUsers: count,
-			sampleUsers: users,
-			message: "Public test endpoint working - no auth required",
-		});
-	} catch (error) {
-		console.error("❌ Public test error:", error);
-		return res.status(500).json({
-			success: false,
-			error: error.message,
-		});
-	}
+    return res.status(200).json({
+      success: true,
+      totalUsers: count,
+      sampleUsers: users,
+      message: "Public test endpoint working - no auth required",
+    });
+  } catch (error) {
+    console.error("❌ Public test error:", error);
+    return res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
 });
 
 router.use(isAdmin);
@@ -219,29 +219,29 @@ router.route("/users/bulk-actions").post(bulkActions);
 
 // Debug endpoint to test user data
 router.route("/users/debug").get(async (req, res) => {
-	try {
-		console.log("🔍 Debug: Fetching users from database...");
-		const { User } = await import("../../users/models/user.model.js");
-		const users = await User.find({}).select("username email role isActive createdAt").limit(10).lean();
-		console.log(`📊 Found ${users.length} users in database`);
+  try {
+    console.log("🔍 Debug: Fetching users from database...");
+    const { User } = await import("../../users/models/user.model.js");
+    const users = await User.find({}).select("username email role isActive createdAt").limit(10).lean();
+    console.log(`📊 Found ${users.length} users in database`);
 
-		if (users.length > 0) {
-			console.log("👤 Sample user:", users[0]);
-		}
+    if (users.length > 0) {
+      console.log("👤 Sample user:", users[0]);
+    }
 
-		return res.status(200).json({
-			success: true,
-			count: users.length,
-			users,
-			message: "Debug: Users fetched successfully",
-		});
-	} catch (error) {
-		console.error("❌ Debug endpoint error:", error);
-		return res.status(500).json({
-			success: false,
-			error: error.message,
-		});
-	}
+    return res.status(200).json({
+      success: true,
+      count: users.length,
+      users,
+      message: "Debug: Users fetched successfully",
+    });
+  } catch (error) {
+    console.error("❌ Debug endpoint error:", error);
+    return res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
 });
 
 // Basic User Management
@@ -265,26 +265,26 @@ router.route("/users/:id/force-password-reset").post(forcePasswordReset);
 
 // Test endpoint without auth
 router.route("/test/users").get(async (req, res) => {
-	try {
-		const { User } = await import("../../users/models/user.model.js");
-		const count = await User.countDocuments({});
-		const users = await User.find({}).select("username email role isActive").limit(5).lean();
+  try {
+    const { User } = await import("../../users/models/user.model.js");
+    const count = await User.countDocuments({});
+    const users = await User.find({}).select("username email role isActive").limit(5).lean();
 
-		console.log(`🧪 Test endpoint: Found ${count} total users`);
+    console.log(`🧪 Test endpoint: Found ${count} total users`);
 
-		return res.status(200).json({
-			success: true,
-			totalUsers: count,
-			sampleUsers: users,
-			message: "Test endpoint working",
-		});
-	} catch (error) {
-		console.error("❌ Test endpoint error:", error);
-		return res.status(500).json({
-			success: false,
-			error: error.message,
-		});
-	}
+    return res.status(200).json({
+      success: true,
+      totalUsers: count,
+      sampleUsers: users,
+      message: "Test endpoint working",
+    });
+  } catch (error) {
+    console.error("❌ Test endpoint error:", error);
+    return res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
 });
 
 // ============================================================================

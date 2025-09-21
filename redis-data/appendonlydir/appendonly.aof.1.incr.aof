@@ -13967,3 +13967,33 @@ $3
 DEL
 $33
 cache:analytics:retention:monthly
+*2
+$6
+SELECT
+$1
+0
+*3
+$5
+lpush
+$12
+activity_log
+$309
+{"userId":"68ceb1c6ad01d1394a7d4844","email":"munishg4444@gmail.com","action":"register","ip":"192.168.1.36","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36","timestamp":"2025-09-20T13:53:11.185Z","success":true,"errorMessage":null}
+*5
+$3
+SET
+$29
+user:68ceb1c6ad01d1394a7d4844
+$695
+{"_id":"68ceb1c6ad01d1394a7d4844","username":"munish2000","email":"munishg4444@gmail.com","firstName":"MUNISH","lastName":"KUMAR","bio":"","role":"user","isActive":true,"isEmailVerified":false,"coverImage":{"url":"","publicId":""},"followers":[],"following":[],"watchHistory":[],"preferences":{"theme":"light","emailNotifications":true,"pushNotifications":true},"security":{"failedLoginAttempts":0,"twoFactorEnabled":false,"lastPasswordChange":"2025-09-20T13:53:10.940Z","passwordHistory":[],"lastLoginIP":"192.168.1.36","lastLoginLocation":"Unknown"},"activityLog":[],"lastActive":"2025-09-20T13:55:36.704Z","createdAt":"2025-09-20T13:53:10.955Z","updatedAt":"2025-09-20T13:55:36.706Z","__v":0}
+$4
+PXAT
+$13
+1758376836823
+*3
+$5
+lpush
+$12
+activity_log
+$306
+{"userId":"68ceb1c6ad01d1394a7d4844","email":"munishg4444@gmail.com","action":"login","ip":"192.168.1.36","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36","timestamp":"2025-09-20T13:55:36.826Z","success":true,"errorMessage":null}
