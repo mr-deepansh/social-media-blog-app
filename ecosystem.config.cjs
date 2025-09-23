@@ -1,4 +1,4 @@
-export default {
+module.exports = {
   apps: [
     {
       name: "social-media-blog-app",
@@ -21,10 +21,15 @@ export default {
       // Performance settings for millions of users
       max_memory_restart: "2G",
       min_uptime: "10s",
-      max_restarts: 10,
+      max_restarts: 5, // Reduced for port conflicts
+      restart_delay: 5000, // Wait 5s before restart
       autorestart: true,
       watch: false,
       ignore_watch: ["node_modules", "logs", "uploads"],
+
+      // Port conflict handling
+      increment_var: "PORT", // Auto-increment port if conflict
+      port_increment: 1,
 
       // Logging configuration
       log_date_format: "YYYY-MM-DD HH:mm:ss Z",
@@ -66,7 +71,10 @@ export default {
       // Advanced cluster settings
       instance_var: "INSTANCE_ID",
       exec_interpreter: "node",
-      exec_mode: "cluster_mode",
+
+      // Port management for cluster
+      listen_timeout: 10000, // Increased for port binding
+      kill_timeout: 10000, // Graceful shutdown time
 
       // Resource limits
       max_memory_restart: "2G",

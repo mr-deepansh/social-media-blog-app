@@ -121,11 +121,6 @@ export const createRedisClient = (options = {}) => {
   } else {
     // Single Redis instance
     client = new Redis(config);
-    logger.info(`Redis client created for ${clientId}`, {
-      host: config.host,
-      port: config.port,
-      environment: process.env.NODE_ENV,
-    });
   }
 
   // Enhanced event handling with structured logging
@@ -139,16 +134,14 @@ export const createRedisClient = (options = {}) => {
   });
 
   client.on("connect", () => {
-    logger.info(`Redis connected (${clientId})`, {
+    logger.info(`Redis client created for ${clientId}`, {
       host: config.host,
       port: config.port,
-      db: config.db,
     });
   });
 
   client.on("ready", () => {
-    logger.info(`Redis ready (${clientId})`, {
-      status: "operational",
+    logger.info(`Redis client initialized for ${clientId}`, {
       keyPrefix: config.keyPrefix,
     });
   });
@@ -228,6 +221,10 @@ class RedisClientManager {
       };
 
       const client = createRedisClient(clientOptions);
+      client.on("ready", () => {
+        connectedClients.add(type);
+        logUnifiedConnectionStatus();
+      });
       this.clients.set(type, client);
 
       logger.info(`Redis client initialized for ${type}`, {
@@ -274,6 +271,17 @@ class RedisClientManager {
 
 // Global client manager instance
 const clientManager = new RedisClientManager();
+
+// Connection status tracker to prevent duplicate messages
+let connectionStatusLogged = false;
+const connectedClients = new Set();
+
+const logUnifiedConnectionStatus = () => {
+  if (!connectionStatusLogged && connectedClients.size === 3) {
+    console.log("✅ Redis Connected Successfully");
+    connectionStatusLogged = true;
+  }
+};
 
 // Exported client getters with lazy initialization
 export const redisClient = () => clientManager.getClient("default");

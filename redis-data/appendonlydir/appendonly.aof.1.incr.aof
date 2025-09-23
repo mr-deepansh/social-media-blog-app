@@ -13997,3 +13997,13 @@ $12
 activity_log
 $306
 {"userId":"68ceb1c6ad01d1394a7d4844","email":"munishg4444@gmail.com","action":"login","ip":"192.168.1.36","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36","timestamp":"2025-09-20T13:55:36.826Z","success":true,"errorMessage":null}
+*2
+$6
+SELECT
+$1
+0
+*2
+$3
+DEL
+$29
+user:68ceb1c6ad01d1394a7d4844

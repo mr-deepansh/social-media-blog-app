@@ -23,12 +23,10 @@ let redisClient;
 try {
   redisClient = new Redis(redisConfig);
 
-  redisClient.on("connect", () => console.log("✅ Redis connected"));
-  redisClient.on("ready", () => console.log("⚡ Redis ready"));
-  redisClient.on("error", err => console.error("❌ Redis error:", err));
-  redisClient.on("end", () => console.log("🔌 Redis disconnected"));
+  redisClient.on("error", err => console.error("❌ Redis Error:", err));
+  redisClient.on("end", () => console.log("🔌 Redis Disconnected"));
 } catch (error) {
-  console.error("🚨 Failed to initialize Redis:", error);
+  console.error("🚨 Failed to Initialize Redis:", error);
 }
 
 const RedisUtils = {

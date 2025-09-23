@@ -33,11 +33,11 @@ class RedisManager {
 
   setupEventHandlers() {
     this.client.on("connect", () => {
-      console.log("Redis connected");
       this.isConnected = true;
     });
 
     this.client.on("ready", () => {
+      console.log("✅ Redis Connected Successfully");
       this.isConnected = true;
     });
 
