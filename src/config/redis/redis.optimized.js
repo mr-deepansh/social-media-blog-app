@@ -11,9 +11,9 @@ class RedisManager {
 
   init() {
     const config = {
-      host: process.env.REDIS_HOST || "localhost",
-      port: process.env.REDIS_PORT || 6379,
-      password: process.env.REDIS_PASSWORD || undefined,
+      host: process.env.REDIS_HOST,
+      port: process.env.REDIS_PORT,
+      password: process.env.REDIS_PASSWORD,
       db: process.env.REDIS_DB || 0,
       connectTimeout: 5000,
       commandTimeout: 3000,

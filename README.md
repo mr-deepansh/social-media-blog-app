@@ -438,8 +438,9 @@ npm run security:audit
 
 - **ESLint** for code linting
 - **Prettier** for code formatting
-- **Husky** for git hooks
+- **Husky** for git hooks (latest v9+ syntax)
 - **Lint-staged** for pre-commit checks
+- **Commitlint** for conventional commit messages
 
 ---
 
