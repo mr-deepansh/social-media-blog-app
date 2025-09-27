@@ -8,11 +8,12 @@ import {
   getAllAdmins,
   updateAdmin,
   changeUserRole,
-  getSystemConfig,
   getAuditLogs,
   getSystemHealth,
-  emergencyLockdown,
 } from "../controllers/super-admin.controller.js";
+
+// Import monitoring controllers for super admin
+import { getSystemConfig, updateSystemConfig, emergencyLockdown } from "../controllers/monitoring.controller.js";
 
 const router = Router();
 
@@ -43,7 +44,7 @@ router.put("/update-admin/:adminId", updateAdmin);
 router.put("/change-role/:userId", changeUserRole);
 
 // Get system configuration
-router.get("/system-config", getSystemConfig);
+router.route("/system-config").get(getSystemConfig).put(updateSystemConfig);
 
 // Delete admin user
 router.delete("/delete-admin/:adminId", deleteAdmin);
@@ -67,6 +68,6 @@ router.get("/system-health", getSystemHealth);
 // ============================================================================
 
 // Emergency system lockdown
-router.post("/emergency-lockdown", emergencyLockdown);
+router.route("/emergency-lockdown").post(emergencyLockdown);
 
 export default router;

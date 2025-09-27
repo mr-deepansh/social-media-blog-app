@@ -11,12 +11,15 @@ export class NotificationHelper {
       return;
     } // Don't notify self
 
+    // Ensure we have proper user data
+    const userName = likerData?.firstName || likerData?.username || "Someone";
+
     const notificationData = {
       recipient: postOwnerId,
       sender: likerId,
       type: "like",
-      title: `${likerData.username} liked your post`,
-      message: `${likerData.firstName || likerData.username} liked your post`,
+      title: `${userName} liked your post`,
+      message: `${userName} liked your post`,
       data: {
         postId,
         userId: likerId,

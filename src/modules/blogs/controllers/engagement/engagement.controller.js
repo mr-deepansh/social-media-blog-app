@@ -18,8 +18,10 @@ const toggleLike = asyncHandler(async (req, res) => {
   const userId = req.user._id;
 
   try {
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    // Validate postId
+    if (!mongoose.Types.ObjectId.isValid(postId)) {
+      throw new ApiError(400, "Invalid post ID");
+    }
 
     const existingLike = await Like.findOne({
       user: userId,
@@ -31,20 +33,20 @@ const toggleLike = asyncHandler(async (req, res) => {
     let post = null;
 
     if (existingLike) {
-      await Like.findByIdAndDelete(existingLike._id, { session });
-      post = await Post.findByIdAndUpdate(
-        postId,
-        { $inc: { "engagement.likeCount": -1 } },
-        { session, new: true },
-      ).populate("author", "username firstName lastName");
+      // Unlike
+      await Like.findByIdAndDelete(existingLike._id);
+      post = await Post.findByIdAndUpdate(postId, { $inc: { "engagement.likeCount": -1 } }, { new: true }).populate(
+        "author",
+        "username firstName lastName",
+      );
       isLiked = false;
     } else {
-      await Like.create([{ user: userId, target: postId, targetType: "post" }], { session });
-      post = await Post.findByIdAndUpdate(
-        postId,
-        { $inc: { "engagement.likeCount": 1 } },
-        { session, new: true },
-      ).populate("author", "username firstName lastName");
+      // Like
+      await Like.create({ user: userId, target: postId, targetType: "post" });
+      post = await Post.findByIdAndUpdate(postId, { $inc: { "engagement.likeCount": 1 } }, { new: true }).populate(
+        "author",
+        "username firstName lastName",
+      );
       isLiked = true;
 
       // Create notification for post owner (async, don't wait)
@@ -59,8 +61,9 @@ const toggleLike = asyncHandler(async (req, res) => {
       }
     }
 
-    await session.commitTransaction();
-    session.endSession();
+    if (!post) {
+      throw new ApiError(404, "Post not found");
+    }
 
     const executionTime = Date.now() - startTime;
     logger.info("Like toggled", {
@@ -74,8 +77,8 @@ const toggleLike = asyncHandler(async (req, res) => {
       new ApiResponse(
         200,
         {
-          liked: isLiked,
-          likeCount: post?.engagement?.likeCount || 0,
+          isLiked,
+          likesCount: post?.engagement?.likeCount || 0,
           meta: { executionTime: `${executionTime}ms` },
         },
         "Like toggled successfully",

@@ -24,28 +24,25 @@ export class SecurityService {
 	 * @param {Object} options - Query options
 	 */
   async getSuspiciousAccounts(options = {}) {
-    const { page = 1, limit = 20, riskLevel = "all" } = options;
+    const { page = 1, limit = 10, riskLevel = "all" } = options;
     const skip = (page - 1) * limit;
-    // Build risk assessment pipeline
+
+    // Build risk assessment pipeline with actual user data
     const pipeline = [
       {
         $addFields: {
           riskScore: {
             $add: [
-              // Multiple failed login attempts
-              { $cond: [{ $gt: ["$failedLoginAttempts", 5] }, 2, 0] },
               // Account created recently but inactive
               {
                 $cond: [
                   {
                     $and: [
-                      {
-                        $gt: ["$createdAt", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)],
-                      },
+                      { $gt: ["$createdAt", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)] },
                       { $eq: ["$isActive", false] },
                     ],
                   },
-                  1,
+                  2,
                   0,
                 ],
               },
@@ -53,26 +50,34 @@ export class SecurityService {
               {
                 $cond: [
                   {
-                    $or: [{ $eq: ["$firstName", ""] }, { $eq: ["$firstName", null] }],
+                    $or: [
+                      { $eq: ["$firstName", ""] },
+                      { $eq: ["$firstName", null] },
+                      { $eq: ["$firstName", undefined] },
+                    ],
                   },
                   1,
                   0,
                 ],
               },
-              // Suspicious email patterns
+              // Suspicious email patterns (lots of numbers)
               {
-                $cond: [{ $regexMatch: { input: "$email", regex: /\d{5,}/ } }, 1, 0],
+                $cond: [{ $regexMatch: { input: "$email", regex: /\d{4,}/ } }, 1, 0],
+              },
+              // Never logged in
+              {
+                $cond: [{ $eq: ["$lastLoginAt", null] }, 1, 0],
               },
             ],
           },
           riskLevel: {
             $switch: {
               branches: [
-                { case: { $gte: ["$riskScore", 4] }, then: "HIGH" },
-                { case: { $gte: ["$riskScore", 2] }, then: "MEDIUM" },
-                { case: { $gt: ["$riskScore", 0] }, then: "LOW" },
+                { case: { $gte: ["$riskScore", 4] }, then: "high" },
+                { case: { $gte: ["$riskScore", 2] }, then: "medium" },
+                { case: { $gt: ["$riskScore", 0] }, then: "low" },
               ],
-              default: "NONE",
+              default: "none",
             },
           },
         },
@@ -80,35 +85,31 @@ export class SecurityService {
       {
         $match: {
           riskScore: { $gt: 0 },
-          ...(riskLevel !== "all" && { riskLevel: riskLevel.toUpperCase() }),
+          ...(riskLevel !== "all" && { riskLevel: riskLevel.toLowerCase() }),
         },
       },
       {
         $project: {
-          username: 1,
-          email: 1,
-          createdAt: 1,
-          isActive: 1,
-          lastLoginAt: 1,
-          riskScore: 1,
+          userId: "$_id",
+          user: {
+            username: "$username",
+            email: "$email",
+            firstName: "$firstName",
+            lastName: "$lastName",
+          },
           riskLevel: 1,
-          riskFactors: {
+          reasons: {
             $filter: {
               input: [
-                {
-                  $cond: [{ $gt: ["$failedLoginAttempts", 5] }, "Multiple failed logins", null],
-                },
                 {
                   $cond: [
                     {
                       $and: [
-                        {
-                          $gt: ["$createdAt", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)],
-                        },
+                        { $gt: ["$createdAt", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)] },
                         { $eq: ["$isActive", false] },
                       ],
                     },
-                    "Recently created but inactive",
+                    "recently_created_inactive",
                     null,
                   ],
                 },
@@ -117,43 +118,90 @@ export class SecurityService {
                     {
                       $or: [{ $eq: ["$firstName", ""] }, { $eq: ["$firstName", null] }],
                     },
-                    "Incomplete profile",
+                    "incomplete_profile",
                     null,
                   ],
                 },
                 {
-                  $cond: [{ $regexMatch: { input: "$email", regex: /\d{5,}/ } }, "Suspicious email pattern", null],
+                  $cond: [{ $regexMatch: { input: "$email", regex: /\d{4,}/ } }, "suspicious_email", null],
+                },
+                {
+                  $cond: [{ $eq: ["$lastLoginAt", null] }, "never_logged_in", null],
                 },
               ],
               cond: { $ne: ["$$this", null] },
             },
           },
+          detectedAt: "$createdAt",
         },
       },
-      { $sort: { riskScore: -1, createdAt: -1 } },
+      { $sort: { riskLevel: 1, detectedAt: -1 } },
       { $skip: skip },
       { $limit: limit },
     ];
-    const [accounts, totalCount] = await Promise.all([
-      User.aggregate(pipeline),
-      User.aggregate([
-        ...pipeline.slice(0, -2), // Remove skip and limit
-        { $count: "total" },
-      ]).then(result => result[0]?.total || 0),
-    ]);
+
+    const accounts = await User.aggregate(pipeline);
+
+    // Get total count separately to avoid pipeline issues
+    const totalCount = await User.countDocuments({
+      $expr: {
+        $gt: [
+          {
+            $add: [
+              {
+                $cond: [
+                  {
+                    $and: [
+                      { $gt: ["$createdAt", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)] },
+                      { $eq: ["$isActive", false] },
+                    ],
+                  },
+                  2,
+                  0,
+                ],
+              },
+              {
+                $cond: [
+                  {
+                    $or: [
+                      { $eq: ["$firstName", ""] },
+                      { $eq: ["$firstName", null] },
+                      { $eq: ["$firstName", undefined] },
+                    ],
+                  },
+                  1,
+                  0,
+                ],
+              },
+              {
+                $cond: [{ $regexMatch: { input: "$email", regex: /\d{4,}/ } }, 1, 0],
+              },
+              {
+                $cond: [{ $eq: ["$lastLoginAt", null] }, 1, 0],
+              },
+            ],
+          },
+          0,
+        ],
+      },
+    });
+
+    const safeAccounts = Array.isArray(accounts) ? accounts : [];
+    const safeTotal = Math.max(totalCount || 0, safeAccounts.length);
+
     return {
-      accounts,
+      data: safeAccounts,
       pagination: {
-        currentPage: page,
-        totalPages: Math.ceil(totalCount / limit),
-        totalCount,
-        limit,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: safeTotal,
+        totalPages: Math.ceil(safeTotal / limit),
       },
       summary: {
-        totalSuspicious: totalCount,
-        highRisk: accounts.filter(a => a.riskLevel === "HIGH").length,
-        mediumRisk: accounts.filter(a => a.riskLevel === "MEDIUM").length,
-        lowRisk: accounts.filter(a => a.riskLevel === "LOW").length,
+        totalSuspicious: safeTotal,
+        highRisk: safeAccounts.filter(a => a?.riskLevel === "high").length,
+        mediumRisk: safeAccounts.filter(a => a?.riskLevel === "medium").length,
+        lowRisk: safeAccounts.filter(a => a?.riskLevel === "low").length,
       },
     };
   }
@@ -164,36 +212,56 @@ export class SecurityService {
   async getLoginAttempts(options = {}) {
     const { status = "all", timeRange = "24h", page = 1, limit = 50 } = options;
     const skip = (page - 1) * limit;
+
     // Parse time range
     const hours = this.parseTimeRange(timeRange);
     const startDate = new Date(Date.now() - hours * 60 * 60 * 1000);
-    // Mock data for now - implement with actual LoginAttempt model
-    const mockAttempts = Array.from({ length: Math.min(limit, 25) }, (_, i) => ({
-      _id: new mongoose.Types.ObjectId(),
-      email: `user${i + 1}@example.com`,
-      ipAddress: `192.168.1.${Math.floor(Math.random() * 255)}`,
-      userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-      success: Math.random() > 0.3,
-      timestamp: new Date(Date.now() - Math.random() * hours * 60 * 60 * 1000),
-      location: "Unknown",
-      reason: Math.random() > 0.7 ? "Invalid credentials" : null,
-    }));
+
+    // Generate more realistic mock data based on actual users
+    const userCount = await User.countDocuments({});
+    const sampleUsers = await User.find({}).select("email").limit(10).lean();
+
+    const mockAttempts = Array.from({ length: Math.min(limit, 25) }, (_, i) => {
+      const isSuccess = Math.random() > 0.2; // 80% success rate
+      const user = sampleUsers[i % sampleUsers.length];
+
+      return {
+        _id: new mongoose.Types.ObjectId(),
+        email: user?.email || `user${i + 1}@example.com`,
+        ipAddress: `192.168.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
+        userAgent: [
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+          "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
+        ][Math.floor(Math.random() * 3)],
+        status: isSuccess ? "success" : "failed",
+        attemptedAt: new Date(Date.now() - Math.random() * hours * 60 * 60 * 1000),
+        location: ["New York, US", "London, UK", "Tokyo, JP", "Unknown"][Math.floor(Math.random() * 4)],
+        reason: isSuccess
+					? null
+					: ["invalid_password", "invalid_email", "account_locked"][Math.floor(Math.random() * 3)],
+      };
+    });
+
     const filteredAttempts =
 			status === "all"
 				? mockAttempts
-				: mockAttempts.filter(attempt => (status === "success" ? attempt.success : !attempt.success));
+				: mockAttempts.filter(attempt =>
+						status === "success" ? attempt.status === "success" : attempt.status === "failed",
+				);
+
     return {
-      attempts: filteredAttempts,
+      data: filteredAttempts,
       pagination: {
-        currentPage: page,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: filteredAttempts.length,
         totalPages: Math.ceil(filteredAttempts.length / limit),
-        totalCount: filteredAttempts.length,
-        limit,
       },
       summary: {
         total: filteredAttempts.length,
-        successful: filteredAttempts.filter(a => a.success).length,
-        failed: filteredAttempts.filter(a => !a.success).length,
+        successful: filteredAttempts.filter(a => a.status === "success").length,
+        failed: filteredAttempts.filter(a => a.status === "failed").length,
         timeRange,
       },
     };

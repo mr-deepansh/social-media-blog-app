@@ -3,6 +3,7 @@ import { User } from "../models/user.model.js";
 import { CacheService } from "../../../shared/utils/Cache.js";
 import { ApiError } from "../../../shared/utils/ApiError.js";
 import bcrypt from "bcrypt";
+import { ProfileService } from "./profile.service.js";
 
 export class UserService {
   // Optimized getAllUsers for production scale
@@ -57,22 +58,21 @@ export class UserService {
     };
   }
   static async getUserById(userId, currentUserId) {
-    // Check permissions
-    if (currentUserId !== userId && !(await this.isAdmin(currentUserId))) {
-      throw new ApiError(403, "Access denied");
+    // Use ProfileService for unified logic
+    const profile = await ProfileService.getUserProfile(userId, currentUserId);
+
+    if (!profile) {
+      throw new ApiError(404, "User not found");
     }
 
-    const cacheKey = `user:${userId}`;
-    let user = await CacheService.get(cacheKey);
-
-    if (!user) {
-      user = await User.findById(userId).select("-password -refreshToken").lean();
-      if (user) {
-        await CacheService.set(cacheKey, user, 600);
-      }
+    // Authorization: Only allow viewing if public or requester is self or admin
+    const isSelf = currentUserId && profile._id.toString() === currentUserId.toString();
+    const isAdmin = await this.isAdmin?.(currentUserId); // If you have isAdmin logic
+    if (!profile.isActive && !isSelf && !isAdmin) {
+      throw new ApiError(403, "Forbidden");
     }
 
-    return user;
+    return profile;
   }
 
   static async updateUser(userId, updateData, currentUserId) {

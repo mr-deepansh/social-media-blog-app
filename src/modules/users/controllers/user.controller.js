@@ -58,12 +58,22 @@ const getUserById = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const currentUserId = req.user._id;
 
-  const user = await UserService.getUserById(id, currentUserId);
-  if (!user) {
-    throw new ApiError(404, "User not found");
+  try {
+    const user = await UserService.getUserById(id, currentUserId);
+    res.status(200).json({
+      success: true,
+      status: 200,
+      message: "User profile fetched successfully",
+      data: user,
+    });
+  } catch (error) {
+    res.status(error.status || 500).json({
+      success: false,
+      status: error.status || 500,
+      message: error.message,
+      data: null,
+    });
   }
-
-  res.status(200).json(new ApiResponse(200, user, "User fetched successfully"));
 });
 // ================================================
 // 📌 Create user (Register)
@@ -143,8 +153,8 @@ const getCurrentUserProfile = asyncHandler(async (req, res) => {
   // Ensure avatar URL is properly formatted
   const formattedUser = {
     ...user,
-    avatar: user.avatar?.url || null,
-    coverImage: user.coverImage?.url || null,
+    avatar: user.avatar?.url || user.avatar || null,
+    coverImage: user.coverImage?.url || user.coverImage || null,
     fullName: `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.username,
   };
 
@@ -269,8 +279,20 @@ const registerUser = asyncHandler(async (req, res) => {
     // Generate tokens for immediate login after registration
     const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
 
-    // Fetch clean user data
+    // Fetch clean user data with proper null checks
     const createdUser = await User.findById(user._id).select("-password -refreshToken -security -activityLog").lean();
+
+    if (!createdUser) {
+      throw new ApiError(500, "Failed to retrieve user data after registration");
+    }
+
+    // Format user data properly
+    const formattedUser = {
+      ...createdUser,
+      avatar: createdUser.avatar?.url || createdUser.avatar || null,
+      coverImage: createdUser.coverImage?.url || createdUser.coverImage || null,
+      fullName: `${createdUser.firstName || ""} ${createdUser.lastName || ""}`.trim() || createdUser.username,
+    };
 
     // Set cookie options for tokens
     const cookieOptions = {
@@ -296,15 +318,11 @@ const registerUser = asyncHandler(async (req, res) => {
         new ApiResponse(
           201,
           {
-            user: createdUser,
+            success: true,
+            user: formattedUser,
             accessToken,
             refreshToken,
             message: "Registration successful! You are now logged in.",
-            meta: {
-              executionTime: `${executionTime}ms`,
-              apiHealth: calculateApiHealth(executionTime),
-              registrationTime: new Date().toISOString(),
-            },
           },
           "User registered and logged in successfully",
         ),
@@ -340,6 +358,15 @@ const loginUser = asyncHandler(async (req, res) => {
       username: loginResult.user.username,
       executionTime,
     });
+    // Format user data properly
+    const formattedUser = {
+      ...loginResult.user,
+      avatar: loginResult.user.avatar?.url || loginResult.user.avatar || null,
+      coverImage: loginResult.user.coverImage?.url || loginResult.user.coverImage || null,
+      fullName:
+				`${loginResult.user.firstName || ""} ${loginResult.user.lastName || ""}`.trim() || loginResult.user.username,
+    };
+
     return res
       .status(200)
       .cookie("accessToken", loginResult.accessToken, cookieOptions)
@@ -348,7 +375,7 @@ const loginUser = asyncHandler(async (req, res) => {
         new ApiResponse(
           200,
           {
-            user: loginResult.user,
+            user: formattedUser,
             accessToken: loginResult.accessToken,
             refreshToken: loginResult.refreshToken,
             meta: {
@@ -468,10 +495,14 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 const getCurrentUser = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id).select("-password -refreshToken -security -activityLog").lean();
 
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
   const formattedUser = {
     ...user,
-    avatar: user.avatar?.url || null,
-    coverImage: user.coverImage?.url || null,
+    avatar: user.avatar?.url || user.avatar || null,
+    coverImage: user.coverImage?.url || user.coverImage || null,
     fullName: `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.username,
   };
 
@@ -1179,135 +1210,39 @@ const getUserSuggestions = asyncHandler(async (req, res) => {
   }
 });
 
-// Enhanced getUserFeed function with better performance and error handling
+// Optimized getUserFeed function with better performance and error handling
 const getUserFeed = asyncHandler(async (req, res) => {
-  console.log("📰 getUserFeed called with query:", req.query);
-  console.log("👤 Current user ID:", req.user._id);
-
-  const { page = 1, limit = 20, sortBy = "createdAt", sortOrder = "desc", type = "all" } = req.query;
-
+  const { page = 1, limit = 20, sort = "recent" } = req.query;
   const pageNum = Math.max(1, parseInt(page, 10) || 1);
-  const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
+  const limitNum = Math.min(50, Math.max(1, parseInt(limit, 10) || 20));
   const userId = req.user._id;
   const skip = (pageNum - 1) * limitNum;
 
-  console.log("📊 Feed parameters:", {
-    pageNum,
-    limitNum,
-    sortBy,
-    sortOrder,
-    type,
-  });
-
   try {
+    // Get current user's following list
     const currentUser = await User.findById(userId).select("following").lean();
     if (!currentUser) {
-      console.log("❌ Current user not found:", userId);
       throw new ApiError(404, "User not found");
     }
 
     const followingIds = currentUser.following || [];
-    console.log("👥 Following count:", followingIds.length);
 
-    let matchConditions = {};
-    switch (type) {
-      case "following":
-        if (followingIds.length === 0) {
-          console.log("📭 No following users, returning empty feed");
-          return res.status(200).json(
-            new ApiResponse(
-              200,
-              {
-                feed: [],
-                pagination: {
-                  currentPage: pageNum,
-                  totalPages: 0,
-                  totalPosts: 0,
-                  hasNextPage: false,
-                  hasPrevPage: false,
-                  limit: limitNum,
-                },
-                meta: {
-                  feedType: type,
-                  sortBy,
-                  sortOrder,
-                  followingCount: 0,
-                },
-              },
-              "No posts available - you're not following anyone yet",
-            ),
-          );
-        }
-        matchConditions = {
-          owner: { $in: followingIds },
-        };
-        console.log("👥 Using 'following' feed type");
-        break;
-      case "own":
-        matchConditions = {
-          owner: userId,
-        };
-        console.log("👤 Using 'own' feed type");
-        break;
-      case "trending": {
-        // Trending posts from last 7 days with high engagement
-        const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-        matchConditions = {
-          createdAt: { $gte: weekAgo },
-          $or: [
-            { owner: { $in: [...followingIds, userId] } },
-            {
-              isPublic: true,
-              $expr: {
-                $gte: [{ $add: ["$likesCount", "$commentsCount"] }, 10],
-              },
-            },
-          ],
-        };
-        console.log("🔥 Using 'trending' feed type");
-        break;
-      }
-      default: // "all"
-        matchConditions = {
-          $or: [
-            { owner: { $in: [...followingIds, userId] } },
-            {
-              isPublic: { $ne: false },
-              owner: { $ne: userId }, // Avoid duplicating own posts
-            },
-          ],
-        };
-        console.log("🌐 Using 'all' feed type");
-    }
-
-    // Add common filters with better handling
-    matchConditions = {
-      ...matchConditions,
-      $and: [{ isActive: { $ne: false } }, { isDeleted: { $ne: true } }],
+    // Simplified match conditions for better performance
+    const matchConditions = {
+      $or: [{ author: { $in: [...followingIds, userId] } }, { isPublic: { $ne: false }, author: { $ne: userId } }],
+      isActive: { $ne: false },
+      isDeleted: { $ne: true },
     };
 
-    console.log("🔍 Final match conditions:", JSON.stringify(matchConditions, null, 2));
-
-    // Enhanced sorting with validation
-    const validSortFields = ["createdAt", "updatedAt", "likesCount", "commentsCount", "engagementScore"];
-    const sortField = validSortFields.includes(sortBy) ? sortBy : "createdAt";
-    const validSortOrders = ["asc", "desc"];
-    const validSortOrder = validSortOrders.includes(sortOrder) ? sortOrder : "desc";
-
-    const sortStage = {};
-    sortStage[sortField] = validSortOrder === "desc" ? -1 : 1;
-
-    console.log("📋 Sort stage:", sortStage);
-
-    // Enhanced pipeline with better performance
+    // Optimized pipeline with correct field mapping
     const pipeline = [
       { $match: matchConditions },
       {
         $lookup: {
           from: "users",
-          localField: "owner",
+          localField: "author",
           foreignField: "_id",
-          as: "author",
+          as: "authorDetails",
           pipeline: [
             {
               $project: {
@@ -1324,157 +1259,74 @@ const getUserFeed = asyncHandler(async (req, res) => {
       },
       {
         $addFields: {
-          author: { $first: "$author" },
-          engagementScore: {
-            $add: [
-              { $multiply: [{ $ifNull: ["$likesCount", 0] }, 1] },
-              { $multiply: [{ $ifNull: ["$commentsCount", 0] }, 2] },
-              { $multiply: [{ $ifNull: ["$sharesCount", 0] }, 3] },
-            ],
-          },
-          // Check if current user liked this post
-          isLikedByCurrentUser: {
-            $in: [userId, { $ifNull: ["$likes", []] }],
-          },
+          author: { $first: "$authorDetails" },
+          likesCount: { $ifNull: ["$engagement.likeCount", 0] },
+          commentsCount: { $ifNull: ["$engagement.commentCount", 0] },
+          sharesCount: { $ifNull: ["$engagement.shareCount", 0] },
+          isLiked: false,
         },
       },
-    ];
-
-    // Add sorting based on type
-    if (type === "trending") {
-      pipeline.push({
-        $sort: {
-          engagementScore: -1,
-          createdAt: -1,
-        },
-      });
-    } else {
-      pipeline.push({ $sort: sortStage });
-    }
-
-    // Add pagination and projection
-    pipeline.push(
+      { $sort: { createdAt: -1 } },
       { $skip: skip },
       { $limit: limitNum },
       {
         $project: {
           _id: 1,
+          title: 1,
           content: 1,
+          type: 1,
           media: 1,
+          images: 1,
           author: 1,
-          likesCount: { $ifNull: ["$likesCount", 0] },
-          commentsCount: { $ifNull: ["$commentsCount", 0] },
-          sharesCount: { $ifNull: ["$sharesCount", 0] },
-          isLiked: "$isLikedByCurrentUser",
+          likesCount: 1,
+          commentsCount: 1,
+          sharesCount: 1,
+          isLiked: 1,
           createdAt: 1,
           updatedAt: 1,
-          engagementScore: 1,
           isPublic: 1,
+          status: 1,
         },
       },
-    );
+    ];
 
-    console.log("⏳ Executing feed pipeline...");
+    // Execute aggregation
+    const [feed, totalCountResult] = await Promise.all([
+      Post.aggregate(pipeline),
+      Post.aggregate([{ $match: matchConditions }, { $count: "total" }]),
+    ]);
 
-    // Execute queries with proper error handling
-    let feed = [];
-    let totalPosts = 0;
-
-    try {
-      // Try using Post model first, fallback to collection if needed
-      try {
-        console.log("📝 Attempting to use Post model");
-        const [feedResult, totalCountResult] = await Promise.all([
-          Post.aggregate(pipeline),
-          Post.aggregate([{ $match: matchConditions }, { $count: "total" }]),
-        ]);
-        feed = feedResult;
-        totalPosts = totalCountResult.length > 0 ? totalCountResult[0].total : 0;
-        console.log("✅ Successfully used Post model");
-      } catch (modelError) {
-        console.log("📄 Post model failed, using collection directly:", modelError.message);
-
-        const db = mongoose.connection.db;
-        if (!db) {
-          throw new ApiError(500, "Database connection not available");
-        }
-
-        // Check if posts collection exists
-        const collections = await db.listCollections({ name: "posts" }).toArray();
-
-        if (collections.length === 0) {
-          console.warn("⚠️ Posts collection does not exist, returning empty feed");
-          return res.status(200).json(
-            new ApiResponse(
-              200,
-              {
-                feed: [],
-                pagination: {
-                  currentPage: pageNum,
-                  totalPages: 0,
-                  totalPosts: 0,
-                  hasNextPage: false,
-                  hasPrevPage: false,
-                  limit: limitNum,
-                },
-                meta: {
-                  feedType: type,
-                  sortBy: sortField,
-                  sortOrder: validSortOrder,
-                  followingCount: followingIds.length,
-                  message: "No posts available yet - start following users or create posts",
-                },
-              },
-              "Feed is currently empty - no posts found",
-            ),
-          );
-        }
-
-        console.log("📊 Using posts collection directly");
-        const postsCollection = db.collection("posts");
-
-        // Execute both queries in parallel for better performance
-        const [feedResult, totalCountResult] = await Promise.all([
-          postsCollection.aggregate(pipeline).toArray(),
-          postsCollection.aggregate([{ $match: matchConditions }, { $count: "total" }]).toArray(),
-        ]);
-
-        feed = feedResult;
-        totalPosts = totalCountResult.length > 0 ? totalCountResult[0].total : 0;
-        console.log("✅ Successfully used posts collection");
-      }
-    } catch (dbError) {
-      console.error("❌ Database error in getUserFeed:", dbError);
-      if (dbError.code === 50) {
-        // maxTimeMS exceeded
-        throw new ApiError(408, "Feed request timed out. Please try again.");
-      }
-      throw new ApiError(500, "Database error occurred while fetching feed");
-    }
-
-    console.log("✅ Feed results:", { postsFound: feed.length, totalPosts });
-
+    const totalPosts = totalCountResult.length > 0 ? totalCountResult[0].total : 0;
     const totalPages = Math.ceil(totalPosts / limitNum);
 
-    // Enhanced response formatting
-    const formattedFeed = feed.map(post => ({
-      ...post,
-      author: {
-        ...post.author,
-        avatar: post.author?.avatar || "/assets/default-avatar.png",
-        displayName: post.author
-					? `${post.author.firstName || ""} ${post.author.lastName || ""}`.trim() || post.author.username
-					: "Unknown User",
-      },
-      // Add relative timestamps if needed
-      timeAgo: getTimeAgo(post.createdAt),
-    }));
+    // Format response with proper null checks
+    const formattedFeed = feed.map(post => {
+      const author = post.author || {};
+      return {
+        ...post,
+        author: {
+          _id: author._id,
+          username: author.username || "unknown",
+          firstName: author.firstName || "",
+          lastName: author.lastName || "",
+          avatar: author.avatar?.url || author.avatar || null,
+          isVerified: author.isVerified || false,
+          displayName:
+						author.firstName && author.lastName
+							? `${author.firstName} ${author.lastName}`.trim()
+							: author.username || "Unknown User",
+        },
+        likesCount: post.likesCount || 0,
+        commentsCount: post.commentsCount || 0,
+        sharesCount: post.sharesCount || 0,
+      };
+    });
 
     return res.status(200).json(
       new ApiResponse(
         200,
         {
-          feed: formattedFeed,
+          posts: formattedFeed,
           pagination: {
             currentPage: pageNum,
             totalPages,
@@ -1484,19 +1336,20 @@ const getUserFeed = asyncHandler(async (req, res) => {
             limit: limitNum,
           },
           meta: {
-            feedType: type,
-            sortBy: sortField,
-            sortOrder: validSortOrder,
             followingCount: followingIds.length,
+            sort,
+            timestamp: new Date().toISOString(),
           },
         },
-				totalPosts === 0
-					? `No posts found in your ${type} feed`
-					: `Feed fetched successfully - ${totalPosts} posts available`,
+				totalPosts === 0 ? "No posts found in your feed" : "Feed fetched successfully",
       ),
     );
   } catch (error) {
-    console.error("❌ Get user feed error:", error);
+    console.error("Get user feed error:", error);
+
+    if (error.code === 50) {
+      throw new ApiError(408, "Feed request timed out. Please try again.");
+    }
 
     if (error instanceof ApiError) {
       throw error;
@@ -1695,8 +1548,8 @@ const getUserProfileByUsername = asyncHandler(async (req, res) => {
     // Enhanced computed fields
     const enhancedProfile = {
       ...profile,
-      avatar: profile.avatar || "/assets/default-avatar.png",
-      coverImage: profile.coverImage || "/assets/default-cover.png",
+      avatar: profile.avatar?.url || profile.avatar || null,
+      coverImage: profile.coverImage?.url || profile.coverImage || null,
       fullName: `${profile.firstName || ""} ${profile.lastName || ""}`.trim() || profile.username,
       joinDate: profile.createdAt,
       relationshipStatus: profile.isOwnProfile

@@ -549,58 +549,6 @@ const changeUserRole = asyncHandler(async (req, res) => {
 });
 
 /**
- * Get System Configuration (Super Admin Only)
- * @route GET /admin/super-admin/system-config
- * @access Super Admin Only
- */
-const getSystemConfig = asyncHandler(async (req, res) => {
-  const startTime = Date.now();
-  try {
-    const config = {
-      system: {
-        version: "2.0.0",
-        environment: process.env.NODE_ENV || "development",
-        uptime: process.uptime(),
-        memoryUsage: process.memoryUsage(),
-      },
-      database: {
-        status: "connected",
-        readPreference: "primary",
-        writeConcern: "majority",
-      },
-      security: {
-        jwtExpiry: process.env.ACCESS_TOKEN_EXPIRY || "1h",
-        passwordPolicy: "strong",
-        mfaEnabled: false,
-      },
-      features: {
-        userManagement: true,
-        adminPanel: true,
-        analytics: true,
-        auditLogs: true,
-      },
-    };
-    const executionTime = Date.now() - startTime;
-    return res.status(200).json(
-      new ApiResponse(
-        200,
-        {
-          config,
-          meta: {
-            executionTime: `${executionTime}ms`,
-            apiHealth: calculateApiHealth(executionTime),
-            generatedAt: new Date().toISOString(),
-          },
-        },
-        "System configuration retrieved successfully",
-      ),
-    );
-  } catch (error) {
-    return res.status(500).json(new ApiResponse(500, null, "Failed to retrieve system configuration"));
-  }
-});
-
-/**
  * Get Audit Logs (Super Admin Only)
  * @route GET /admin/super-admin/audit-logs
  * @access Super Admin Only
@@ -744,62 +692,6 @@ const getSystemHealth = asyncHandler(async (req, res) => {
   }
 });
 
-/**
- * Emergency Lockdown (Super Admin Only)
- * @route POST /admin/super-admin/emergency-lockdown
- * @access Super Admin Only
- */
-const emergencyLockdown = asyncHandler(async (req, res) => {
-  const startTime = Date.now();
-  const { reason, duration = 3600 } = req.body;
-
-  try {
-    if (!reason || reason.trim().length < 20) {
-      throw new ApiError(400, "Detailed reason is required (minimum 20 characters)");
-    }
-    // Mock lockdown implementation
-    const lockdownId = `lockdown_${Date.now()}`;
-    const lockdown = {
-      lockdownId,
-      status: "active",
-      reason: reason.trim(),
-      duration,
-      initiatedBy: req.user._id,
-      initiatedAt: new Date(),
-      expiresAt: new Date(Date.now() + duration * 1000),
-      affectedServices: ["user_registration", "password_reset", "api_access"],
-    };
-    // Log critical action
-    logger.warn("EMERGENCY LOCKDOWN INITIATED", {
-      lockdownId,
-      reason: reason.trim(),
-      duration,
-      initiatedBy: req.user._id,
-      clientIP: req.ip,
-    });
-    const executionTime = Date.now() - startTime;
-    return res.status(200).json(
-      new ApiResponse(
-        200,
-        {
-          ...lockdown,
-          meta: {
-            executionTime: `${executionTime}ms`,
-            apiHealth: calculateApiHealth(executionTime),
-            criticality: "CRITICAL",
-          },
-        },
-        "Emergency lockdown initiated successfully",
-      ),
-    );
-  } catch (error) {
-    if (error instanceof ApiError) {
-      return res.status(error.statusCode).json(new ApiResponse(error.statusCode, null, error.message));
-    }
-    return res.status(500).json(new ApiResponse(500, null, "Emergency lockdown failed"));
-  }
-});
-
 export {
   createSuperAdmin,
   createAdmin,
@@ -807,8 +699,6 @@ export {
   getAllAdmins,
   updateAdmin,
   changeUserRole,
-  getSystemConfig,
   getAuditLogs,
   getSystemHealth,
-  emergencyLockdown,
 };

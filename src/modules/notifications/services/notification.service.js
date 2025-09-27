@@ -1,8 +1,18 @@
-import { Notification } from "../models/notification.model.js";
-import { ApiError } from "../../../shared/index.js";
+import mongoose from "mongoose";
 import { redisClient } from "../../../config/redis/redis.config.js";
+import { ApiError } from "../../../shared/index.js";
+import { Notification } from "../models/notification.model.js";
 
 export class NotificationService {
+  /**
+	 * Validate ObjectId format
+	 */
+  _validateObjectId(id) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      throw new ApiError(400, "Invalid notification ID format");
+    }
+  }
+
   /**
 	 * Create a new notification
 	 */
@@ -73,8 +83,20 @@ export class NotificationService {
         Notification.getUnreadCount(userId),
       ]);
 
+      // Transform notifications to match frontend expectations
+      const transformedNotifications = notifications.map(notification => ({
+        ...notification,
+        from: notification.sender || {
+          _id: "system",
+          username: "system",
+          firstName: "System",
+          lastName: "Notification",
+          avatar: null,
+        },
+      }));
+
       return {
-        notifications,
+        notifications: transformedNotifications,
         pagination: {
           currentPage: page,
           totalPages: Math.ceil(total / limit),
@@ -91,19 +113,37 @@ export class NotificationService {
   }
 
   /**
-	 * Mark notification as read
+	 * Mark notification as read - Fixed version
 	 */
   async markAsRead(notificationId, userId) {
     try {
+      // Validate ObjectId format
+      this._validateObjectId(notificationId);
+
+      // First check if the notification exists and belongs to the user
+      const existingNotification = await Notification.findOne({
+        _id: notificationId,
+        recipient: userId,
+      });
+
+      if (!existingNotification) {
+        throw new ApiError(404, "Notification not found");
+      }
+
+      // If already read, return success with message
+      if (existingNotification.isRead) {
+        return {
+          ...existingNotification.toObject(),
+          message: "Notification was already marked as read",
+        };
+      }
+
+      // Update the notification
       const notification = await Notification.findOneAndUpdate(
         { _id: notificationId, recipient: userId, isRead: false },
         { isRead: true, readAt: new Date() },
         { new: true },
       );
-
-      if (!notification) {
-        throw new ApiError(404, "Notification not found or already read");
-      }
 
       // Invalidate cache
       await this.invalidateUserCache(userId);
@@ -136,14 +176,12 @@ export class NotificationService {
   }
 
   /**
-	 * Delete notification
+	 * Delete notification - Fixed version
 	 */
   async deleteNotification(notificationId, userId) {
     try {
       // Validate ObjectId format
-      if (!notificationId.match(/^[0-9a-fA-F]{24}$/)) {
-        throw new ApiError(400, "Invalid notification ID format");
-      }
+      this._validateObjectId(notificationId);
 
       const notification = await Notification.findOneAndDelete({
         _id: notificationId,
@@ -354,6 +392,31 @@ export class NotificationService {
       return { created: result.length };
     } catch (error) {
       throw new ApiError(500, "Failed to create batch notifications", error);
+    }
+  }
+
+  /**
+	 * Get notification by ID (helper method for debugging)
+	 */
+  async getNotificationById(notificationId, userId) {
+    try {
+      this._validateObjectId(notificationId);
+
+      const notification = await Notification.findOne({
+        _id: notificationId,
+        recipient: userId,
+      }).populate("sender", "username firstName lastName avatar");
+
+      if (!notification) {
+        throw new ApiError(404, "Notification not found");
+      }
+
+      return notification;
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError(500, "Failed to get notification", error);
     }
   }
 }

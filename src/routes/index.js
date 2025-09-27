@@ -1,37 +1,27 @@
-// src/routes/index.js
-import express from "express";
+// src/routes/index.js - Add health check routes
+import { Router } from "express";
 
-// Import route modules
-import adminRoutes from "../modules/admin/routes/admin.routes.js";
-import authRoutes from "../modules/auth/routes/auth.routes.js";
-import forgotPasswordRoutes from "../modules/auth/routes/forgotPassword.routes.js";
-import resetPasswordRoutes from "../modules/auth/routes/resetPassword.routes.js";
-import userRoutes from "../modules/users/routes/user.routes.js";
-import blogRoutes from "../modules/blogs/routes/blog.routes.js";
-import notificationRoutes from "../modules/notifications/routes/notification.routes.js";
+const router = Router();
 
-const router = express.Router();
+// Health check endpoint
+router.get("/health", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "API is healthy",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    version: process.env.npm_package_version || "1.0.0",
+  });
+});
 
-/**
- * API Routes Configuration
- * All routes are prefixed with /api/{version}
- */
-
-// Authentication routes
-router.use("/auth", authRoutes);
-router.use("/auth", forgotPasswordRoutes);
-router.use("/auth", resetPasswordRoutes);
-
-// User management routes
-router.use("/users", userRoutes);
-
-// Admin routes
-router.use("/admin", adminRoutes);
-
-// Blog routes
-router.use("/blogs", blogRoutes);
-
-// Notification routes
-router.use("/notifications", notificationRoutes);
+// API status endpoint
+router.get("/status", (req, res) => {
+  res.status(200).json({
+    success: true,
+    status: "operational",
+    environment: process.env.NODE_ENV || "development",
+    timestamp: new Date().toISOString(),
+  });
+});
 
 export default router;

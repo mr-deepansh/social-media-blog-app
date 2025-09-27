@@ -62,8 +62,6 @@ import {
   updateAppSettings,
   getNotificationTemplates,
   sendBulkNotification,
-  getServerHealth,
-  getDatabaseStats,
   getAutomationRules,
   createAutomationRule,
   getExperiments,
@@ -71,6 +69,9 @@ import {
   getRevenueAnalytics,
   getUserLifetimeValue,
 } from "../controllers/advanced.controller.js";
+
+// Import monitoring controllers
+import { getServerHealth, getDatabaseStats } from "../controllers/monitoring.controller.js";
 
 const router = Router();
 

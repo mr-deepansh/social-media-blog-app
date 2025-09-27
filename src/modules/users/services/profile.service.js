@@ -5,8 +5,8 @@ import { CacheService } from "../../../shared/utils/Cache.js";
 import mongoose from "mongoose";
 
 export class ProfileService {
-  static async getUserProfile(username, currentUserId) {
-    const cacheKey = `profile:${username}:${currentUserId || "guest"}`;
+  static async getUserProfile(identifier, currentUserId) {
+    const cacheKey = `profile:${identifier}:${currentUserId || "guest"}`;
 
     // Try cache first
     const cached = await CacheService.get(cacheKey);
@@ -15,8 +15,8 @@ export class ProfileService {
     }
 
     const [userProfile, userStats] = await Promise.all([
-      this.getUserBasicProfile(username, currentUserId),
-      this.getUserStats(username),
+      this.getUserBasicProfile(identifier, currentUserId),
+      this.getUserStats(identifier),
     ]);
 
     if (!userProfile) {
@@ -46,15 +46,22 @@ export class ProfileService {
     return profile;
   }
 
-  static async getUserBasicProfile(username, currentUserId) {
+  static async getUserBasicProfile(identifier, currentUserId) {
     console.log("🔍 ProfileService Debug:", {
-      username: username.toLowerCase(),
+      identifier,
       currentUserId: currentUserId?.toString(),
       hasCurrentUser: !!currentUserId,
+      isObjectId: mongoose.Types.ObjectId.isValid(identifier),
     });
 
+    // Determine if identifier is ObjectId or username
+    const isObjectId = mongoose.Types.ObjectId.isValid(identifier);
+    const matchQuery = isObjectId
+			? { _id: new mongoose.Types.ObjectId(identifier), isActive: true }
+			: { username: identifier.toLowerCase(), isActive: true };
+
     const pipeline = [
-      { $match: { username: username.toLowerCase(), isActive: true } },
+      { $match: matchQuery },
       {
         $lookup: {
           from: "users",
@@ -108,6 +115,8 @@ export class ProfileService {
           bio: 1,
           avatar: 1,
           coverImage: 1,
+          location: 1,
+          website: 1,
           followersCount: 1,
           followingCount: 1,
           isOwnProfile: 1,
@@ -132,10 +141,13 @@ export class ProfileService {
     return result[0] || null;
   }
 
-  static async getUserStats(username) {
-    const user = await User.findOne({
-      username: username.toLowerCase(),
-    }).select("_id");
+  static async getUserStats(identifier) {
+    // Support both ObjectId and username
+    const isObjectId = mongoose.Types.ObjectId.isValid(identifier);
+    const user = isObjectId
+			? await User.findById(identifier).select("_id")
+			: await User.findOne({ username: identifier.toLowerCase() }).select("_id");
+
     if (!user) {
       return null;
     }
@@ -191,10 +203,13 @@ export class ProfileService {
       .lean();
   }
 
-  static async getUserPosts(username, page = 1, limit = 12, type = "all") {
-    const user = await User.findOne({
-      username: username.toLowerCase(),
-    }).select("_id");
+  static async getUserPosts(identifier, page = 1, limit = 12, type = "all") {
+    // Support both ObjectId and username
+    const isObjectId = mongoose.Types.ObjectId.isValid(identifier);
+    const user = isObjectId
+			? await User.findById(identifier).select("_id username")
+			: await User.findOne({ username: identifier.toLowerCase() }).select("_id username");
+
     if (!user) {
       return null;
     }
@@ -257,9 +272,23 @@ export class ProfileService {
     }
   }
 
-  static async invalidateUserCache(username) {
+  // New method to get user by ID specifically (for API routes)
+  static async getUserById(userId, currentUserId) {
+    try {
+      if (!mongoose.Types.ObjectId.isValid(userId)) {
+        throw new Error("Invalid user ID format");
+      }
+
+      return await this.getUserBasicProfile(userId, currentUserId);
+    } catch (error) {
+      console.error("Error getting user by ID:", error);
+      throw error;
+    }
+  }
+
+  static async invalidateUserCache(identifier) {
     // Invalidate all cache variations for this user
-    const patterns = [`profile:${username}:*`, `user:${username}:*`];
+    const patterns = [`profile:${identifier}:*`, `user:${identifier}:*`];
 
     for (const pattern of patterns) {
       await CacheService.del(pattern);
