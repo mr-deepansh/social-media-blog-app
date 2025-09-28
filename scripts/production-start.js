@@ -7,8 +7,14 @@ const execAsync = promisify(exec);
 
 const checkPort = async port => {
   try {
-    // Windows command to check port
-    const { stdout } = await execAsync(`netstat -ano | findstr :${port}`);
+    // Validate and sanitize port number
+    const portNum = parseInt(port, 10);
+    if (isNaN(portNum) || portNum < 1 || portNum > 65535) {
+      throw new Error("Invalid port number");
+    }
+
+    // Windows command to check port - using sanitized port
+    const { stdout } = await execAsync(`netstat -ano | findstr :${portNum}`);
     return stdout.trim().length > 0;
   } catch {
     return false; // Port is free
@@ -17,16 +23,24 @@ const checkPort = async port => {
 
 const killProcessOnPort = async port => {
   try {
-    const { stdout } = await execAsync(`netstat -ano | findstr :${port}`);
+    // Validate and sanitize port number
+    const portNum = parseInt(port, 10);
+    if (isNaN(portNum) || portNum < 1 || portNum > 65535) {
+      throw new Error("Invalid port number");
+    }
+
+    const { stdout } = await execAsync(`netstat -ano | findstr :${portNum}`);
     const lines = stdout.trim().split("\n");
 
     for (const line of lines) {
       const parts = line.trim().split(/\s+/);
       const pid = parts[parts.length - 1];
 
-      if (pid && !isNaN(pid)) {
-        console.log(`🔄 Killing process ${pid} on port ${port}`);
-        await execAsync(`taskkill /PID ${pid} /F`);
+      // Validate PID is numeric and reasonable
+      const pidNum = parseInt(pid, 10);
+      if (pidNum && !isNaN(pidNum) && pidNum > 0 && pidNum < 999999) {
+        console.log(`🔄 Killing process ${pidNum} on port ${portNum}`);
+        await execAsync(`taskkill /PID ${pidNum} /F`);
       }
     }
   } catch (error) {
@@ -35,7 +49,14 @@ const killProcessOnPort = async port => {
 };
 
 const startProduction = async () => {
-  const port = process.env.PORT || 5000;
+  // Validate port from environment
+  const envPort = process.env.PORT || "5000";
+  const port = parseInt(envPort, 10);
+
+  if (isNaN(port) || port < 1 || port > 65535) {
+    console.error("❌ Invalid PORT environment variable");
+    process.exit(1);
+  }
 
   console.log("🚀 Starting production server...");
 

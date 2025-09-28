@@ -432,7 +432,7 @@ const loginUser = asyncHandler(async (req, res) => {
 });
 
 //------------------------------------
-// Secure logout
+// Secure logout with HttpOnly cookie clearing
 //-------------------------------------
 const logoutUser = asyncHandler(async (req, res) => {
   const user = req.user;
@@ -443,9 +443,14 @@ const logoutUser = asyncHandler(async (req, res) => {
   }
 
   // Use enterprise logout
-  const result = await AuthService.logoutUser(user, token, req);
+  await AuthService.logoutUser(user, token, req);
 
-  res.status(200).json(new ApiResponse(200, {}, result.message));
+  // Clear HttpOnly cookies
+  res
+    .clearCookie("accessToken", { path: "/" })
+    .clearCookie("refreshToken", { path: "/" })
+    .status(200)
+    .json(new ApiResponse(200, {}, "Logged out successfully"));
 });
 
 const refreshAccessToken = asyncHandler(async (req, res) => {

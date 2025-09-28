@@ -13,8 +13,19 @@ const resetPassword = asyncHandler(async (req, res) => {
   const { password, confirmPassword } = req.body;
   const { token } = req.params;
 
-  if (!password || !confirmPassword) {
-    throw new ApiError(400, "Both password fields are required");
+  // Validate and sanitize inputs
+  if (!password || !confirmPassword || typeof password !== "string" || typeof confirmPassword !== "string") {
+    throw new ApiError(400, "Both password fields are required and must be strings");
+  }
+
+  if (!token || typeof token !== "string" || token.length < 10) {
+    throw new ApiError(400, "Invalid reset token");
+  }
+
+  // Sanitize token to prevent injection
+  const sanitizedToken = token.replace(/[^a-zA-Z0-9\-_.:]/g, "");
+  if (sanitizedToken !== token) {
+    throw new ApiError(400, "Invalid token format");
   }
 
   if (password !== confirmPassword) {
@@ -25,8 +36,16 @@ const resetPassword = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Password must be at least 8 characters long");
   }
 
-  // Use AuthService for enhanced password reset
-  const result = await AuthService.resetPassword(token, password, req);
+  // Additional password strength validation
+  if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
+    throw new ApiError(
+      400,
+      "Password must contain at least one uppercase letter, one lowercase letter, and one number",
+    );
+  }
+
+  // Use AuthService for enhanced password reset with sanitized token
+  const result = await AuthService.resetPassword(sanitizedToken, password, req);
 
   res.status(200).json(new ApiResponse(200, {}, result.message));
 });

@@ -1,26 +1,39 @@
 // src/shared/middleware/cors.middleware.js
 import cors from "cors";
+import { Logger } from "winston";
 
 const corsOptions = {
   origin: (origin, callback) => {
-    const allowedOrigins = process.env.CORS_ORIGIN?.split(",") || ["*"];
+    const allowedOrigins = process.env.CORS_ORIGIN?.split(",") || [];
+    console.log(
+			`🔍 CORS Check - Origin: ${origin}, Allowed: ${allowedOrigins.join(", ")}, Env: ${process.env.NODE_ENV}`,
+    );
 
-    // Development mode - allow all origins
-    if (process.env.NODE_ENV === "development" || allowedOrigins.includes("*")) {
-      return callback(null, true);
+    // Dev mode: allow specific origins for cookies
+    if (process.env.NODE_ENV === "development") {
+      if (!origin || allowedOrigins.includes(origin)) {
+        console.log("✅ CORS Allowed - Dev mode");
+        return callback(null, true);
+      }
     }
 
-    // Production mode - check specific origins
+    // Prod mode: specific allowed origins only
     if (!origin || allowedOrigins.includes(origin)) {
+      console.log("✅ CORS Allowed - Prod mode");
       return callback(null, true);
     }
 
-    callback(new Error("Not allowed by CORS"));
+    console.log(`❌ CORS Blocked - Origin: ${origin}`);
+    Logger.warn(`Blocked CORS request from: ${origin}`);
+    return callback(new Error("Not allowed by CORS"));
   },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-  optionsSuccessStatus: 200,
+
+  credentials: true, // Always true for cookies
+  methods: process.env.CORS_METHODS?.split(",") || ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "X-CSRF-Token", "X-Client-Version"],
+  optionsSuccessStatus: parseInt(process.env.CORS_OPTIONS_SUCCESS_STATUS) || 204,
+  maxAge: parseInt(process.env.CORS_MAX_AGE) || 86400,
+  preflightContinue: false,
 };
 
 export { corsOptions };

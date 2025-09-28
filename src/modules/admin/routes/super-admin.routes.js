@@ -1,6 +1,7 @@
 // src/modules/admin/routes/super-admin.routes.js
 import { Router } from "express";
 import { isSuperAdmin } from "../../../shared/middleware/superAdmin.middleware.js";
+import { csrfProtection, setCSRFToken } from "../../../shared/middleware/csrf.middleware.js";
 import {
   createSuperAdmin,
   createAdmin,
@@ -26,6 +27,10 @@ router.post("/create", createSuperAdmin);
 
 // Apply super admin middleware to protected routes
 router.use(isSuperAdmin);
+
+// Apply CSRF protection to all admin routes
+router.use(setCSRFToken);
+router.use(csrfProtection);
 
 // ============================================================================
 // 👤 ADMIN MANAGEMENT (Super Admin Only)

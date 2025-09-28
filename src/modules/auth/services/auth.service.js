@@ -274,8 +274,14 @@ class AuthService {
       ip: req.ip || "127.0.0.1",
     };
 
+    // Validate required environment variables
+    const resetSecret = process.env.RESET_TOKEN_SECRET || process.env.JWT_SECRET;
+    if (!resetSecret) {
+      throw new ApiError(500, "Server configuration error");
+    }
+
     // Create JWT token with encryption
-    const resetToken = jwt.sign(payload, process.env.RESET_TOKEN_SECRET || process.env.JWT_SECRET, {
+    const resetToken = jwt.sign(payload, resetSecret, {
       expiresIn: "10m",
       algorithm: "HS256",
       issuer: "endlessChatt-security",
@@ -284,7 +290,11 @@ class AuthService {
 
     // Additional encryption layer with IV
     const algorithm = "aes-256-cbc";
-    const key = crypto.scryptSync(process.env.ENCRYPTION_KEY || process.env.JWT_SECRET, "salt", 32);
+    const encryptionKey = process.env.ENCRYPTION_KEY || process.env.JWT_SECRET;
+    if (!encryptionKey) {
+      throw new ApiError(500, "Server configuration error");
+    }
+    const key = crypto.scryptSync(encryptionKey, "salt", 32);
     const iv = crypto.randomBytes(16);
     const cipher = crypto.createCipheriv(algorithm, key, iv);
     let encryptedToken = cipher.update(resetToken, "utf8", "hex");
@@ -376,14 +386,22 @@ class AuthService {
 
       // Decrypt the token
       const algorithm = "aes-256-cbc";
-      const key = crypto.scryptSync(process.env.ENCRYPTION_KEY || process.env.JWT_SECRET, "salt", 32);
+      const decryptionKey = process.env.ENCRYPTION_KEY || process.env.JWT_SECRET;
+      if (!decryptionKey) {
+        throw new ApiError(500, "Server configuration error");
+      }
+      const key = crypto.scryptSync(decryptionKey, "salt", 32);
       const iv = Buffer.from(ivHex, "hex");
       const decipher = crypto.createDecipheriv(algorithm, key, iv);
       let decryptedToken = decipher.update(encryptedData, "hex", "utf8");
       decryptedToken += decipher.final("utf8");
 
       // Verify JWT token
-      const payload = jwt.verify(decryptedToken, process.env.RESET_TOKEN_SECRET || process.env.JWT_SECRET, {
+      const verifySecret = process.env.RESET_TOKEN_SECRET || process.env.JWT_SECRET;
+      if (!verifySecret) {
+        throw new ApiError(500, "Server configuration error");
+      }
+      const payload = jwt.verify(decryptedToken, verifySecret, {
         algorithm: "HS256",
         issuer: "endlessChatt-security",
         audience: "password-reset",
@@ -601,19 +619,26 @@ class AuthService {
 
       // Parse user agent for OS and platform
       const getDeviceInfo = ua => {
-        const os = ua.includes("Windows")
+        // Sanitize user agent to prevent injection
+        const sanitizedUA = String(ua || "").replace(/[<>"'&]/g, "");
+
+        const os = sanitizedUA.includes("Windows")
 					? "Windows"
-					: ua.includes("Mac")
+					: sanitizedUA.includes("Mac")
 						? "macOS"
-						: ua.includes("Linux")
+						: sanitizedUA.includes("Linux")
 							? "Linux"
-							: ua.includes("Android")
+							: sanitizedUA.includes("Android")
 								? "Android"
-								: ua.includes("iOS")
+								: sanitizedUA.includes("iOS")
 									? "iOS"
 									: "Unknown";
 
-        const platform = ua.includes("Mobile") ? "Mobile" : ua.includes("Tablet") ? "Tablet" : "Desktop";
+        const platform = sanitizedUA.includes("Mobile")
+					? "Mobile"
+					: sanitizedUA.includes("Tablet")
+						? "Tablet"
+						: "Desktop";
 
         return { os, platform };
       };

@@ -62,8 +62,7 @@ app.use(
 // ========================================
 app.use(corsMiddleware);
 
-// ✅ Handle preflight
-app.options("*", cors(securityConfig.cors));
+// ✅ Preflight handled by corsMiddleware
 
 // ========================================
 // BODY PARSING MIDDLEWARE
