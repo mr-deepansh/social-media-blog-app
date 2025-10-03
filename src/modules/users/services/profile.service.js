@@ -68,7 +68,7 @@ export class ProfileService {
           localField: "followers",
           foreignField: "_id",
           as: "followersData",
-          pipeline: [{ $project: { username: 1, firstName: 1, lastName: 1, avatar: 1 } }],
+          pipeline: [{ $project: { password: 0, refreshToken: 0 } }],
         },
       },
       {
@@ -77,7 +77,7 @@ export class ProfileService {
           localField: "following",
           foreignField: "_id",
           as: "followingData",
-          pipeline: [{ $project: { username: 1, firstName: 1, lastName: 1, avatar: 1 } }],
+          pipeline: [{ $project: { password: 0, refreshToken: 0 } }],
         },
       },
       {
@@ -106,33 +106,6 @@ export class ProfileService {
           refreshToken: 0,
           "security.passwordHistory": 0,
           activityLog: 0,
-          // Explicitly include important fields
-          _id: 1,
-          username: 1,
-          firstName: 1,
-          lastName: 1,
-          fullName: 1,
-          bio: 1,
-          avatar: 1,
-          coverImage: 1,
-          location: 1,
-          website: 1,
-          followersCount: 1,
-          followingCount: 1,
-          isOwnProfile: 1,
-          isFollowing: 1,
-          followsYou: 1,
-          isActive: 1,
-          isEmailVerified: 1,
-          createdAt: 1,
-          // Only show email for own profile
-          email: {
-            $cond: {
-              if: "$isOwnProfile",
-              then: "$email",
-              else: "$$REMOVE",
-            },
-          },
         },
       },
     ];

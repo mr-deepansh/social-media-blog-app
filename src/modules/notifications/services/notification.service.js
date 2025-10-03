@@ -384,11 +384,9 @@ export class NotificationService {
   async createBatchNotifications(notifications) {
     try {
       const result = await Notification.insertMany(notifications);
-
       // Invalidate cache for all affected users
       const userIds = [...new Set(notifications.map(n => n.recipient))];
       await Promise.all(userIds.map(userId => this.invalidateUserCache(userId)));
-
       return { created: result.length };
     } catch (error) {
       throw new ApiError(500, "Failed to create batch notifications", error);
@@ -401,16 +399,13 @@ export class NotificationService {
   async getNotificationById(notificationId, userId) {
     try {
       this._validateObjectId(notificationId);
-
       const notification = await Notification.findOne({
         _id: notificationId,
         recipient: userId,
       }).populate("sender", "username firstName lastName avatar");
-
       if (!notification) {
         throw new ApiError(404, "Notification not found");
       }
-
       return notification;
     } catch (error) {
       if (error instanceof ApiError) {

@@ -1,6 +1,5 @@
 // src/app.js
 import express from "express";
-import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
@@ -12,10 +11,11 @@ import { apiRateLimiter } from "./shared/middleware/rateLimit.middleware.js";
 import corsMiddleware from "./shared/middleware/cors.middleware.js";
 
 // Configurations
-import { serverConfig, securityConfig } from "./config/index.js";
+import { serverConfig } from "./config/index.js";
 
 // Shared utilities
 import { ApiError } from "./shared/index.js";
+import { globalErrorHandler } from "./shared/utils/ErrorHandler.js";
 
 // Route imports
 import adminRoutes from "./modules/admin/routes/admin.routes.js";
@@ -35,7 +35,7 @@ const app = express();
 app.set("trust proxy", 1);
 
 // ========================================
-// SECURITY MIDDLEWARE (Apply First)
+// SECURITY MIDDLEWARE
 // ========================================
 app.use(
   helmet({
@@ -58,11 +58,9 @@ app.use(
 );
 
 // ========================================
-// CORS MIDDLEWARE (Apply Early)
+// CORS MIDDLEWARE
 // ========================================
 app.use(corsMiddleware);
-
-// ✅ Preflight handled by corsMiddleware
 
 // ========================================
 // BODY PARSING MIDDLEWARE
@@ -75,7 +73,6 @@ app.use(cookieParser());
 // LOGGING MIDDLEWARE
 // ========================================
 if (serverConfig.nodeEnv === "development") {
-  // Custom debug middleware for development
   app.use((req, res, next) => {
     const startTime = Date.now();
     console.log(`\n📥 ${req.method} ${req.originalUrl}`);
@@ -88,7 +85,6 @@ if (serverConfig.nodeEnv === "development") {
       "user-agent": `${req.headers["user-agent"]?.substring(0, 50)}...` || "None",
     });
 
-    // Log response time
     const originalEnd = res.end;
     res.end = function (...args) {
       const duration = Date.now() - startTime;
@@ -99,7 +95,6 @@ if (serverConfig.nodeEnv === "development") {
     next();
   });
 } else {
-  // Use morgan for production
   app.use(morgan("combined"));
 }
 
@@ -153,7 +148,6 @@ app.get(`/api/${serverConfig.apiVersion}`, (req, res) => {
 // ========================================
 const apiRouter = express.Router();
 
-// Mount all route modules
 apiRouter.use("/admin", adminRoutes);
 apiRouter.use("/auth", forgotPasswordRoutes);
 apiRouter.use("/auth", resetPasswordRoutes);
@@ -207,49 +201,6 @@ app.use("*", (req, res) => {
 // ========================================
 // GLOBAL ERROR HANDLER
 // ========================================
-import { globalErrorHandler, notFound } from "./shared/utils/ErrorHandler.js";
-
-// Apply error handlers
 app.use(globalErrorHandler);
-
-// ========================================
-// GRACEFUL SHUTDOWN HANDLERS
-// ========================================
-const gracefulShutdown = signal => {
-  console.log(`\n🔄 ${signal} received. Starting graceful shutdown...`);
-
-  // Close server
-  const server = app.listen();
-  server.close(() => {
-    console.log("✅ HTTP server closed.");
-
-    // Close database connections, cleanup, etc.
-    // Add your cleanup logic here
-
-    console.log("✅ Graceful shutdown completed.");
-    process.exit(0);
-  });
-
-  // Force close after timeout
-  setTimeout(() => {
-    console.error("❌ Could not close connections in time, forcefully shutting down");
-    process.exit(1);
-  }, serverConfig.shutdownTimeout);
-};
-
-process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
-process.on("SIGINT", () => gracefulShutdown("SIGINT"));
-
-process.on("unhandledRejection", (reason, promise) => {
-  console.error("🚨 Unhandled Rejection at:", promise, "reason:", reason);
-  // Close server gracefully
-  gracefulShutdown("Unhandled Rejection");
-});
-
-process.on("uncaughtException", error => {
-  console.error("🚨 Uncaught Exception:", error);
-  // Close server gracefully
-  gracefulShutdown("Uncaught Exception");
-});
 
 export default app;

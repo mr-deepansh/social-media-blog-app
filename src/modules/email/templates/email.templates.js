@@ -5,12 +5,6 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-/**
- * Render EJS email template with data
- * @param {string} templateName - Name of the template file (without .ejs extension)
- * @param {Object} data - Data to pass to the template
- * @returns {Promise<string>} - Rendered HTML string
- */
 export const renderEmailTemplate = async (templateName, data) => {
   try {
     const templatePath = path.join(__dirname, "..", "views", "emails", `${templateName}.ejs`);
@@ -22,37 +16,14 @@ export const renderEmailTemplate = async (templateName, data) => {
   }
 };
 
-/**
- * Generate forgot password email HTML
- * @param {Object} data - Email data
- * @param {string} data.name - User's name
- * @param {string} data.resetUrl - Password reset URL
- * @returns {Promise<string>} - Rendered HTML
- */
 export const generateForgotPasswordEmail = async data => {
   return await renderEmailTemplate("forgot-password", data);
 };
 
-/**
- * Generate password reset success email HTML
- * @param {Object} data - Email data
- * @param {string} data.name - User's name
- * @param {string} data.username - User's username
- * @param {string} data.email - User's email
- * @param {string} data.loginUrl - Login URL
- * @param {string} data.resetTime - Time of password reset
- * @returns {Promise<string>} - Rendered HTML
- */
 export const generatePasswordResetSuccessEmail = async data => {
   return await renderEmailTemplate("password-reset-success", data);
 };
 
-/**
- * Generate plain text version of email (fallback)
- * @param {string} templateName - Template name
- * @param {Object} data - Email data
- * @returns {string} - Plain text version
- */
 export const generatePlainTextEmail = (templateName, data) => {
   switch (templateName) {
     case "forgot-password":
