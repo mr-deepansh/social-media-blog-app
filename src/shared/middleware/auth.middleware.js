@@ -4,6 +4,7 @@ import { User } from "../../modules/users/models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/AsyncHandler.js";
 import { CacheService } from "../../shared/utils/Cache.js";
+import { logger } from "../services/logger.service.js";
 
 // Enterprise fallback constants
 const FALLBACK_CACHE_TTL = 300; // 5 minutes
@@ -21,7 +22,16 @@ export const verifyJWT = asyncHandler(async (req, res, next) => {
   try {
     // Extract token from multiple sources with better parsing
     let token = req.cookies?.accessToken || req.body?.accessToken;
-
+    // Critical debugging log
+    logger.info("🔍 Auth Middleware Debug", {
+      hasCookies: !!req.cookies,
+      cookieKeys: req.cookies ? Object.keys(req.cookies) : [],
+      hasAccessToken: !!req.cookies?.accessToken,
+      hasAuthHeader: !!req.header("Authorization"),
+      url: req.url,
+      method: req.method,
+      origin: req.headers.origin,
+    });
     // Handle Authorization header properly
     const authHeader = req.header("Authorization");
     if (!token && authHeader) {
@@ -33,6 +43,12 @@ export const verifyJWT = asyncHandler(async (req, res, next) => {
     }
 
     if (!token) {
+      // add debugger logs
+      logger.warn("No token provided", {
+        url: req.url,
+        cookies: req.cookies ? Object.keys(req.cookies) : [],
+        hasAuthHeader: !!authHeader,
+      });
       throw new ApiError(401, "Unauthorized request");
     }
 
@@ -78,8 +94,22 @@ export const verifyJWT = asyncHandler(async (req, res, next) => {
 
     req.user = user;
     req.token = token;
+
+    // add debugger logs
+    logger.info("✅ Auth Success", {
+      userId: user._id,
+      username: user.username,
+    });
+
     next();
   } catch (error) {
+    // add debugger logs
+    logger.error("❌ Auth Failed", {
+      message: error.message,
+      url: req.url,
+      method: req.method,
+      hasCookies: !!req.cookies,
+    });
     if (error instanceof jwt.JsonWebTokenError) {
       throw new ApiError(401, "Invalid Access Token");
     }

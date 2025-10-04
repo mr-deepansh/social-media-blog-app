@@ -14,6 +14,7 @@ import { uploadToCloudinary, deleteFromCloudinary } from "../../../shared/servic
 import fs from "fs/promises";
 import { User } from "../models/user.model.js";
 import { Post } from "../../blogs/models/post/post.model.js";
+import { accessTokenOptions, refreshTokenOptions } from "../../../shared/utils/cookieOptions.js";
 
 const logger = new Logger("UserController");
 
@@ -295,12 +296,7 @@ const registerUser = asyncHandler(async (req, res) => {
     };
 
     // Set cookie options for tokens
-    const cookieOptions = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 86400000, // 24 hours
-    };
+    const { rememberMe = false } = req.body;
 
     // Performance tracking
     const executionTime = Date.now() - startTime;
@@ -312,8 +308,8 @@ const registerUser = asyncHandler(async (req, res) => {
 
     return res
       .status(201)
-      .cookie("accessToken", accessToken, cookieOptions)
-      .cookie("refreshToken", refreshToken, cookieOptions)
+      .cookie("accessToken", accessToken, accessTokenOptions(rememberMe))
+      .cookie("refreshToken", refreshToken, refreshTokenOptions(rememberMe))
       .json(
         new ApiResponse(
           201,
@@ -346,12 +342,6 @@ const loginUser = asyncHandler(async (req, res) => {
     });
     // Use AuthService for enhanced login
     const loginResult = await AuthService.loginUser(validatedData, req);
-    const cookieOptions = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: rememberMe ? 2592000000 : 86400000, // 30d : 1d
-    };
     const executionTime = Date.now() - startTime;
     logger.info("User login successful", {
       userId: loginResult.user._id,
@@ -369,8 +359,8 @@ const loginUser = asyncHandler(async (req, res) => {
 
     return res
       .status(200)
-      .cookie("accessToken", loginResult.accessToken, cookieOptions)
-      .cookie("refreshToken", loginResult.refreshToken, cookieOptions)
+      .cookie("accessToken", loginResult.accessToken, accessTokenOptions(rememberMe))
+      .cookie("refreshToken", loginResult.refreshToken, refreshTokenOptions(rememberMe))
       .json(
         new ApiResponse(
           200,
@@ -467,15 +457,11 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     if (incomingRefreshToken !== user?.refreshToken) {
       throw new ApiError(401, "Refresh token is expired or used");
     }
-    const options = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-    };
     const { accessToken, newRefreshToken } = await generateAccessAndRefreshTokens(user._id);
     return res
       .status(200)
-      .cookie("accessToken", accessToken, options)
-      .cookie("refreshToken", newRefreshToken, options)
+      .cookie("accessToken", accessToken, accessTokenOptions())
+      .cookie("refreshToken", newRefreshToken, refreshTokenOptions())
       .json(new ApiResponse(200, { accessToken, refreshToken: newRefreshToken }, "Access token refreshed"));
   } catch (error) {
     throw new ApiError(401, error?.message || "Invalid refresh token");

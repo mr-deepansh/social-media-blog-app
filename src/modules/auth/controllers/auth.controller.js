@@ -4,6 +4,7 @@ import { ApiError } from "../../../shared/utils/ApiError.js";
 import { ApiResponse } from "../../../shared/utils/ApiResponse.js";
 import { AuthService } from "../services/auth.service.js";
 import { User } from "../../users/models/user.model.js";
+import { getCookieOptions } from "../../../shared/utils/cookieOptions.js";
 
 /**
  * Verify email address

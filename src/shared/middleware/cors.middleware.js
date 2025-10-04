@@ -30,7 +30,15 @@ const corsOptions = {
 
   credentials: true, // Always true for cookies
   methods: process.env.CORS_METHODS?.split(",") || ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "X-CSRF-Token", "X-Client-Version"],
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "X-Requested-With",
+    "X-CSRF-Token",
+    "X-Client-Version",
+    "Cache-Control",
+    "Accept",
+  ],
   optionsSuccessStatus: parseInt(process.env.CORS_OPTIONS_SUCCESS_STATUS) || 204,
   maxAge: parseInt(process.env.CORS_MAX_AGE) || 86400,
   preflightContinue: false,
