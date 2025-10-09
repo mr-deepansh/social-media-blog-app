@@ -2,17 +2,18 @@
 
 ## Overview
 
-This project uses **Husky v9+** with the latest recommended configuration approach. The old `husky add` command is deprecated and replaced with direct file creation.
+This project uses **Husky v9+** with the latest recommended configuration approach. The old `husky add` command is
+deprecated and replaced with direct file creation.
 
 ## Current Configuration
 
 ### Installed Hooks
 
-| Hook | Command | Purpose |
-|------|---------|---------|
-| `pre-commit` | `npm run pre-commit` | Runs lint-staged (ESLint + Prettier) |
-| `pre-push` | `npm run pre-push` | Runs linting and tests |
-| `commit-msg` | `npx --no -- commitlint --edit $1` | Validates commit message format |
+| Hook         | Command                            | Purpose                              |
+| ------------ | ---------------------------------- | ------------------------------------ |
+| `pre-commit` | `npm run pre-commit`               | Runs lint-staged (ESLint + Prettier) |
+| `pre-push`   | `npm run pre-push`                 | Runs linting and tests               |
+| `commit-msg` | `npx --no -- commitlint --edit $1` | Validates commit message format      |
 
 ### Package.json Scripts
 
@@ -59,12 +60,14 @@ chmod +x .husky/commit-msg
 ## What Changed from Old Husky?
 
 ### ❌ Old Way (Deprecated)
+
 ```bash
 # This is now deprecated
 npx husky add .husky/pre-commit "npm run pre-commit"
 ```
 
 ### ✅ New Way (2025+)
+
 ```bash
 # Direct file creation
 echo "npm run pre-commit" > .husky/pre-commit
@@ -98,11 +101,13 @@ cat .husky/commit-msg
 ### Hooks Not Running?
 
 1. **Check if hooks are executable:**
+
    ```bash
    chmod +x .husky/*
    ```
 
 2. **Verify Husky is installed:**
+
    ```bash
    npx husky --version
    ```
@@ -159,4 +164,5 @@ The same scripts run in CI/CD:
 
 ---
 
-**📝 Note:** This setup ensures code quality and consistency across all contributors while using the latest Husky best practices.
+**📝 Note:** This setup ensures code quality and consistency across all contributors while using the latest Husky best
+practices.

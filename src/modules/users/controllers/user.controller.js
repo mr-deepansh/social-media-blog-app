@@ -11,6 +11,7 @@ import { AuthService } from "../../auth/services/auth.service.js";
 import Jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import { uploadToCloudinary, deleteFromCloudinary } from "../../../shared/services/cloudinary.service.js";
+import { cacheRedis } from "../../../shared/config/redis.config.js";
 import fs from "fs/promises";
 import { User } from "../models/user.model.js";
 import { Post } from "../../blogs/models/post/post.model.js";
@@ -1211,31 +1212,76 @@ const getUserSuggestions = asyncHandler(async (req, res) => {
 	}
 });
 
-// Optimized getUserFeed function with better performance and error handling
+/**
+ * Get user feed with Redis caching and optimized performance
+ * @route GET /api/v2/users/feed
+ * @access Private
+ */
 const getUserFeed = asyncHandler(async (req, res) => {
-	const { page = 1, limit = 20, sort = "recent" } = req.query;
+	const CACHE_TTL = 300;
+	const MAX_LIMIT = 50;
+	const DEFAULT_LIMIT = 20;
+
+	const { page = 1, limit = DEFAULT_LIMIT, sort = "recent" } = req.query;
 	const pageNum = Math.max(1, parseInt(page, 10) || 1);
-	const limitNum = Math.min(50, Math.max(1, parseInt(limit, 10) || 20));
+	const limitNum = Math.min(MAX_LIMIT, Math.max(1, parseInt(limit, 10) || DEFAULT_LIMIT));
 	const userId = req.user._id;
 	const skip = (pageNum - 1) * limitNum;
+	const cacheKey = `feed:${userId}:page:${pageNum}:limit:${limitNum}:sort:${sort}`;
 
 	try {
-		// Get current user's following list
+		console.log(`\n🔍 [REDIS FEED] Checking cache for key: ${cacheKey}`);
+		const startCacheCheck = Date.now();
+
+		const cachedFeed = await cacheRedis.get(cacheKey).catch(err => {
+			console.error("⚠️ [REDIS FEED ERROR] Cache check failed:", err.message);
+			return null;
+		});
+
+		if (cachedFeed) {
+			const cacheCheckTime = Date.now() - startCacheCheck;
+			const ttl = await cacheRedis.ttl(cacheKey);
+			console.log(`✅ [REDIS FEED HIT] Cache hit for user ${userId}, page ${pageNum}`);
+			console.log(`⚡ [REDIS FEED] Cache retrieval time: ${cacheCheckTime}ms`);
+			console.log(`⏰ [REDIS FEED TTL] Remaining TTL: ${ttl} seconds (${Math.floor(ttl / 60)}m ${ttl % 60}s)`);
+			console.log(`📊 [REDIS FEED] Serving ${cachedFeed ? "cached" : "fresh"} data\n`);
+
+			const parsedFeed = typeof cachedFeed === "string" ? JSON.parse(cachedFeed) : cachedFeed;
+			return res.status(200).json(
+				new ApiResponse(
+					200,
+					{
+						...parsedFeed,
+						meta: {
+							...parsedFeed.meta,
+							cached: true,
+							cacheHit: true,
+							cacheTTL: ttl,
+							cacheRetrievalTime: `${cacheCheckTime}ms`,
+						},
+					},
+					"Feed fetched from cache",
+				),
+			);
+		}
+
+		const cacheCheckTime = Date.now() - startCacheCheck;
+		console.log(`❌ [REDIS FEED MISS] Cache miss for user ${userId}, page ${pageNum}`);
+		console.log(`🔍 [REDIS FEED] Cache check time: ${cacheCheckTime}ms`);
+		console.log("🔄 [REDIS FEED] Fetching fresh data from database...\n");
+
 		const currentUser = await User.findById(userId).select("following").lean();
 		if (!currentUser) {
 			throw new ApiError(404, "User not found");
 		}
 
 		const followingIds = currentUser.following || [];
-
-		// Simplified match conditions for better performance
 		const matchConditions = {
 			$or: [{ author: { $in: [...followingIds, userId] } }, { isPublic: { $ne: false }, author: { $ne: userId } }],
 			isActive: { $ne: false },
 			isDeleted: { $ne: true },
 		};
 
-		// Optimized pipeline with correct field mapping
 		const pipeline = [
 			{ $match: matchConditions },
 			{
@@ -1291,16 +1337,21 @@ const getUserFeed = asyncHandler(async (req, res) => {
 			},
 		];
 
-		// Execute aggregation
+		const startDbQuery = Date.now();
+		console.log("🔍 [DB QUERY] Starting database query for feed...");
 		const [feed, totalCountResult] = await Promise.all([
 			Post.aggregate(pipeline),
 			Post.aggregate([{ $match: matchConditions }, { $count: "total" }]),
 		]);
+		const dbQueryTime = Date.now() - startDbQuery;
+
+		console.log(`📊 [DB QUERY] Database query completed in ${dbQueryTime}ms`);
+		console.log(`📝 [FEED RESULT] Found ${feed.length} posts for user ${userId}`);
+		console.log(`👥 [FEED QUERY] User ${userId} following ${followingIds.length} users\n`);
 
 		const totalPosts = totalCountResult.length > 0 ? totalCountResult[0].total : 0;
 		const totalPages = Math.ceil(totalPosts / limitNum);
 
-		// Format response with proper null checks
 		const formattedFeed = feed.map(post => {
 			const author = post.author || {};
 			return {
@@ -1323,39 +1374,60 @@ const getUserFeed = asyncHandler(async (req, res) => {
 			};
 		});
 
-		return res.status(200).json(
-			new ApiResponse(
-				200,
-				{
-					posts: formattedFeed,
-					pagination: {
-						currentPage: pageNum,
-						totalPages,
-						totalPosts,
-						hasNextPage: pageNum < totalPages,
-						hasPrevPage: pageNum > 1,
-						limit: limitNum,
-					},
-					meta: {
-						followingCount: followingIds.length,
-						sort,
-						timestamp: new Date().toISOString(),
-					},
-				},
-				totalPosts === 0 ? "No posts found in your feed" : "Feed fetched successfully",
-			),
-		);
-	} catch (error) {
-		console.error("Get user feed error:", error);
+		const responseData = {
+			posts: formattedFeed,
+			pagination: {
+				currentPage: pageNum,
+				totalPages,
+				totalPosts,
+				hasNextPage: pageNum < totalPages,
+				hasPrevPage: pageNum > 1,
+				limit: limitNum,
+			},
+			meta: {
+				followingCount: followingIds.length,
+				sort,
+				timestamp: new Date().toISOString(),
+				cached: false,
+				cacheHit: false,
+				dbQueryTime: `${dbQueryTime}ms`,
+			},
+		};
 
+		const startCacheSet = Date.now();
+		console.log(`💾 [REDIS FEED] Caching feed data with key: ${cacheKey}`);
+		console.log(
+			`⏰ [REDIS FEED] Setting TTL: ${CACHE_TTL} seconds (${Math.floor(CACHE_TTL / 60)}m ${CACHE_TTL % 60}s)`,
+		);
+
+		await cacheRedis.setex(cacheKey, CACHE_TTL, JSON.stringify(responseData)).catch(err => {
+			console.error("⚠️ [REDIS FEED ERROR] Failed to cache feed:", err.message);
+		});
+
+		const cacheSetTime = Date.now() - startCacheSet;
+		console.log(`✅ [REDIS FEED] Feed cached successfully in ${cacheSetTime}ms`);
+
+		const verifyTTL = await cacheRedis.ttl(cacheKey);
+		console.log(`✅ [REDIS FEED] Cache verification - TTL: ${verifyTTL} seconds\n`);
+
+		return res
+			.status(200)
+			.json(
+				new ApiResponse(
+					200,
+					responseData,
+					totalPosts === 0 ? "No posts found in your feed" : "Feed fetched successfully",
+				),
+			);
+	} catch (error) {
+		console.error("❌ [FEED ERROR] Get user feed error:", error.message);
+		logger.error("Get user feed error", { error: error.message, userId: userId?.toString() });
 		if (error.code === 50) {
 			throw new ApiError(408, "Feed request timed out. Please try again.");
 		}
-
 		if (error instanceof ApiError) {
 			throw error;
 		}
-
 		throw new ApiError(500, "Failed to fetch user feed. Please try again later.");
 	}
 });
@@ -1381,7 +1453,6 @@ const getUserProfileByUsername = asyncHandler(async (req, res) => {
 		}
 
 		const currentUserFollowing = currentUser.following || [];
-
 		const userProfile = await User.aggregate([
 			{
 				$match: {

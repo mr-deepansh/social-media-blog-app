@@ -511,13 +511,13 @@ _Building the future of social media platforms._
 
 ## 📊 Project Statistics
 
-| Metric                   | Value   | Status |
-| ------------------------ | ------- | ------ |
-| **Lines of Code**        | 25,000+ | ✅ Substantial |
-| **API Endpoints**        | 99+     | ✅ Comprehensive |
-| **Modules**              | 6 Core  | ✅ Well Organized |
-| **Middleware**           | 15+     | ✅ Robust |
-| **Database Models**      | 8+      | ✅ Complete |
-| **Admin Features**       | 50+     | ✅ Enterprise Grade |
-| **Security Features**    | 25+     | ✅ Production Ready |
-| **Documentation**        | 90%+    | ✅ Well Documented |
+| Metric                | Value   | Status              |
+| --------------------- | ------- | ------------------- |
+| **Lines of Code**     | 25,000+ | ✅ Substantial      |
+| **API Endpoints**     | 99+     | ✅ Comprehensive    |
+| **Modules**           | 6 Core  | ✅ Well Organized   |
+| **Middleware**        | 15+     | ✅ Robust           |
+| **Database Models**   | 8+      | ✅ Complete         |
+| **Admin Features**    | 50+     | ✅ Enterprise Grade |
+| **Security Features** | 25+     | ✅ Production Ready |
+| **Documentation**     | 90%+    | ✅ Well Documented  |
