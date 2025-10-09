@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Suspended</title>
+</head>
+<body style="margin:0;padding:0;font-family:Arial,sans-serif;background:#f4f4f4">
+    <div style="max-width:600px;margin:20px auto;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 0 20px rgba(0,0,0,0.1)">
+        <div style="background:linear-gradient(135deg,#dc3545 0%,#c82333 100%);color:#fff;padding:30px;text-align:center">
+            <h1 style="margin:0;font-size:28px">⚠️ Account Suspended</h1>
+        </div>
+        <div style="padding:30px">
+            <p style="font-size:16px;color:#333">Hi <strong><%= firstName || username %></strong>,</p>
+            <p style="color:#666">Your endlessChatt account has been suspended.</p>
+            <div style="background:#f8f9fa;border:1px solid #dee2e6;border-radius:8px;padding:15px;margin:20px 0">
+                <p style="margin:0 0 10px 0;color:#495057;font-weight:bold">📋 Suspension Details:</p>
+                <table style="width:100%;border-collapse:collapse">
+                    <tr><td style="padding:5px 0;color:#6c757d;width:35%">👤 Username:</td><td style="padding:5px 0;font-weight:bold"><%= username %></td></tr>
+                    <tr><td style="padding:5px 0;color:#6c757d">📧 Email:</td><td style="padding:5px 0;font-weight:bold"><%= email %></td></tr>
+                    <tr><td style="padding:5px 0;color:#6c757d">⏰ Suspended At:</td><td style="padding:5px 0;font-weight:bold"><%= suspendedAt %></td></tr>
+                    <tr><td style="padding:5px 0;color:#6c757d">👮 Suspended By:</td><td style="padding:5px 0;font-weight:bold"><%= suspendedBy || 'Admin' %></td></tr>
+                </table>
+            </div>
+            <div style="background:#f8d7da;border-left:4px solid #dc3545;padding:15px;margin:20px 0;border-radius:5px">
+                <p style="margin:0 0 5px 0;color:#721c24;font-weight:bold">📝 Reason:</p>
+                <p style="margin:0;color:#721c24"><%= reason %></p>
+            </div>
+            <div style="background:#fff3cd;border-left:4px solid #ffc107;padding:15px;margin:20px 0;border-radius:5px">
+                <p style="margin:0;color:#856404"><strong>ℹ️ What this means:</strong> You cannot access your account until it is reactivated by an administrator.</p>
+            </div>
+            <div style="background:#d1ecf1;border-left:4px solid #17a2b8;padding:15px;margin:20px 0;border-radius:5px">
+                <p style="margin:0;color:#0c5460"><strong>📞 Need Help?</strong> Contact support at <a href="mailto:<%= supportEmail || 'support@endlesschatt.com' %>" style="color:#0c5460"><%= supportEmail || 'support@endlesschatt.com' %></a></p>
+            </div>
+            <hr style="margin:30px 0;border:none;border-top:1px solid #eee">
+            <p style="font-size:12px;color:#999;text-align:center">endlessChatt Admin Team</p>
+        </div>
+    </div>
+</body>
+</html>

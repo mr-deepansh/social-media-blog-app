@@ -86,7 +86,10 @@ and robust security measures.
 
 ### 🔔 Notification System
 
-- **Email Notifications** with EJS templates
+- **Email Notifications** with EJS templates (8 production-ready templates)
+- **Automated Emails** - Registration welcome, login alerts, password reset
+- **Admin Notifications** - Account suspension/reactivation alerts
+- **Device Tracking** - IP, OS, Platform info in security emails
 - **Notification Templates** management
 - **Bulk Messaging** capabilities
 - **User Notification Preferences**
@@ -128,21 +131,21 @@ src/
 
 ### Technology Stack
 
-| Layer              | Technologies                   |
-| ------------------ | ------------------------------ |
-| **Runtime**        | Node.js 20+, ES6 Modules       |
-| **Framework**      | Express.js 4.21+               |
-| **Database**       | MongoDB 8.0+ with Mongoose ODM |
-| **Cache**          | Redis 7.0+ with IORedis        |
-| **Authentication** | JWT, bcrypt                    |
-| **Validation**     | Joi, Zod, express-validator    |
-| **File Storage**   | Cloudinary, Multer             |
-| **Email**          | Nodemailer with EJS templates  |
-| **Security**       | Helmet, CORS, Rate Limiting    |
-| **Logging**        | Winston, Morgan                |
-| **Testing**        | Jest, Supertest                |
-| **DevOps**         | Docker, PM2                    |
-| **Code Quality**   | ESLint, Prettier, Husky        |
+| Layer              | Technologies                      |
+| ------------------ | --------------------------------- |
+| **Runtime**        | Node.js 20+, ES6 Modules          |
+| **Framework**      | Express.js 4.21+                  |
+| **Database**       | MongoDB 8.0+ with Mongoose ODM    |
+| **Cache**          | Redis 7.0+ with IORedis           |
+| **Authentication** | JWT, bcrypt                       |
+| **Validation**     | Joi, Zod, express-validator       |
+| **File Storage**   | Cloudinary, Multer                |
+| **Email**          | Nodemailer with EJS (8 templates) |
+| **Security**       | Helmet, CORS, Rate Limiting       |
+| **Logging**        | Winston, Morgan                   |
+| **Testing**        | Jest, Supertest                   |
+| **DevOps**         | Docker, PM2                       |
+| **Code Quality**   | ESLint, Prettier, Husky           |
 
 ---
 
@@ -493,6 +496,37 @@ Copyright (c) 2024 Deepansh Gangwar
 
 ---
 
+## 📝 Recent Updates (January 2025)
+
+### ✨ Email System Overhaul
+
+- ✅ **8 Professional EJS Templates** - All emails now use reusable templates
+- ✅ **Device Tracking** - IP, OS, Platform info in security emails
+- ✅ **Automated Notifications** - Welcome, login, password reset, account status
+- ✅ **Clean Architecture** - Separation of concerns with template engine
+- ✅ **Performance Optimized** - Non-blocking async email sending
+
+### 📧 Email Templates Implemented
+
+1. **forgot-password.ejs** - Password reset request
+2. **password-reset-success.ejs** - Reset confirmation with device info
+3. **welcome-verification.ejs** - Email verification link
+4. **email-verification-success.ejs** - Verification confirmation
+5. **login-notification-new.ejs** - Login security alerts
+6. **account-suspended.ejs** - Suspension notification
+7. **account-reactivated.ejs** - Reactivation notification
+8. **welcome-registration.ejs** - Registration welcome email
+
+### 🔧 Technical Improvements
+
+- ✅ Replaced inline HTML with EJS templates
+- ✅ Added device fingerprinting (IP, OS, Platform)
+- ✅ Implemented async email sending (non-blocking)
+- ✅ Added comprehensive email documentation
+- ✅ Removed 4 unused legacy templates
+
+---
+
 <div align="center">
 
 **🚀 Built with ❤️ by [Deepansh Gangwar](https://github.com/mr-deepansh)**
@@ -518,6 +552,7 @@ _Building the future of social media platforms._
 | **Modules**           | 6 Core  | ✅ Well Organized   |
 | **Middleware**        | 15+     | ✅ Robust           |
 | **Database Models**   | 8+      | ✅ Complete         |
+| **Email Templates**   | 8       | ✅ Production Ready |
 | **Admin Features**    | 50+     | ✅ Enterprise Grade |
 | **Security Features** | 25+     | ✅ Production Ready |
 | **Documentation**     | 90%+    | ✅ Well Documented  |

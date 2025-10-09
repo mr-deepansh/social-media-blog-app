@@ -12,6 +12,7 @@ import { NotificationService } from "../services/notification.service.js";
 import auditService from "../services/audit.service.js";
 import { ExportImportService } from "../services/exportImport.service.js";
 import { SecurityService } from "../services/security.service.js";
+import { emailService } from "../../email/services/email.service.js";
 
 import { log } from "console";
 import { Worker, isMainThread, parentPort } from "worker_threads";
@@ -1525,6 +1526,35 @@ const suspendUser = asyncHandler(async (req, res) => {
 			err => console.warn("Cache clear failed:", err.message),
 		);
 	});
+	// Send suspension email (non-blocking)
+	setImmediate(async () => {
+		try {
+			await emailService.sendEmail({
+				to: user.email,
+				subject: "⚠️ Account Suspended - endlessChatt",
+				template: "account-suspended",
+				context: {
+					firstName: user.firstName,
+					username: user.username,
+					email: user.email,
+					suspendedAt: new Date().toLocaleString("en-US", {
+						timeZone: "UTC",
+						year: "numeric",
+						month: "long",
+						day: "numeric",
+						hour: "2-digit",
+						minute: "2-digit",
+						timeZoneName: "short",
+					}),
+					suspendedBy: req.user.username,
+					reason: reason.trim(),
+					supportEmail: process.env.SUPPORT_EMAIL || "support@endlesschatt.com",
+				},
+			});
+		} catch (emailError) {
+			console.warn("Suspension email failed:", emailError.message);
+		}
+	});
 	// Log audit (non-blocking)
 	setImmediate(() => {
 		safeAsyncOperation(
@@ -1571,6 +1601,34 @@ const activateUser = asyncHandler(async (req, res) => {
 		Promise.allSettled([cache.del(`user:profile:${id}`), cache.del("users:list:*"), cache.del("admin:stats:*")]).catch(
 			err => console.warn("Cache clear failed:", err.message),
 		);
+	});
+	// Send reactivation email (non-blocking)
+	setImmediate(async () => {
+		try {
+			await emailService.sendEmail({
+				to: user.email,
+				subject: "✅ Account Reactivated - endlessChatt",
+				template: "account-reactivated",
+				context: {
+					firstName: user.firstName,
+					username: user.username,
+					email: user.email,
+					reactivatedAt: new Date().toLocaleString("en-US", {
+						timeZone: "UTC",
+						year: "numeric",
+						month: "long",
+						day: "numeric",
+						hour: "2-digit",
+						minute: "2-digit",
+						timeZoneName: "short",
+					}),
+					reactivatedBy: req.user.username,
+					loginUrl: process.env.FRONTEND_URL || "http://localhost:8080/login",
+				},
+			});
+		} catch (emailError) {
+			console.warn("Reactivation email failed:", emailError.message);
+		}
 	});
 	// Log audit (non-blocking)
 	setImmediate(() => {
