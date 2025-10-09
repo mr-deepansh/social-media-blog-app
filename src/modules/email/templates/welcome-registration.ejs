@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to endlessChatt</title>
+</head>
+<body style="margin:0;padding:0;font-family:Arial,sans-serif;background:#f4f4f4">
+    <div style="max-width:600px;margin:20px auto;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 0 20px rgba(0,0,0,0.1)">
+        <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:30px;text-align:center">
+            <h1 style="margin:0;font-size:28px">🎉 Welcome to endlessChatt!</h1>
+        </div>
+        <div style="padding:30px">
+            <p style="font-size:16px;color:#333">Hi <strong><%= firstName || username %></strong>,</p>
+            <p style="color:#666">Thank you for joining endlessChatt! Your account has been successfully created.</p>
+            <div style="background:#f8f9fa;border:1px solid #dee2e6;border-radius:8px;padding:15px;margin:20px 0">
+                <p style="margin:0 0 10px 0;color:#495057;font-weight:bold">📋 Account Details:</p>
+                <table style="width:100%;border-collapse:collapse">
+                    <tr><td style="padding:5px 0;color:#6c757d;width:35%">👤 Username:</td><td style="padding:5px 0;font-weight:bold"><%= username %></td></tr>
+                    <tr><td style="padding:5px 0;color:#6c757d">📧 Email:</td><td style="padding:5px 0;font-weight:bold"><%= email %></td></tr>
+                    <tr><td style="padding:5px 0;color:#6c757d">⏰ Registered:</td><td style="padding:5px 0;font-weight:bold"><%= registeredAt %></td></tr>
+                </table>
+            </div>
+            <div style="background:#d1ecf1;border-left:4px solid #17a2b8;padding:15px;margin:20px 0;border-radius:5px">
+                <p style="margin:0;color:#0c5460"><strong>🎉 What's Next?</strong> Start exploring, create posts, follow users, and engage with the community!</p>
+            </div>
+            <div style="text-align:center;margin:30px 0">
+                <a href="<%= loginUrl %>" style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:15px 30px;text-decoration:none;border-radius:8px;font-weight:bold;display:inline-block">Get Started</a>
+            </div>
+            <hr style="margin:30px 0;border:none;border-top:1px solid #eee">
+            <p style="font-size:12px;color:#999;text-align:center">endlessChatt Team</p>
+        </div>
+    </div>
+</body>
+</html>
