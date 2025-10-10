@@ -11,14 +11,14 @@ const rateLimitLogger = new Logger("RateLimit");
 
 // Rate limit configuration with validation
 const max =
-	process.env.NODE_ENV === "development"
-		? 10000 // 10k requests per window in dev
-		: Math.max(1, parseInt(process.env.RATE_LIMIT_MAX) || 100);
+  process.env.NODE_ENV === "development"
+    ? 10000 // 10k requests per window in dev
+    : Math.max(1, parseInt(process.env.RATE_LIMIT_MAX) || 100);
 
 const windowMs =
-	process.env.NODE_ENV === "development"
-		? 60 * 1000 // 1 minute window in dev
-		: Math.max(1000, parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000);
+  process.env.NODE_ENV === "development"
+    ? 60 * 1000 // 1 minute window in dev
+    : Math.max(1000, parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000);
 
 // Use centralized Redis client for rate limiting
 let redis;
@@ -94,11 +94,11 @@ const keyGenerator = req => {
 
   // Hash IP for privacy while maintaining uniqueness
   const ip =
-		req.ip ||
-		req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
-		req.socket?.remoteAddress ||
-		req.connection?.remoteAddress ||
-		"unknown";
+    req.ip ||
+    req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
+    req.socket?.remoteAddress ||
+    req.connection?.remoteAddress ||
+    "unknown";
 
   const hashedIP = createHash("sha256").update(`${ip}rate_limit_salt`).digest("hex").substring(0, 16);
 

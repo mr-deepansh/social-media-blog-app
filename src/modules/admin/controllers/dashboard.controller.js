@@ -286,8 +286,8 @@ class DashboardProcessor {
       verified: user.isVerified || false,
       daysSinceJoined: Math.floor((Date.now() - new Date(user.createdAt)) / (24 * 60 * 60 * 1000)),
       daysSinceLogin: user.lastLoginAt
-				? Math.floor((Date.now() - new Date(user.lastLoginAt)) / (24 * 60 * 60 * 1000))
-				: null,
+        ? Math.floor((Date.now() - new Date(user.lastLoginAt)) / (24 * 60 * 60 * 1000))
+        : null,
     }));
   }
   static calculatePerformanceGrade(executionTime) {

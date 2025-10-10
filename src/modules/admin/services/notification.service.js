@@ -3,9 +3,9 @@ import mongoose from "mongoose";
 
 export class NotificationService {
   /**
-	 * Get notification templates
-	 * @param {string} type - Template type filter
-	 */
+   * Get notification templates
+   * @param {string} type - Template type filter
+   */
   async getTemplates(type = "all") {
     // Mock templates - implement with actual NotificationTemplate model
     const templates = [
@@ -48,9 +48,9 @@ export class NotificationService {
   }
 
   /**
-	 * Send bulk notification
-	 * @param {Object} data - Notification data
-	 */
+   * Send bulk notification
+   * @param {Object} data - Notification data
+   */
   async sendBulkNotification(data) {
     const { recipients, template, channels, priority, customMessage, sentBy } = data;
     // Mock implementation
@@ -83,9 +83,9 @@ export class NotificationService {
     return results;
   }
   /**
-	 * Calculate recipient count based on criteria
-	 * @param {string|Array} recipients - Recipients criteria
-	 */
+   * Calculate recipient count based on criteria
+   * @param {string|Array} recipients - Recipients criteria
+   */
   calculateRecipientCount(recipients) {
     if (Array.isArray(recipients)) {
       return recipients.length;
@@ -101,9 +101,9 @@ export class NotificationService {
     return counts[recipients] || 0;
   }
   /**
-	 * Get notification history
-	 * @param {Object} options - Query options
-	 */
+   * Get notification history
+   * @param {Object} options - Query options
+   */
   async getNotificationHistory(options = {}) {
     const { page = 1, limit = 20, type = "all", status = "all" } = options;
     // Mock notification history

@@ -45,8 +45,8 @@ try {
   if (process.env.REDIS_CLUSTER_ENABLED === "true") {
     // Redis Cluster configuration
     const clusterNodes = process.env.REDIS_CLUSTER_NODES
-			? JSON.parse(process.env.REDIS_CLUSTER_NODES)
-			: [{ host: "localhost", port: 6379 }];
+      ? JSON.parse(process.env.REDIS_CLUSTER_NODES)
+      : [{ host: "localhost", port: 6379 }];
     redisClient = new Redis.Cluster(clusterNodes, {
       redisOptions: {
         password: process.env.REDIS_PASSWORD,
@@ -96,8 +96,8 @@ try {
  */
 const RedisUtils = {
   /**
-	 * Set data with TTL
-	 */
+   * Set data with TTL
+   */
   async setWithTTL(key, value, ttlSeconds = 3600) {
     try {
       const serializedValue = typeof value === "object" ? JSON.stringify(value) : value;
@@ -108,8 +108,8 @@ const RedisUtils = {
     }
   },
   /**
-	 * Get data with automatic JSON parsing
-	 */
+   * Get data with automatic JSON parsing
+   */
   async get(key) {
     try {
       const value = await redisClient.get(key);
@@ -127,8 +127,8 @@ const RedisUtils = {
     }
   },
   /**
-	 * Delete keys by pattern
-	 */
+   * Delete keys by pattern
+   */
   async deletePattern(pattern) {
     try {
       const keys = await redisClient.keys(pattern);
@@ -142,8 +142,8 @@ const RedisUtils = {
     }
   },
   /**
-	 * Get Redis connection status
-	 */
+   * Get Redis connection status
+   */
   getConnectionStatus() {
     return {
       status: redisClient.status,

@@ -6,7 +6,7 @@ const corsOptions = {
   origin: (origin, callback) => {
     const allowedOrigins = process.env.CORS_ORIGIN?.split(",") || [];
     console.log(
-			`🔍 CORS Check - Origin: ${origin}, Allowed: ${allowedOrigins.join(", ")}, Env: ${process.env.NODE_ENV}`,
+      `🔍 CORS Check - Origin: ${origin}, Allowed: ${allowedOrigins.join(", ")}, Env: ${process.env.NODE_ENV}`,
     );
 
     // Dev mode: allow specific origins for cookies

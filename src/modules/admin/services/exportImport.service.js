@@ -127,9 +127,9 @@ export class ExportImportService {
     }
 
     const projection =
-			fields && fields.length > 0
-				? fields.reduce((acc, field) => ({ ...acc, [field]: 1 }), {})
-				: { password: 0, refreshToken: 0, __v: 0 };
+      fields && fields.length > 0
+        ? fields.reduce((acc, field) => ({ ...acc, [field]: 1 }), {})
+        : { password: 0, refreshToken: 0, __v: 0 };
 
     res.setHeader("Content-Type", this.getContentType(format));
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);

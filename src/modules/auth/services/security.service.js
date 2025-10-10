@@ -8,8 +8,8 @@ const logger = new Logger("SecurityService");
  */
 class SecurityService {
   /**
-	 * Calculate risk score based on multiple security factors
-	 */
+   * Calculate risk score based on multiple security factors
+   */
   static calculateRiskScore(activityData) {
     let riskScore = 0;
     const factors = {
@@ -67,8 +67,8 @@ class SecurityService {
   }
 
   /**
-	 * Detect suspicious patterns in user activity
-	 */
+   * Detect suspicious patterns in user activity
+   */
   static async detectSuspiciousPatterns(userId, timeframe = 30) {
     const dateThreshold = new Date(Date.now() - timeframe * 24 * 60 * 60 * 1000);
 
@@ -136,8 +136,8 @@ class SecurityService {
   }
 
   /**
-	 * Generate security recommendations based on activity analysis
-	 */
+   * Generate security recommendations based on activity analysis
+   */
   static generateSecurityRecommendations(analytics) {
     const recommendations = [];
 
@@ -189,8 +189,8 @@ class SecurityService {
   }
 
   /**
-	 * Validate IP address against threat intelligence
-	 */
+   * Validate IP address against threat intelligence
+   */
   static async validateIPThreat(ip) {
     // In production, this would integrate with threat intelligence APIs
     const knownThreats = [
@@ -207,8 +207,8 @@ class SecurityService {
   }
 
   /**
-	 * Generate compliance report for audit purposes
-	 */
+   * Generate compliance report for audit purposes
+   */
   static generateComplianceReport(analytics) {
     return {
       reportId: `COMP-${Date.now()}`,
@@ -246,8 +246,8 @@ class SecurityService {
   }
 
   /**
-	 * Real-time threat assessment
-	 */
+   * Real-time threat assessment
+   */
   static async performThreatAssessment(userId, timeframe = 7) {
     try {
       const dateThreshold = new Date(Date.now() - timeframe * 24 * 60 * 60 * 1000);
@@ -342,8 +342,8 @@ class SecurityService {
   }
 
   /**
-	 * Generate threat-specific recommendations
-	 */
+   * Generate threat-specific recommendations
+   */
   static generateThreatRecommendations(threatLevel, metrics) {
     const recommendations = [];
 

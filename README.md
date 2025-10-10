@@ -7,11 +7,8 @@
 ![JavaScript](https://img.shields.io/badge/JavaScript-ES6+-yellow.svg?logo=javascript&logoColor=black)
 ![MongoDB](https://img.shields.io/badge/MongoDB-8.0+-47A248.svg?logo=mongodb&logoColor=white)
 ![Redis](https://img.shields.io/badge/Redis-7.0+-DC382D.svg?logo=redis&logoColor=white)
-![Scalability](https://img.shields.io/badge/Scalable-High-darkorange.svg)
 ![Docker](https://img.shields.io/badge/Docker-Ready-0db7ed.svg?logo=docker&logoColor=white)
-![Postman](https://img.shields.io/badge/Postman-API_Testing-FF6C37.svg?logo=postman&logoColor=white)
 ![Security](https://img.shields.io/badge/Security-Enterprise_Grade-crimson.svg)
-![Tests](https://img.shields.io/badge/Tests-Jest-limegreen.svg)
 ![Version](https://img.shields.io/badge/Version-2.0.0-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-gold.svg)
 ![ESLint](https://img.shields.io/badge/Code%20Style-ESLint-4B32C3.svg?logo=eslint&logoColor=white)
@@ -86,14 +83,13 @@ and robust security measures.
 
 ### 🔔 Notification System
 
-- **Email Notifications** with EJS templates (8 production-ready templates)
-- **Automated Emails** - Registration welcome, login alerts, password reset
-- **Admin Notifications** - Account suspension/reactivation alerts
+- **In-App Notifications** with real-time delivery
+- **Email Notifications** with EJS templates
+- **Automated Emails** - Password reset, password reset success
 - **Device Tracking** - IP, OS, Platform info in security emails
-- **Notification Templates** management
-- **Bulk Messaging** capabilities
-- **User Notification Preferences**
-- **Real-time Alerts** for admin actions
+- **Notification Preferences** - User-configurable settings
+- **Notification Stats** - Read/unread tracking
+- **Bulk Notifications** - System-wide announcements
 
 ### 📁 File & Media Management
 
@@ -109,43 +105,107 @@ and robust security measures.
 ### Modular Structure
 
 ```
-src/
-├── 📁 modules/                    # Feature modules
-│   ├── 🔐 auth/                  # Authentication system
-│   ├── 👤 users/                 # User management
-│   ├── 📝 blogs/                 # Blog & content system
-│   ├── 👑 admin/                 # Admin dashboard & controls
-│   ├── 🔔 notifications/         # Notification system
-│   └── 📧 email/                 # Email services
-├── 📁 shared/                    # Shared utilities
-│   ├── middleware/               # Custom middleware
-│   ├── utils/                    # Utility functions
-│   ├── validators/               # Input validation
-│   └── services/                 # Shared services
-├── 📁 config/                    # Configuration
-│   ├── database/                 # MongoDB connection
-│   └── redis/                    # Redis configuration
-├── 📄 app.js                     # Express application
-└── 📄 server.js                  # Server initialization
+social-media-blog-app/
+├── 📁 src/
+│   ├── 📁 modules/                    # Feature modules
+│   │   ├── 🔐 auth/                  # Authentication & verification
+│   │   │   ├── controllers/          # Auth controllers
+│   │   │   ├── models/               # Auth models
+│   │   │   ├── routes/               # Auth routes
+│   │   │   └── services/             # Auth business logic
+│   │   ├── 👤 users/                 # User management
+│   │   │   ├── controllers/          # User controllers
+│   │   │   ├── middleware/           # User-specific middleware
+│   │   │   ├── models/               # User models
+│   │   │   ├── routes/               # User routes
+│   │   │   ├── services/             # User business logic
+│   │   │   └── validators/           # User validation schemas
+│   │   ├── 📝 blogs/                 # Blog & content system
+│   │   │   ├── controllers/          # Blog controllers
+│   │   │   ├── models/               # Blog models
+│   │   │   ├── routes/               # Blog routes
+│   │   │   └── services/             # Blog business logic
+│   │   ├── 👑 admin/                 # Admin dashboard & controls
+│   │   │   ├── controllers/          # Admin controllers
+│   │   │   ├── routes/               # Admin routes
+│   │   │   ├── services/             # Admin business logic
+│   │   │   └── validators/           # Admin validation schemas
+│   │   ├── 🔔 notifications/         # Notification system
+│   │   │   ├── controllers/          # Notification controllers
+│   │   │   ├── models/               # Notification models
+│   │   │   ├── routes/               # Notification routes
+│   │   │   └── services/             # Notification business logic
+│   │   └── 📧 email/                 # Email services
+│   │       ├── controllers/          # Email controllers
+│   │       ├── services/             # Email sending logic
+│   │       ├── templates/            # Email template configs
+│   │       ├── views/emails/         # EJS email templates
+│   │       ├── utils/                # Email utilities
+│   │       └── workers/              # Background email workers
+│   ├── 📁 shared/                    # Shared utilities
+│   │   ├── middleware/               # Auth, RBAC, rate limiting, CORS
+│   │   ├── utils/                    # ApiError, ApiResponse, Logger
+│   │   ├── validators/               # Shared validation schemas
+│   │   ├── services/                 # Cache, Cloudinary, Session
+│   │   ├── controllers/              # Media controller
+│   │   ├── routes/                   # Shared routes
+│   │   └── constants/                # App constants
+│   ├── 📁 config/                    # Configuration
+│   │   ├── database/                 # MongoDB connection
+│   │   ├── redis/                    # Redis configuration
+│   │   ├── queue/                    # Queue configuration
+│   │   ├── index.js                  # Config aggregator
+│   │   └── performance.config.js     # Performance settings
+│   ├── 📁 core/                      # Core utilities
+│   ├── 📁 services/                  # Business services
+│   │   ├── auth/                     # Auth services
+│   │   ├── email/                    # Email services
+│   │   └── user/                     # User services
+│   ├── 📁 routes/                    # Route aggregator
+│   │   └── index.js                  # Health check routes
+│   ├── 📄 app.js                     # Express application setup
+│   └── 📄 server.js                  # Server initialization
+├── 📁 docs/                          # Documentation
+│   ├── postman/                      # Postman collections
+│   ├── ADMIN_SYSTEM.md               # Admin documentation
+│   ├── COMPLETE_API_ENDPOINTS.md     # API reference
+│   ├── DATABASE_SCHEMA.md            # Database schema
+│   └── HUSKY_SETUP.md                # Git hooks setup
+├── 📁 logs/                          # Application logs
+├── 📁 Public/Temp/                   # Temporary files
+├── 📁 redis-data/                    # Redis persistence
+├── 📁 scripts/                       # Utility scripts
+│   ├── production-start.js           # Production startup
+│   └── setup-husky.js                # Husky configuration
+├── 📁 uploads/                       # File uploads
+│   ├── images/                       # Image uploads
+│   ├── temp/                         # Temporary files
+│   └── videos/                       # Video uploads
+├── 📦 package.json                   # Dependencies
+├── 🐳 docker-compose.yml             # Docker configuration
+├── 🐳 Dockerfile                     # Docker image
+├── ⚙️ ecosystem.config.cjs           # PM2 configuration
+├── 🔧 .env.example                   # Environment template
+└── 📝 README.md                      # This file
 ```
 
 ### Technology Stack
 
-| Layer              | Technologies                      |
-| ------------------ | --------------------------------- |
-| **Runtime**        | Node.js 20+, ES6 Modules          |
-| **Framework**      | Express.js 4.21+                  |
-| **Database**       | MongoDB 8.0+ with Mongoose ODM    |
-| **Cache**          | Redis 7.0+ with IORedis           |
-| **Authentication** | JWT, bcrypt                       |
-| **Validation**     | Joi, Zod, express-validator       |
-| **File Storage**   | Cloudinary, Multer                |
-| **Email**          | Nodemailer with EJS (8 templates) |
-| **Security**       | Helmet, CORS, Rate Limiting       |
-| **Logging**        | Winston, Morgan                   |
-| **Testing**        | Jest, Supertest                   |
-| **DevOps**         | Docker, PM2                       |
-| **Code Quality**   | ESLint, Prettier, Husky           |
+| Layer              | Technologies                   |
+| ------------------ | ------------------------------ |
+| **Runtime**        | Node.js 20+, ES6 Modules       |
+| **Framework**      | Express.js 4.21+               |
+| **Database**       | MongoDB 8.0+ with Mongoose ODM |
+| **Cache**          | Redis 7.0+ with IORedis        |
+| **Authentication** | JWT, bcrypt                    |
+| **Validation**     | Joi, Zod, express-validator    |
+| **File Storage**   | Cloudinary, Multer             |
+| **Email**          | Nodemailer with EJS templates  |
+| **Security**       | Helmet, CORS, Rate Limiting    |
+| **Logging**        | Winston, Morgan                |
+| **Testing**        | Jest, Supertest                |
+| **DevOps**         | Docker, PM2                    |
+| **Code Quality**   | ESLint, Prettier, Husky        |
 
 ---
 
@@ -186,134 +246,339 @@ curl http://localhost:5000/health
 
 ### Environment Configuration
 
-```bash
+```env
 # Server Configuration
 NODE_ENV=development
 PORT=5000
+HOST=0.0.0.0
 API_VERSION=v2
-CORS_ORIGIN=http://localhost:3000
+CORS_ORIGIN=*
+BODY_LIMIT=16kb
+HTTPS_ENABLED=false
+CSRF_PROTECTION=true
+BASE_URL=http://localhost:5000/api/v2
+FRONTEND_URL=http://localhost:8080
 
 # Database
-MONGODB_URI=mongodb://localhost:27017/social-media-blog
-MONGODB_DB_NAME=social-media-blog
+MONGODB_URI=your-mongodb-uri
+MONGODB_DB_NAME=endlesschat
+MONGODB_MAX_POOL_SIZE=10
+MONGODB_MIN_POOL_SIZE=2
+DB_TIMEOUT=5000
+DB_SOCKET_TIMEOUT=45000
 
 # JWT Security
-JWT_SECRET=your-super-secret-jwt-key
+JWT_SECRET=your-jwt-secret-key
 ACCESS_TOKEN_SECRET=your-access-token-secret
 REFRESH_TOKEN_SECRET=your-refresh-token-secret
 ACCESS_TOKEN_EXPIRY=24h
 REFRESH_TOKEN_EXPIRY=7d
+JWT_ISSUER=yourcompany
+JWT_AUDIENCE=yourapp
 
 # Redis Cache
 REDIS_HOST=localhost
 REDIS_PORT=6379
-REDIS_PASSWORD=administer
+REDIS_PASSWORD=your-redis-password
+REDIS_DB=0
+REDIS_KEY_PREFIX=yourapp:dev
+CACHE_TTL=1800
 
 # Email Configuration
 EMAIL_SERVICE=gmail
 EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
+EMAIL_SECURE=false
 EMAIL_USERNAME=your-email@gmail.com
 EMAIL_PASSWORD=your-app-password
+EMAIL_FROM=noreply@yourcompany.com
+EMAIL_FROM_NAME=Your Company
 
 # Cloudinary (File Storage)
 CLOUDINARY_CLOUD_NAME=your-cloud-name
 CLOUDINARY_API_KEY=your-api-key
 CLOUDINARY_API_SECRET=your-api-secret
+CLOUDINARY_FOLDER=your-folder
+CLOUDINARY_FORMAT=auto
+CLOUDINARY_QUALITY=auto
+
+# File Upload
+UPLOAD_DIR=uploads
+MAX_FILE_SIZE=10485760
+ALLOWED_FILE_TYPES=image/jpeg,image/png,image/gif,image/webp
+
+# Logging
+LOG_LEVEL=info
+LOG_TO_FILE=true
+LOG_FILE_PATH=./logs
+
+# Security
+PASSWORD_MIN_LENGTH=8
+PASSWORD_RESET_TOKEN_EXPIRY=15
+RATE_LIMIT_WINDOW_MS=900000
+COOKIE_MAXAGE_DAY=7
+COOKIE_MAXAGE_REMEMBER_ME=30
 ```
 
 ---
 
 ## 📚 API Documentation
 
-### Base URL
+### Server URL
 
-```
-Development: http://localhost:5000/api/v2
-Production: https://your-domain.com/api/v2
+```typescript
+const SERVER = "http://localhost:5000/api/v2";
+// Production: 'https://your-domain.com/api/v2'
 ```
 
 ### Authentication
 
-```http
-Authorization: Bearer {accessToken}
-Content-Type: application/json
+```typescript
+Headers: {
+  'Authorization': 'Bearer {accessToken}',
+  'Content-Type': 'application/json'
+}
 ```
 
 ### Core Endpoints
 
-#### Authentication
+#### Authentication & Authorization
 
-```http
-POST /api/v2/users/register        # User registration
-POST /api/v2/users/login           # User login
-POST /api/v2/users/logout          # User logout
-POST /api/v2/users/refresh-token   # Refresh access token
-POST /api/v2/users/forgot-password # Password reset request
-POST /api/v2/users/reset-password/{token} # Reset password
+```typescript
+// User Authentication
+POST   ${SERVER}/users/register              # User registration
+POST   ${SERVER}/users/login                 # User login
+POST   ${SERVER}/users/logout                # User logout
+POST   ${SERVER}/users/refresh-token         # Refresh access token
+
+// Email Verification
+POST   ${SERVER}/auth/verify-email/:token    # Verify email address
+POST   ${SERVER}/auth/resend-verification    # Resend verification email
+
+// Password Management
+POST   ${SERVER}/auth/forgot-password        # Request password reset
+POST   ${SERVER}/auth/reset-password/:token  # Reset password with token
+
+// Activity & Security
+GET    ${SERVER}/auth/activity               # Get user activity log
+GET    ${SERVER}/auth/activity/stats         # Activity statistics
+GET    ${SERVER}/auth/activity/locations     # Login locations
+GET    ${SERVER}/auth/security-overview      # Security overview
 ```
 
 #### User Management
 
-```http
-GET  /api/v2/users/profile         # Get current user profile
-PUT  /api/v2/users/profile         # Update profile
-POST /api/v2/users/change-password # Change password
-POST /api/v2/users/upload-avatar   # Upload avatar
-GET  /api/v2/users/search          # Search users
-POST /api/v2/users/follow/{userId} # Follow user
-POST /api/v2/users/unfollow/{userId} # Unfollow user
+```typescript
+// Profile Management
+GET    ${SERVER}/users/profile                # Get current user profile
+PUT    ${SERVER}/users/profile                # Update current user profile
+GET    ${SERVER}/users/profile/:username      # Get user by username
+GET    ${SERVER}/users/profile/:username/posts # Get users posts
+
+// User Actions
+POST   ${SERVER}/users/change-password       # Change password
+POST   ${SERVER}/users/upload-avatar         # Upload avatar image
+POST   ${SERVER}/users/upload-cover          # Upload cover image
+
+// Social Features
+GET    ${SERVER}/users/feed                  # Get personalized feed
+GET    ${SERVER}/users/search                # Search users
+POST   ${SERVER}/users/follow/:userId        # Follow user
+POST   ${SERVER}/users/unfollow/:userId      # Unfollow user
+GET    ${SERVER}/users/followers/:userId     # Get user followers
+GET    ${SERVER}/users/following/:userId     # Get user following
+GET    ${SERVER}/users/:userId/follow-status # Check follow status
+
+// User CRUD (Admin)
+GET    ${SERVER}/users                       # Get all users
+GET    ${SERVER}/users/:id                   # Get user by ID
+PUT    ${SERVER}/users/:id                   # Update user
+DELETE ${SERVER}/users/:id                   # Delete user
 ```
 
 #### Blog Management
 
-```http
-GET  /api/v2/blogs/posts           # Get all posts
-POST /api/v2/blogs/posts           # Create new post
-GET  /api/v2/blogs/posts/{id}      # Get specific post
-PUT  /api/v2/blogs/posts/{id}      # Update post
-DELETE /api/v2/blogs/posts/{id}    # Delete post
+```typescript
+// Posts
+POST   ${SERVER}/blogs/posts                 # Create new post
+GET    ${SERVER}/blogs/posts                 # Get all posts
+GET    ${SERVER}/blogs/posts/my-posts        # Get current user posts
+GET    ${SERVER}/blogs/posts/user/:username  # Get posts by username
+GET    ${SERVER}/blogs/posts/:id             # Get post by ID
+PATCH  ${SERVER}/blogs/posts/:id             # Update post
+DELETE ${SERVER}/blogs/posts/:id             # Delete post
+
+// Comments
+GET    ${SERVER}/blogs/comments/:postId      # Get post comments
+POST   ${SERVER}/blogs/comments/:postId      # Add comment
+
+// Engagement
+POST   ${SERVER}/blogs/engagement/:postId/like     # Toggle like
+POST   ${SERVER}/blogs/engagement/:postId/view     # Track view
+POST   ${SERVER}/blogs/engagement/:postId/repost   # Repost
+POST   ${SERVER}/blogs/engagement/:postId/bookmark # Toggle bookmark
+
+// Media
+POST   ${SERVER}/blogs/media/upload          # Upload media files
+GET    ${SERVER}/blogs/media                 # Get media files
+DELETE ${SERVER}/blogs/media/:mediaId        # Delete media
+
+// Analytics
+GET    ${SERVER}/blogs/analytics/user        # User analytics
+GET    ${SERVER}/blogs/analytics/platform    # Platform analytics
+GET    ${SERVER}/blogs/analytics/post/:id    # Post analytics
+GET    ${SERVER}/blogs/analytics/post/:id/realtime # Real-time engagement
 ```
 
 #### Admin Dashboard
 
-```http
-GET  /api/v2/admin/dashboard       # Admin dashboard
-GET  /api/v2/admin/stats           # System statistics
-GET  /api/v2/admin/users           # Manage users
-POST /api/v2/admin/users/{id}/suspend # Suspend user
-GET  /api/v2/admin/analytics/overview # Analytics overview
+```typescript
+// Dashboard & Stats
+GET    ${SERVER}/admin/dashboard             # Admin dashboard
+GET    ${SERVER}/admin/stats                 # System statistics
+GET    ${SERVER}/admin/stats/live            # Live statistics
+
+// User Management
+GET    ${SERVER}/admin/users                 # Get all users
+GET    ${SERVER}/admin/users/:id             # Get user by ID
+PUT    ${SERVER}/admin/users/:id             # Update user
+DELETE ${SERVER}/admin/users/:id             # Delete user
+PATCH  ${SERVER}/admin/users/:id/suspend     # Suspend user
+PATCH  ${SERVER}/admin/users/:id/activate    # Activate user
+PATCH  ${SERVER}/admin/users/:id/verify      # Verify user account
+GET    ${SERVER}/admin/users/:id/activity-log # User activity log
+GET    ${SERVER}/admin/users/:id/security-analysis # Security analysis
+POST   ${SERVER}/admin/users/:id/notify      # Send notification
+POST   ${SERVER}/admin/users/:id/force-password-reset # Force password reset
+
+// Analytics
+GET    ${SERVER}/admin/analytics/overview    # Analytics overview
+GET    ${SERVER}/admin/analytics/users/growth # User growth
+GET    ${SERVER}/admin/analytics/users/retention # User retention
+GET    ${SERVER}/admin/analytics/users/demographics # Demographics
+GET    ${SERVER}/admin/analytics/engagement/metrics # Engagement metrics
+
+// Security
+GET    ${SERVER}/admin/security/suspicious-accounts # Suspicious accounts
+GET    ${SERVER}/admin/security/login-attempts # Login attempts
+GET    ${SERVER}/admin/security/blocked-ips  # Blocked IPs
+POST   ${SERVER}/admin/security/blocked-ips  # Block IP
+DELETE ${SERVER}/admin/security/blocked-ips/:ipId # Unblock IP
+
+// Content Moderation
+GET    ${SERVER}/admin/content/posts         # Get all posts
+PATCH  ${SERVER}/admin/content/posts/:postId/toggle-visibility # Toggle visibility
+
+// System Monitoring
+GET    ${SERVER}/admin/monitoring/server-health # Server health
+GET    ${SERVER}/admin/monitoring/database-stats # Database stats
+```
+
+#### Super Admin
+
+```typescript
+POST   ${SERVER}/admin/super-admin/create    # Create super admin
+POST   ${SERVER}/admin/super-admin/create-admin # Create admin
+GET    ${SERVER}/admin/super-admin/admins    # Get all admins
+PUT    ${SERVER}/admin/super-admin/update-admin/:adminId # Update admin
+DELETE ${SERVER}/admin/super-admin/delete-admin/:adminId # Delete admin
+PUT    ${SERVER}/admin/super-admin/change-role/:userId # Change user role
+GET    ${SERVER}/admin/super-admin/system-config # Get system config
+PUT    ${SERVER}/admin/super-admin/system-config # Update system config
+GET    ${SERVER}/admin/super-admin/audit-logs # Get audit logs
+GET    ${SERVER}/admin/super-admin/system-health # System health
+POST   ${SERVER}/admin/super-admin/emergency-lockdown # Emergency lockdown
+```
+
+#### Notifications
+
+```typescript
+GET    ${SERVER}/notifications                # Get notifications
+GET    ${SERVER}/notifications/unread-count   # Get unread count
+PATCH  ${SERVER}/notifications/:id/read       # Mark as read
+PATCH  ${SERVER}/notifications/mark-all-read  # Mark all as read
+DELETE ${SERVER}/notifications/:id            # Delete notification
+DELETE ${SERVER}/notifications/clear-all      # Clear all notifications
+GET    ${SERVER}/notifications/stats          # Notification stats
+GET    ${SERVER}/notifications/preferences    # Get preferences
+PUT    ${SERVER}/notifications/preferences    # Update preferences
+POST   ${SERVER}/notifications/system         # Create system notification
 ```
 
 **📖 Complete API Documentation**: [API Reference](docs/COMPLETE_API_ENDPOINTS.md)
 
 ---
 
-## 🧪 Testing
+## 🔧 Development Setup
 
-### Test Structure
+### Development Scripts
 
 ```bash
-# Run all tests
-npm test
+# Development
+npm run dev                  # Start development server
+npm run dev:clean            # Clean start (kill port 5000)
 
-# Run specific test types
-npm run test:unit
-npm run test:integration
-npm run test:e2e
+# Production
+npm start                    # Start production server
+npm run start:prod           # Production with logging
+npm run prod:start           # Production startup script
+npm run prod:start:force     # Force production start
 
-# Generate coverage report
-npm run test:coverage
+# Testing
+npm test                     # Run all tests
+npm run test:unit            # Unit tests
+npm run test:integration     # Integration tests
+npm run test:e2e             # End-to-end tests
+npm run test:coverage        # Coverage report
+npm run test:watch           # Watch mode
 
-# Watch mode for development
-npm run test:watch
+# Code Quality
+npm run lint                 # Lint and fix
+npm run lint:check           # Lint check only
+npm run format               # Format code
+npm run format:check         # Check formatting
+
+# Docker
+npm run docker:build         # Build Docker image
+npm run docker:up            # Start containers
+npm run docker:down          # Stop containers
+npm run docker:logs          # View logs
+npm run docker:dev           # Development mode
+npm run docker:prod          # Production mode
+
+# PM2 Process Manager
+npm run pm2:start            # Start with PM2
+npm run pm2:stop             # Stop PM2
+npm run pm2:restart          # Restart PM2
+npm run pm2:reload           # Reload PM2
+npm run pm2:delete           # Delete PM2
+npm run pm2:logs             # View PM2 logs
+npm run pm2:monit            # Monitor PM2
+npm run pm2:status           # PM2 status
+
+# Security
+npm run security:audit       # Security audit
+npm run security:scan        # Security scan
+
+# Git Hooks
+npm run prepare              # Setup Husky
+npm run husky:setup          # Configure Husky
+npm run pre-commit           # Pre-commit hook
+npm run pre-push             # Pre-push hook
+
+# Utilities
+npm run clean                # Clean install
+npm run prod:check-port      # Check port 5000
+npm run prod:kill-port       # Kill port 5000
 ```
 
-### Test Coverage Goals
+### Code Quality Tools
 
-- **Unit Tests**: 90%+ coverage
-- **Integration Tests**: All API endpoints
-- **E2E Tests**: Critical user journeys
+- **ESLint** for code linting
+- **Prettier** for code formatting
+- **Husky** for git hooks (v9+ syntax)
+- **Lint-staged** for pre-commit checks
+- **Commitlint** for conventional commit messages
 
 ---
 
@@ -359,7 +624,7 @@ npm start
 npm run docker:dev
 
 # Health check
-npm run health:check
+curl http://localhost:5000/health
 ```
 
 ---
@@ -409,41 +674,6 @@ npm run health:check
 - **Content Performance** statistics
 - **Admin Activity** monitoring
 - **System Usage** reports
-
----
-
-## 🔧 Development Setup
-
-### Development Scripts
-
-```bash
-# Start development server
-npm run dev
-
-# Code formatting
-npm run format
-npm run format:check
-
-# Linting
-npm run lint
-npm run lint:check
-
-# Database operations
-npm run db:seed
-npm run db:migrate
-npm run db:reset
-
-# Security audit
-npm run security:audit
-```
-
-### Code Quality Tools
-
-- **ESLint** for code linting
-- **Prettier** for code formatting
-- **Husky** for git hooks (latest v9+ syntax)
-- **Lint-staged** for pre-commit checks
-- **Commitlint** for conventional commit messages
 
 ---
 
@@ -500,30 +730,22 @@ Copyright (c) 2024 Deepansh Gangwar
 
 ### ✨ Email System Overhaul
 
-- ✅ **8 Professional EJS Templates** - All emails now use reusable templates
+- ✅ **Professional EJS Templates** - All emails now use reusable templates
 - ✅ **Device Tracking** - IP, OS, Platform info in security emails
 - ✅ **Automated Notifications** - Welcome, login, password reset, account status
 - ✅ **Clean Architecture** - Separation of concerns with template engine
 - ✅ **Performance Optimized** - Non-blocking async email sending
 
-### 📧 Email Templates Implemented
-
-1. **forgot-password.ejs** - Password reset request
-2. **password-reset-success.ejs** - Reset confirmation with device info
-3. **welcome-verification.ejs** - Email verification link
-4. **email-verification-success.ejs** - Verification confirmation
-5. **login-notification-new.ejs** - Login security alerts
-6. **account-suspended.ejs** - Suspension notification
-7. **account-reactivated.ejs** - Reactivation notification
-8. **welcome-registration.ejs** - Registration welcome email
-
 ### 🔧 Technical Improvements
 
-- ✅ Replaced inline HTML with EJS templates
-- ✅ Added device fingerprinting (IP, OS, Platform)
-- ✅ Implemented async email sending (non-blocking)
-- ✅ Added comprehensive email documentation
-- ✅ Removed 4 unused legacy templates
+- ✅ Modular architecture with feature-based modules
+- ✅ EJS email templates with device tracking
+- ✅ Redis-based session management and caching
+- ✅ Comprehensive middleware (auth, RBAC, rate limiting)
+- ✅ Winston logging with module-specific logs
+- ✅ Cloudinary integration for media storage
+- ✅ PM2 ecosystem for production deployment
+- ✅ Docker Compose for Redis containerization
 
 ---
 
@@ -548,11 +770,11 @@ _Building the future of social media platforms._
 | Metric                | Value   | Status              |
 | --------------------- | ------- | ------------------- |
 | **Lines of Code**     | 25,000+ | ✅ Substantial      |
-| **API Endpoints**     | 99+     | ✅ Comprehensive    |
+| **API Endpoints**     | 150+    | ✅ Comprehensive    |
 | **Modules**           | 6 Core  | ✅ Well Organized   |
-| **Middleware**        | 15+     | ✅ Robust           |
-| **Database Models**   | 8+      | ✅ Complete         |
-| **Email Templates**   | 8       | ✅ Production Ready |
-| **Admin Features**    | 50+     | ✅ Enterprise Grade |
+| **Middleware**        | 17+     | ✅ Robust           |
+| **Database Models**   | 10+     | ✅ Complete         |
+| **Email Templates**   | 2+      | ✅ Production Ready |
+| **Admin Features**    | 60+     | ✅ Enterprise Grade |
 | **Security Features** | 25+     | ✅ Production Ready |
-| **Documentation**     | 90%+    | ✅ Well Documented  |
+| **Documentation**     | 95%+    | ✅ Well Documented  |

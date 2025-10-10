@@ -20,9 +20,9 @@ const LoginAttempt = {
 
 export class SecurityService {
   /**
-	 * Get suspicious accounts based on various risk factors
-	 * @param {Object} options - Query options
-	 */
+   * Get suspicious accounts based on various risk factors
+   * @param {Object} options - Query options
+   */
   async getSuspiciousAccounts(options = {}) {
     const { page = 1, limit = 10, riskLevel = "all" } = options;
     const skip = (page - 1) * limit;
@@ -206,9 +206,9 @@ export class SecurityService {
     };
   }
   /**
-	 * Get login attempts with filtering
-	 * @param {Object} options - Query options
-	 */
+   * Get login attempts with filtering
+   * @param {Object} options - Query options
+   */
   async getLoginAttempts(options = {}) {
     const { status = "all", timeRange = "24h", page = 1, limit = 50 } = options;
     const skip = (page - 1) * limit;
@@ -238,17 +238,17 @@ export class SecurityService {
         attemptedAt: new Date(Date.now() - Math.random() * hours * 60 * 60 * 1000),
         location: ["New York, US", "London, UK", "Tokyo, JP", "Unknown"][Math.floor(Math.random() * 4)],
         reason: isSuccess
-					? null
-					: ["invalid_password", "invalid_email", "account_locked"][Math.floor(Math.random() * 3)],
+          ? null
+          : ["invalid_password", "invalid_email", "account_locked"][Math.floor(Math.random() * 3)],
       };
     });
 
     const filteredAttempts =
-			status === "all"
-				? mockAttempts
-				: mockAttempts.filter(attempt =>
-						status === "success" ? attempt.status === "success" : attempt.status === "failed",
-				);
+      status === "all"
+        ? mockAttempts
+        : mockAttempts.filter(attempt =>
+            status === "success" ? attempt.status === "success" : attempt.status === "failed",
+          );
 
     return {
       data: filteredAttempts,
@@ -268,9 +268,9 @@ export class SecurityService {
   }
 
   /**
-	 * Block an IP address
-	 * @param {Object} data - Block data
-	 */
+   * Block an IP address
+   * @param {Object} data - Block data
+   */
   async blockIpAddress(data) {
     const { ipAddress, reason, duration, blockedBy } = data;
 
@@ -306,9 +306,9 @@ export class SecurityService {
   }
 
   /**
-	 * Get blocked IP addresses
-	 * @param {Object} options - Query options
-	 */
+   * Get blocked IP addresses
+   * @param {Object} options - Query options
+   */
   async getBlockedIps(options = {}) {
     const { page = 1, limit = 20, status = "active" } = options;
     const skip = (page - 1) * limit;
@@ -340,8 +340,8 @@ export class SecurityService {
   }
 
   /**
-	 * Get threat detection summary
-	 */
+   * Get threat detection summary
+   */
   async getThreatDetection() {
     // Mock threat detection data
     return {
@@ -375,9 +375,9 @@ export class SecurityService {
   }
 
   /**
-	 * Unblock an IP address
-	 * @param {Object} data - Unblock data
-	 */
+   * Unblock an IP address
+   * @param {Object} data - Unblock data
+   */
   async unblockIpAddress(data) {
     const { ipId, reason, unblockedBy } = data;
 
@@ -391,9 +391,9 @@ export class SecurityService {
     };
   }
   /**
-	 * Emergency system lockdown
-	 * @param {Object} data - Lockdown data
-	 */
+   * Emergency system lockdown
+   * @param {Object} data - Lockdown data
+   */
   async emergencyLockdown(data) {
     const { reason, duration, initiatedBy } = data;
 

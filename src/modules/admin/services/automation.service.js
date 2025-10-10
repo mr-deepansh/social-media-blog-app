@@ -3,9 +3,9 @@ import mongoose from "mongoose";
 
 export class AutomationService {
   /**
-	 * Get automation rules
-	 * @param {Object} options - Query options
-	 */
+   * Get automation rules
+   * @param {Object} options - Query options
+   */
   async getRules(options = {}) {
     const { status = "all", type = "all" } = options;
 
@@ -113,9 +113,9 @@ export class AutomationService {
   }
 
   /**
-	 * Create automation rule
-	 * @param {Object} ruleData - Rule data
-	 */
+   * Create automation rule
+   * @param {Object} ruleData - Rule data
+   */
   async createRule(ruleData) {
     const { name, description, trigger, conditions, actions, createdBy } = ruleData;
     // Validate rule data
@@ -139,10 +139,10 @@ export class AutomationService {
   }
 
   /**
-	 * Update automation rule
-	 * @param {string} ruleId - Rule ID
-	 * @param {Object} updates - Updates to apply
-	 */
+   * Update automation rule
+   * @param {string} ruleId - Rule ID
+   * @param {Object} updates - Updates to apply
+   */
   async updateRule(ruleId, updates) {
     // Mock implementation
     return {
@@ -153,9 +153,9 @@ export class AutomationService {
   }
 
   /**
-	 * Delete automation rule
-	 * @param {string} ruleId - Rule ID
-	 */
+   * Delete automation rule
+   * @param {string} ruleId - Rule ID
+   */
   async deleteRule(ruleId) {
     // Mock implementation
     return {
@@ -166,9 +166,9 @@ export class AutomationService {
   }
 
   /**
-	 * Execute automation rule manually
-	 * @param {string} ruleId - Rule ID
-	 */
+   * Execute automation rule manually
+   * @param {string} ruleId - Rule ID
+   */
   async executeRule(ruleId) {
     // Mock execution
     return {
@@ -181,10 +181,10 @@ export class AutomationService {
   }
 
   /**
-	 * Get rule execution history
-	 * @param {string} ruleId - Rule ID
-	 * @param {Object} options - Query options
-	 */
+   * Get rule execution history
+   * @param {string} ruleId - Rule ID
+   * @param {Object} options - Query options
+   */
   async getRuleExecutions(ruleId, options = {}) {
     const { page = 1, limit = 20 } = options;
     // Mock execution history
@@ -211,8 +211,8 @@ export class AutomationService {
   }
 
   /**
-	 * Get automation analytics
-	 */
+   * Get automation analytics
+   */
   async getAnalytics() {
     return {
       overview: {
