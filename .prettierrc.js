@@ -1,6 +1,6 @@
 // .prettierrc.js
 export default {
-  useTabs: true,
+  useTabs: false,
   tabWidth: 2,
   singleQuote: false, // ✅ Force double quotes
   quoteProps: "as-needed",

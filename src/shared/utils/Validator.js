@@ -3,16 +3,16 @@ import { ApiError } from "./ApiError.js";
 
 class Validator {
   /**
-	 * Validate email format
-	 */
+   * Validate email format
+   */
   static isValidEmail(email) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
   }
 
   /**
-	 * Validate password strength
-	 */
+   * Validate password strength
+   */
   static isValidPassword(password) {
     if (!password || password.length < 8) {
       return {
@@ -51,8 +51,8 @@ class Validator {
   }
 
   /**
-	 * Validate username format
-	 */
+   * Validate username format
+   */
   static isValidUsername(username) {
     if (!username || username.length < 3 || username.length > 30) {
       return {
@@ -73,8 +73,8 @@ class Validator {
   }
 
   /**
-	 * Sanitize input string
-	 */
+   * Sanitize input string
+   */
   static sanitizeString(input) {
     if (typeof input !== "string") {
       return "";
@@ -83,8 +83,8 @@ class Validator {
   }
 
   /**
-	 * Validate required fields
-	 */
+   * Validate required fields
+   */
   static validateRequired(fields, data) {
     const missing = [];
 
@@ -100,8 +100,8 @@ class Validator {
   }
 
   /**
-	 * Validate registration data
-	 */
+   * Validate registration data
+   */
   static validateRegistration(data) {
     const { username, email, password, confirmPassword, firstName, lastName } = data;
 
@@ -146,8 +146,8 @@ class Validator {
   }
 
   /**
-	 * Validate login data
-	 */
+   * Validate login data
+   */
   static validateLogin(data) {
     const { identifier, password } = data;
 
@@ -160,8 +160,8 @@ class Validator {
   }
 
   /**
-	 * Validate pagination parameters
-	 */
+   * Validate pagination parameters
+   */
   static validatePagination(query) {
     const page = Math.max(1, parseInt(query.page) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(query.limit) || 10));
@@ -171,8 +171,8 @@ class Validator {
   }
 
   /**
-	 * Validate MongoDB ObjectId
-	 */
+   * Validate MongoDB ObjectId
+   */
   static isValidObjectId(id) {
     const objectIdRegex = /^[0-9a-fA-F]{24}$/;
     return objectIdRegex.test(id);

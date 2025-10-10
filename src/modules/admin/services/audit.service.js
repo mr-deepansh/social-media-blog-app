@@ -111,8 +111,8 @@ export class AuditService {
   }
 
   /**
-	 * 🚀 Enhanced admin activity logging with performance optimizations
-	 */
+   * 🚀 Enhanced admin activity logging with performance optimizations
+   */
   async logAdminActivity({
     adminId,
     action,
@@ -186,8 +186,8 @@ export class AuditService {
   }
 
   /**
-	 * 🛠️ FIXED: Added the missing logAdminError method
-	 */
+   * 🛠️ FIXED: Added the missing logAdminError method
+   */
   async logAdminError({
     adminId,
     action = "ERROR_OCCURRED",
@@ -223,8 +223,8 @@ export class AuditService {
   }
 
   /**
-	 * 🚀 High-performance audit logs retrieval with advanced filtering
-	 */
+   * 🚀 High-performance audit logs retrieval with advanced filtering
+   */
   async getAuditLogs(filters = {}, page = 1, limit = 20, sortBy = "timestamp", sortOrder = -1) {
     try {
       const query = this._buildQuery(filters);
@@ -274,8 +274,8 @@ export class AuditService {
   }
 
   /**
-	 * 🚀 Enterprise audit statistics with caching
-	 */
+   * 🚀 Enterprise audit statistics with caching
+   */
   async getAuditStats(timeRange = "30d") {
     try {
       const dateRange = this._getDateRange(timeRange);
@@ -411,9 +411,9 @@ export class AuditService {
         alerts: {
           recentErrors: result.recentErrors,
           errorRate:
-						result.totalLogs[0]?.count > 0
-							? ((result.recentErrors.length / result.totalLogs[0].count) * 100).toFixed(2)
-							: "0.00",
+            result.totalLogs[0]?.count > 0
+              ? ((result.recentErrors.length / result.totalLogs[0].count) * 100).toFixed(2)
+              : "0.00",
         },
         topAdmins: result.topAdmins,
         metadata: {
@@ -428,8 +428,8 @@ export class AuditService {
   }
 
   /**
-	 * 🚀 Bulk audit logging for high-volume operations
-	 */
+   * 🚀 Bulk audit logging for high-volume operations
+   */
   async logBulkActivity(activities) {
     try {
       if (!Array.isArray(activities) || activities.length === 0) {
@@ -463,8 +463,8 @@ export class AuditService {
   }
 
   /**
-	 * 🧹 Cleanup old audit logs based on retention policy
-	 */
+   * 🧹 Cleanup old audit logs based on retention policy
+   */
   async cleanupOldLogs() {
     try {
       const cutoffDate = new Date();
@@ -483,8 +483,8 @@ export class AuditService {
   }
 
   /**
-	 * 📊 Get real-time audit metrics
-	 */
+   * 📊 Get real-time audit metrics
+   */
   async getRealTimeMetrics() {
     try {
       const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -560,8 +560,8 @@ export class AuditService {
   // ============================================================================
 
   /**
-	 * 🛡️ Sanitize sensitive data from audit details
-	 */
+   * 🛡️ Sanitize sensitive data from audit details
+   */
   _sanitizeDetails(details) {
     const sensitiveFields = ["password", "token", "secret", "key", "credential"];
     const sanitized = { ...details };
@@ -581,8 +581,8 @@ export class AuditService {
   }
 
   /**
-	 * 🔍 Build optimized query from filters
-	 */
+   * 🔍 Build optimized query from filters
+   */
   _buildQuery(filters) {
     const query = {};
 
@@ -626,8 +626,8 @@ export class AuditService {
   }
 
   /**
-	 * 📅 Get date range for time-based queries
-	 */
+   * 📅 Get date range for time-based queries
+   */
   _getDateRange(timeRange) {
     const end = new Date();
     const start = new Date();
@@ -653,8 +653,8 @@ export class AuditService {
   }
 
   /**
-	 * 💅 Format log entry for API response
-	 */
+   * 💅 Format log entry for API response
+   */
   _formatLogEntry(log) {
     return {
       id: log._id,
@@ -678,8 +678,8 @@ export class AuditService {
   }
 
   /**
-	 * ⏰ Get human-readable time ago
-	 */
+   * ⏰ Get human-readable time ago
+   */
   _getTimeAgo(date) {
     const seconds = Math.floor((new Date() - date) / 1000);
 
@@ -696,8 +696,8 @@ export class AuditService {
   }
 
   /**
-	 * 🚨 Handle critical error alerts
-	 */
+   * 🚨 Handle critical error alerts
+   */
   async _handleCriticalAlert(auditEntry) {
     try {
       // In a real application, you might:

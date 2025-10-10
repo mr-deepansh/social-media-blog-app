@@ -8,8 +8,8 @@ import { cacheService } from "../../../shared/services/cache.service.js";
  */
 class LocationService {
   /**
-	 * Get user login locations with caching
-	 */
+   * Get user login locations with caching
+   */
   static async getUserLoginLocations(userId, options = {}) {
     const { limit = 10, days = 90, useCache = true } = options;
     const cacheKey = `user_locations:${userId}:${limit}:${days}`;
@@ -125,8 +125,8 @@ class LocationService {
   }
 
   /**
-	 * Get location analytics for security monitoring
-	 */
+   * Get location analytics for security monitoring
+   */
   static async getLocationAnalytics(userId, days = 30) {
     const cacheKey = `location_analytics:${userId}:${days}`;
     const cached = await cacheService.get(cacheKey);
@@ -160,8 +160,8 @@ class LocationService {
     return analytics;
   }
   /**
-	 * Get location distribution statistics
-	 */
+   * Get location distribution statistics
+   */
   static async _getLocationDistribution(userId, dateThreshold) {
     return UserActivity.aggregate([
       {
@@ -193,8 +193,8 @@ class LocationService {
     ]);
   }
   /**
-	 * Detect suspicious activity patterns
-	 */
+   * Detect suspicious activity patterns
+   */
   static async _getSuspiciousActivity(userId, dateThreshold) {
     return UserActivity.aggregate([
       {
@@ -278,8 +278,8 @@ class LocationService {
     ]);
   }
   /**
-	 * Get timeline data for trend analysis
-	 */
+   * Get timeline data for trend analysis
+   */
   static async _getTimelineData(userId, dateThreshold) {
     return UserActivity.aggregate([
       {
@@ -318,8 +318,8 @@ class LocationService {
     ]);
   }
   /**
-	 * Calculate overall risk level based on suspicious activities
-	 */
+   * Calculate overall risk level based on suspicious activities
+   */
   static _calculateRiskLevel(suspiciousActivity) {
     if (suspiciousActivity.length === 0) {
       return "low";
@@ -336,8 +336,8 @@ class LocationService {
     return "low";
   }
   /**
-	 * Track new login location
-	 */
+   * Track new login location
+   */
   static async trackLoginLocation(userId, locationData, deviceData, ip) {
     const activity = new UserActivity({
       userId,

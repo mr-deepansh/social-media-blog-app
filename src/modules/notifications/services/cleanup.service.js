@@ -8,8 +8,8 @@ const notificationService = new NotificationService();
  */
 export class NotificationCleanupService {
   /**
-	 * Start the cleanup scheduler
-	 */
+   * Start the cleanup scheduler
+   */
   static startCleanupScheduler() {
     // Run cleanup every day at 2 AM
     cron.schedule("0 2 * * *", async () => {
@@ -26,8 +26,8 @@ export class NotificationCleanupService {
   }
 
   /**
-	 * Manual cleanup (for testing or manual execution)
-	 */
+   * Manual cleanup (for testing or manual execution)
+   */
   static async runCleanup() {
     try {
       console.log("🧹 Running manual notification cleanup...");

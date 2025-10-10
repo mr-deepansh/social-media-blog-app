@@ -4,8 +4,8 @@ import os from "os";
 
 export class MonitoringService {
   /**
-	 * Get system health metrics
-	 */
+   * Get system health metrics
+   */
   async getSystemHealth() {
     const startTime = Date.now();
     try {
@@ -46,8 +46,8 @@ export class MonitoringService {
   }
 
   /**
-	 * Check database health
-	 */
+   * Check database health
+   */
   async checkDatabaseHealth() {
     try {
       const startTime = Date.now();
@@ -77,8 +77,8 @@ export class MonitoringService {
     }
   }
   /**
-	 * Check Redis health
-	 */
+   * Check Redis health
+   */
   async checkRedisHealth() {
     try {
       // Mock Redis health check - implement with actual Redis client
@@ -88,8 +88,8 @@ export class MonitoringService {
     }
   }
   /**
-	 * Get system metrics
-	 */
+   * Get system metrics
+   */
   getSystemMetrics() {
     const memoryUsage = process.memoryUsage();
     const cpuUsage = process.cpuUsage();
@@ -117,8 +117,8 @@ export class MonitoringService {
     };
   }
   /**
-	 * Get application metrics
-	 */
+   * Get application metrics
+   */
   getApplicationMetrics() {
     return {
       nodeVersion: process.version,
@@ -130,8 +130,8 @@ export class MonitoringService {
     };
   }
   /**
-	 * Get database statistics
-	 */
+   * Get database statistics
+   */
   async getDatabaseStats() {
     try {
       const collections = await mongoose.connection.db.listCollections().toArray();
@@ -188,8 +188,8 @@ export class MonitoringService {
   }
 
   /**
-	 * Get system configuration
-	 */
+   * Get system configuration
+   */
   async getSystemConfig() {
     return {
       application: {
@@ -230,10 +230,10 @@ export class MonitoringService {
   }
 
   /**
-	 * Update system configuration
-	 * @param {string} category - Configuration category
-	 * @param {Object} settings - Settings to update
-	 */
+   * Update system configuration
+   * @param {string} category - Configuration category
+   * @param {Object} settings - Settings to update
+   */
   async updateSystemConfig(category, settings) {
     // Mock implementation - in production, this would update actual configuration
     const validCategories = ["security", "performance", "monitoring", "database", "redis"];
@@ -253,10 +253,10 @@ export class MonitoringService {
   }
 
   /**
-	 * Validate configuration settings
-	 * @param {string} category - Configuration category
-	 * @param {Object} settings - Settings to validate
-	 */
+   * Validate configuration settings
+   * @param {string} category - Configuration category
+   * @param {Object} settings - Settings to validate
+   */
   validateConfigSettings(category, settings) {
     const validators = {
       security: settings => {
@@ -288,8 +288,8 @@ export class MonitoringService {
   }
 
   /**
-	 * Generate health alerts based on metrics
-	 */
+   * Generate health alerts based on metrics
+   */
   generateHealthAlerts(systemMetrics, dbHealth) {
     const alerts = [];
     // Memory usage alert

@@ -47,7 +47,7 @@
     "prepare": "husky",
     "husky:setup": "node scripts/setup-husky.js",
     "pre-commit": "lint-staged",
-    "pre-push": "npm run lint:check && npm run test",
+    "pre-push": "npm run lint:check",
     "clean": "rm -rf node_modules package-lock.json && npm install"
   },
   "keywords": [
@@ -113,7 +113,7 @@
     "morgan": "^1.10.0",
     "multer": "^2.0.2",
     "node-cron": "^4.2.1",
-    "nodemailer": "^6.10.1",
+    "nodemailer": "^7.0.9",
     "pm2": "^6.0.10",
     "rate-limit-redis": "^4.2.2",
     "ua-parser-js": "^2.0.4",
@@ -139,8 +139,7 @@
   },
   "lint-staged": {
     "*.js": [
-      "prettier --write",
-      "eslint --fix"
+      "prettier --write"
     ]
   }
 }

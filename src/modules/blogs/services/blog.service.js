@@ -169,8 +169,8 @@ class BlogService {
       await View.create(viewData);
 
       const isUniqueView = userId
-				? !(await View.findOne({ user: userId, post: postId }))
-				: !(await View.findOne({ ip, post: postId }));
+        ? !(await View.findOne({ user: userId, post: postId }))
+        : !(await View.findOne({ ip, post: postId }));
 
       await Post.findByIdAndUpdate(postId, {
         $inc: {

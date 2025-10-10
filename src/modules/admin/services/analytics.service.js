@@ -4,9 +4,9 @@ import mongoose from "mongoose";
 
 export class AnalyticsService {
   /**
-	 * Get comprehensive analytics overview
-	 * @param {string} timeRange - Time range for analytics (7d, 30d, 90d)
-	 */
+   * Get comprehensive analytics overview
+   * @param {string} timeRange - Time range for analytics (7d, 30d, 90d)
+   */
   async getOverview(timeRange = "30d") {
     const days = this.parseTimeRange(timeRange);
     const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
@@ -135,10 +135,10 @@ export class AnalyticsService {
   }
 
   /**
-	 * Get user growth analytics
-	 * @param {string} period - Period type (daily, weekly, monthly)
-	 * @param {number} days - Number of days to analyze
-	 */
+   * Get user growth analytics
+   * @param {string} period - Period type (daily, weekly, monthly)
+   * @param {number} days - Number of days to analyze
+   */
   async getUserGrowth(period = "daily", days = 30) {
     const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
@@ -190,15 +190,15 @@ export class AnalyticsService {
       summary: {
         totalNewUsers: growth.reduce((sum, item) => sum + item.newUsers, 0),
         averageDaily:
-					growth.length > 0 ? Math.round(growth.reduce((sum, item) => sum + item.newUsers, 0) / growth.length) : 0,
+          growth.length > 0 ? Math.round(growth.reduce((sum, item) => sum + item.newUsers, 0) / growth.length) : 0,
       },
     };
   }
 
   /**
-	 * Get user retention analytics
-	 * @param {string} cohortPeriod - Cohort period (weekly, monthly)
-	 */
+   * Get user retention analytics
+   * @param {string} cohortPeriod - Cohort period (weekly, monthly)
+   */
   async getRetentionAnalytics(cohortPeriod = "monthly") {
     // Mock retention data for now - implement based on user activity tracking
     const cohorts = [];
@@ -233,8 +233,8 @@ export class AnalyticsService {
   }
 
   /**
-	 * Get user demographics
-	 */
+   * Get user demographics
+   */
   async getDemographics() {
     const pipeline = [
       {
@@ -302,9 +302,9 @@ export class AnalyticsService {
   }
 
   /**
-	 * Get engagement metrics
-	 * @param {string} timeRange - Time range for metrics
-	 */
+   * Get engagement metrics
+   * @param {string} timeRange - Time range for metrics
+   */
   async getEngagementMetrics(timeRange = "30d") {
     const days = this.parseTimeRange(timeRange);
     const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);

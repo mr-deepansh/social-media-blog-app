@@ -5,8 +5,8 @@ import os from "os";
 
 export class SystemService {
   /**
-	 * Get server health metrics
-	 */
+   * Get server health metrics
+   */
   async getServerHealth() {
     const startTime = Date.now();
 
@@ -85,8 +85,8 @@ export class SystemService {
   }
 
   /**
-	 * Get database statistics
-	 */
+   * Get database statistics
+   */
   async getDatabaseStats() {
     try {
       const db = mongoose.connection.db;
@@ -146,8 +146,8 @@ export class SystemService {
   }
 
   /**
-	 * Test database connection
-	 */
+   * Test database connection
+   */
   async testDatabaseConnection() {
     const startTime = Date.now();
 
@@ -171,8 +171,8 @@ export class SystemService {
   }
 
   /**
-	 * Generate health alerts based on system metrics
-	 */
+   * Generate health alerts based on system metrics
+   */
   generateHealthAlerts(memoryUsage, loadAverage) {
     const alerts = [];
 
@@ -198,8 +198,8 @@ export class SystemService {
   }
 
   /**
-	 * Get system configuration
-	 */
+   * Get system configuration
+   */
   async getSystemConfig() {
     return {
       system: {
@@ -242,8 +242,8 @@ export class SystemService {
   }
 
   /**
-	 * Emergency system lockdown
-	 */
+   * Emergency system lockdown
+   */
   async emergencyLockdown(data) {
     const { reason, duration = 3600, initiatedBy } = data;
 

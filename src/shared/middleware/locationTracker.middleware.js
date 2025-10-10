@@ -85,11 +85,11 @@ async function trackUserLocation(req) {
 function getClientIP(req) {
   return (
     req.ip ||
-		req.connection?.remoteAddress ||
-		req.socket?.remoteAddress ||
-		req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
-		req.headers["x-real-ip"] ||
-		"unknown"
+    req.connection?.remoteAddress ||
+    req.socket?.remoteAddress ||
+    req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
+    req.headers["x-real-ip"] ||
+    "unknown"
   );
 }
 

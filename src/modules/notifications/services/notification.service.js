@@ -5,8 +5,8 @@ import { Notification } from "../models/notification.model.js";
 
 export class NotificationService {
   /**
-	 * Validate ObjectId format
-	 */
+   * Validate ObjectId format
+   */
   _validateObjectId(id) {
     if (!mongoose.Types.ObjectId.isValid(id)) {
       throw new ApiError(400, "Invalid notification ID format");
@@ -14,8 +14,8 @@ export class NotificationService {
   }
 
   /**
-	 * Create a new notification
-	 */
+   * Create a new notification
+   */
   async createNotification(data) {
     try {
       const notification = new Notification(data);
@@ -32,8 +32,8 @@ export class NotificationService {
   }
 
   /**
-	 * Invalidate user's notification cache
-	 */
+   * Invalidate user's notification cache
+   */
   async invalidateUserCache(userId) {
     try {
       const cacheKeys = [`notifications:${userId}:*`, `unread_count:${userId}`];
@@ -51,8 +51,8 @@ export class NotificationService {
   }
 
   /**
-	 * Get user notifications with pagination
-	 */
+   * Get user notifications with pagination
+   */
   async getUserNotifications(userId, options = {}) {
     try {
       const { page = 1, limit = 20, type, isRead, priority } = options;
@@ -113,8 +113,8 @@ export class NotificationService {
   }
 
   /**
-	 * Mark notification as read - Fixed version
-	 */
+   * Mark notification as read - Fixed version
+   */
   async markAsRead(notificationId, userId) {
     try {
       // Validate ObjectId format
@@ -159,8 +159,8 @@ export class NotificationService {
   }
 
   /**
-	 * Mark all notifications as read
-	 */
+   * Mark all notifications as read
+   */
   async markAllAsRead(userId) {
     try {
       const result = await Notification.markAllAsRead(userId);
@@ -176,8 +176,8 @@ export class NotificationService {
   }
 
   /**
-	 * Delete notification - Fixed version
-	 */
+   * Delete notification - Fixed version
+   */
   async deleteNotification(notificationId, userId) {
     try {
       // Validate ObjectId format
@@ -206,8 +206,8 @@ export class NotificationService {
   }
 
   /**
-	 * Get unread count with caching
-	 */
+   * Get unread count with caching
+   */
   async getUnreadCount(userId) {
     try {
       const cacheKey = `unread_count:${userId}`;
@@ -240,8 +240,8 @@ export class NotificationService {
   }
 
   /**
-	 * Create system notification
-	 */
+   * Create system notification
+   */
   async createSystemNotification(recipients, title, message, data = {}) {
     try {
       const notifications = recipients.map(recipientId => ({
@@ -262,8 +262,8 @@ export class NotificationService {
   }
 
   /**
-	 * Clean up expired notifications
-	 */
+   * Clean up expired notifications
+   */
   async cleanupExpiredNotifications() {
     try {
       const result = await Notification.deleteMany({
@@ -276,8 +276,8 @@ export class NotificationService {
   }
 
   /**
-	 * Get notification statistics
-	 */
+   * Get notification statistics
+   */
   async getNotificationStats(userId) {
     try {
       const [totalCount, unreadCount, typeStats, recentActivity] = await Promise.all([
@@ -309,8 +309,8 @@ export class NotificationService {
   }
 
   /**
-	 * Clear all notifications for user
-	 */
+   * Clear all notifications for user
+   */
   async clearAllNotifications(userId) {
     try {
       const result = await Notification.deleteMany({ recipient: userId });
@@ -325,8 +325,8 @@ export class NotificationService {
   }
 
   /**
-	 * Get user notification preferences (placeholder - would be stored in user model)
-	 */
+   * Get user notification preferences (placeholder - would be stored in user model)
+   */
   async getNotificationPreferences(userId) {
     try {
       // This would typically be stored in the user model
@@ -363,8 +363,8 @@ export class NotificationService {
   }
 
   /**
-	 * Update user notification preferences
-	 */
+   * Update user notification preferences
+   */
   async updateNotificationPreferences(userId, preferences) {
     try {
       // This would typically update the user model
@@ -379,8 +379,8 @@ export class NotificationService {
   }
 
   /**
-	 * Create notification for multiple users (batch)
-	 */
+   * Create notification for multiple users (batch)
+   */
   async createBatchNotifications(notifications) {
     try {
       const result = await Notification.insertMany(notifications);
@@ -394,8 +394,8 @@ export class NotificationService {
   }
 
   /**
-	 * Get notification by ID (helper method for debugging)
-	 */
+   * Get notification by ID (helper method for debugging)
+   */
   async getNotificationById(notificationId, userId) {
     try {
       this._validateObjectId(notificationId);

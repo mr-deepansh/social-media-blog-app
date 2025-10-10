@@ -66,12 +66,12 @@ const createRedisConfig = (options = {}) => {
 
     // TLS configuration for production
     tls:
-			process.env.REDIS_TLS === "true"
-				? {
-				  servername: process.env.REDIS_HOST,
-				  rejectUnauthorized: process.env.REDIS_TLS_REJECT_UNAUTHORIZED !== "false",
-				}
-				: undefined,
+      process.env.REDIS_TLS === "true"
+        ? {
+            servername: process.env.REDIS_HOST,
+            rejectUnauthorized: process.env.REDIS_TLS_REJECT_UNAUTHORIZED !== "false",
+          }
+        : undefined,
 
     // Reconnection strategy
     reconnectOnError: err => {
