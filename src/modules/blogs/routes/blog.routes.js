@@ -7,8 +7,13 @@ import commentRoutes from "./comment/comment.routes.js";
 import engagementRoutes from "./engagement/engagement.routes.js";
 import mediaRoutes from "./media/media.routes.js";
 import analyticsRoutes from "./analytics.routes.js";
+import { getBookmarkedPosts } from "../controllers/engagement/engagement.controller.js";
+import { verifyJWT } from "../../../shared/middleware/auth.middleware.js";
 
 const router = express.Router();
+
+// Bookmarks route
+router.get("/bookmarks", verifyJWT, getBookmarkedPosts);
 
 // Mount sub-routes
 router.use("/posts", postRoutes);

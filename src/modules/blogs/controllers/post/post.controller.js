@@ -14,7 +14,6 @@ const logger = new Logger("PostController");
 const createPost = asyncHandler(async (req, res) => {
   const startTime = Date.now();
   const userId = req.user._id;
-
   const postData = {
     title: req.body.title || "",
     content: req.body.content,
@@ -32,7 +31,6 @@ const createPost = asyncHandler(async (req, res) => {
       platform: req.body.metadata?.platform || "web",
     },
   };
-
   // Handle media uploads (single/multiple/none)
   if (Array.isArray(req.files) && req.files.length > 0) {
     for (const file of req.files) {
@@ -62,12 +60,9 @@ const createPost = asyncHandler(async (req, res) => {
       logger.error("File upload failed:", error);
     }
   }
-
   const post = await PostService.createPost(postData, userId);
   const executionTime = Date.now() - startTime;
-
   logger.info("Post created", { postId: post._id, userId, executionTime });
-
   res.status(201).json(
     new ApiResponse(201, post, "Post created successfully", true, {
       executionTime: `${executionTime}ms`,
@@ -80,10 +75,26 @@ const getPosts = asyncHandler(async (req, res) => {
   const startTime = Date.now();
   const filters = req.query;
   const { page = 1, limit = 20 } = req.query;
-
   const result = await PostService.getPosts(filters, parseInt(page), parseInt(limit));
+  // Ensure all posts have engagement data
+  if (result.posts) {
+    result.posts = result.posts.map(post => {
+      const postData = post.toObject ? post.toObject() : post;
+      if (!postData.engagement) {
+        postData.engagement = {
+          likeCount: 0,
+          commentCount: 0,
+          shareCount: 0,
+          repostCount: 0,
+          bookmarkCount: 0,
+          viewCount: 0,
+          uniqueViewCount: 0,
+        };
+      }
+      return postData;
+    });
+  }
   const executionTime = Date.now() - startTime;
-
   res.status(200).json(
     new ApiResponse(200, result, "Posts retrieved successfully", true, {
       executionTime: `${executionTime}ms`,
@@ -95,15 +106,55 @@ const getPosts = asyncHandler(async (req, res) => {
 const getPostById = asyncHandler(async (req, res) => {
   const startTime = Date.now();
   const { id } = req.params;
-
   const post = await PostService.getPostById(id);
   if (!post) {
     throw new ApiError(404, "Post not found");
   }
-
+  // Ensure engagement counts are included
+  const postData = post.toObject ? post.toObject() : post;
+  if (!postData.engagement) {
+    postData.engagement = {
+      likeCount: 0,
+      commentCount: 0,
+      shareCount: 0,
+      repostCount: 0,
+      bookmarkCount: 0,
+      viewCount: 0,
+      uniqueViewCount: 0,
+    };
+  }
   const executionTime = Date.now() - startTime;
   res.status(200).json(
-    new ApiResponse(200, post, "Post retrieved successfully", true, {
+    new ApiResponse(200, postData, "Post retrieved successfully", true, {
+      executionTime: `${executionTime}ms`,
+    }),
+  );
+});
+
+// Get single post by username and post ID
+const getPostByUsernameAndId = asyncHandler(async (req, res) => {
+  const startTime = Date.now();
+  const { username, id } = req.params;
+  const post = await PostService.getPostByUsernameAndId(username, id);
+  if (!post) {
+    throw new ApiError(404, "Post not found");
+  }
+  // Ensure engagement counts are included
+  const postData = post.toObject ? post.toObject() : post;
+  if (!postData.engagement) {
+    postData.engagement = {
+      likeCount: 0,
+      commentCount: 0,
+      shareCount: 0,
+      repostCount: 0,
+      bookmarkCount: 0,
+      viewCount: 0,
+      uniqueViewCount: 0,
+    };
+  }
+  const executionTime = Date.now() - startTime;
+  res.status(200).json(
+    new ApiResponse(200, postData, "Post retrieved successfully", true, {
       executionTime: `${executionTime}ms`,
     }),
   );
@@ -114,12 +165,9 @@ const updatePost = asyncHandler(async (req, res) => {
   const startTime = Date.now();
   const { id } = req.params;
   const userId = req.user._id;
-
   const updatedPost = await PostService.updatePost(id, req.body, userId);
   const executionTime = Date.now() - startTime;
-
   logger.info("Post updated", { postId: id, userId, executionTime });
-
   res.status(200).json(
     new ApiResponse(200, updatedPost, "Post updated successfully", true, {
       executionTime: `${executionTime}ms`,
@@ -132,12 +180,9 @@ const deletePost = asyncHandler(async (req, res) => {
   const startTime = Date.now();
   const { id } = req.params;
   const userId = req.user._id;
-
   await PostService.deletePost(id, userId);
   const executionTime = Date.now() - startTime;
-
   logger.info("Post deleted", { postId: id, userId, executionTime });
-
   res.status(200).json(
     new ApiResponse(200, {}, "Post deleted successfully", true, {
       executionTime: `${executionTime}ms`,
@@ -149,14 +194,11 @@ const deletePost = asyncHandler(async (req, res) => {
 const getMyPosts = asyncHandler(async (req, res) => {
   const startTime = Date.now();
   const userId = req.user?._id;
-
   if (!userId) {
     throw new ApiError(401, "Authentication required");
   }
-
   const { page = 1, limit = 12, status, type } = req.query;
   const result = await PostService.getMyPosts(userId, parseInt(page), parseInt(limit), status);
-
   // Clean response - remove sensitive data
   const cleanPosts = result.posts.map(post => ({
     id: post._id,
@@ -177,14 +219,12 @@ const getMyPosts = asyncHandler(async (req, res) => {
     tags: post.tags || [],
     slug: post.slug,
   }));
-
   const executionTime = Date.now() - startTime;
   logger.info("My posts retrieved", {
     userId,
     count: result.posts.length,
     executionTime,
   });
-
   res.status(200).json(
     new ApiResponse(
       200,
@@ -218,14 +258,11 @@ const getUserPosts = asyncHandler(async (req, res) => {
   const { username } = req.params;
   const { page = 1, limit = 12 } = req.query;
   const currentUserId = req.user?._id;
-
   const result = await PostService.getUserPostsByUsername(username, parseInt(page), parseInt(limit), currentUserId);
-
   if (!result) {
     throw new ApiError(404, "User not found");
   }
-
   res.status(200).json(new ApiResponse(200, result, "User posts retrieved successfully"));
 });
 
-export { createPost, getPosts, getPostById, updatePost, deletePost, getMyPosts, getUserPosts };
+export { createPost, getPosts, getPostById, getPostByUsernameAndId, updatePost, deletePost, getMyPosts, getUserPosts };

@@ -32,14 +32,12 @@ class EmailService {
     try {
       let emailHtml = html;
       let emailText = text;
-
       // If template is provided, render it
       if (template) {
         const templatePath = path.join(this.templatesPath, `${template}.ejs`);
         emailHtml = await ejs.renderFile(templatePath, context);
         emailText = this.htmlToText(emailHtml);
       }
-
       const mailOptions = {
         from: {
           name: emailConfig.from.name,
@@ -50,7 +48,6 @@ class EmailService {
         html: emailHtml,
         text: emailText,
       };
-
       const result = await this.transporter.sendMail(mailOptions);
       console.log(`✅ Email sent successfully to ${to}: ${subject}`);
       return result;

@@ -4,6 +4,7 @@ import {
   createPost,
   getPosts,
   getPostById,
+  getPostByUsernameAndId,
   updatePost,
   deletePost,
   getMyPosts,
@@ -24,6 +25,10 @@ router.get("/", optionalAuth, getPosts);
 
 // Username-based routes
 router.get("/user/:username", optionalAuth, getUserPosts);
+router.get("/:username/post/:id", optionalAuth, getPostByUsernameAndId);
+
+// Public post route (no auth required)
+router.get("/public/:id", getPostById);
 
 // Dynamic routes (must be last)
 router.get("/:id", optionalAuth, getPostById);

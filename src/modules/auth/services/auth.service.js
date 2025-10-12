@@ -22,18 +22,15 @@ class AuthService {
   // 🚀 HIGH-PERFORMANCE REGISTRATION
   static async registerUser(userData, req) {
     const { username, email, password, firstName, lastName, bio, avatar } = userData;
-
     // Batch existence check with single query
     const existingUsers = await User.find({
       $or: [{ email: email.toLowerCase() }, { username: username.toLowerCase() }],
     })
       .select("email username")
       .lean();
-
     // Check conflicts
     const emailExists = existingUsers.find(u => u.email === email.toLowerCase());
     const usernameExists = existingUsers.find(u => u.username === username.toLowerCase());
-
     if (emailExists || usernameExists) {
       const conflicts = [];
       if (emailExists) {
@@ -42,13 +39,11 @@ class AuthService {
       if (usernameExists) {
         conflicts.push("username");
       }
-
       throw new ApiError(409, "Registration failed", {
         conflicts,
         message: `${conflicts.join(" and ")} already in use`,
       });
     }
-
     // Create user with optimized data structure
     // Password will be hashed by the User model's pre-save middleware
     const user = await User.create({
@@ -66,7 +61,6 @@ class AuthService {
       following: [],
       watchHistory: [],
     });
-
     // Send welcome email (non-blocking)
     setImmediate(async () => {
       try {
@@ -79,7 +73,6 @@ class AuthService {
           minute: "2-digit",
           timeZoneName: "short",
         });
-
         await emailService.sendEmail({
           to: user.email,
           subject: "🎉 Welcome to endlessChatt!",
@@ -89,58 +82,48 @@ class AuthService {
             username: user.username,
             email: user.email,
             registeredAt,
-            loginUrl: process.env.FRONTEND_URL || "http://localhost:8080/login",
+            loginUrl: process.env.FRONTEND_URL,
           },
         });
       } catch (emailError) {
         console.warn("Welcome email failed:", emailError.message);
       }
     });
-
     // Log activity asynchronously
     this.logActivity(user, "register", req).catch(console.error);
-
     return user;
   }
 
   // 🔥 OPTIMIZED LOGIN WITH SECURITY
   static async loginUser({ identifier, password }, req) {
     const startTime = Date.now();
-
     // Find user with single query
     const user = await User.findOne({
       $or: [{ email: identifier.toLowerCase() }, { username: identifier.toLowerCase() }],
       isActive: true,
     }).select("+password +security.failedLoginAttempts +security.lockUntil");
-
     if (!user) {
       // Consistent timing to prevent user enumeration
       await bcrypt.hash("dummy", 10);
       throw new ApiError(401, "Invalid credentials");
     }
-
     // Check account lockout
     if (user.isAccountLocked()) {
       throw new ApiError(423, "Account temporarily locked due to failed attempts");
     }
-
     // Verify password
     const isPasswordValid = await bcrypt.compare(password, user.password);
-
     if (!isPasswordValid) {
       // Increment failed attempts
       await user.incrementFailedLoginAttempts();
       throw new ApiError(401, "Invalid credentials");
     }
-
     // Reset failed attempts on successful login
     if (user.security.failedLoginAttempts > 0) {
       await user.resetFailedLoginAttempts();
     }
-
     // Generate tokens
     const { accessToken, refreshToken } = this.generateTokens(user._id);
-
     // Update user data
     await User.findByIdAndUpdate(user._id, {
       refreshToken,
@@ -148,12 +131,9 @@ class AuthService {
       "security.lastLoginIP": req.ip,
       "security.lastLoginLocation": req.get("CF-IPCountry") || "Unknown",
     });
-
     // Cache user data
     const userForCache = await User.findById(user._id).select("-password -refreshToken").lean();
-
     await setCachedUser(user._id, userForCache);
-
     // Send login notification email (non-blocking)
     setImmediate(async () => {
       try {
@@ -189,7 +169,6 @@ class AuthService {
           minute: "2-digit",
           timeZoneName: "short",
         });
-
         await emailService.sendEmail({
           to: user.email,
           subject: "🔐 New Login Detected - endlessChatt",
@@ -208,13 +187,10 @@ class AuthService {
         console.warn("Login notification email failed:", emailError.message);
       }
     });
-
     // Log activity asynchronously
     this.logActivity(user, "login", req).catch(console.error);
-
     const executionTime = Date.now() - startTime;
     console.log(`✅ Login completed in ${executionTime}ms`);
-
     return {
       user: userForCache,
       accessToken,
@@ -225,7 +201,6 @@ class AuthService {
   // 🔥 OPTIMIZED LOGOUT WITH TOKEN BLACKLISTING
   static async logoutUser(user, token, req) {
     const startTime = Date.now();
-
     try {
       // Parallel operations for better performance
       await Promise.all([
@@ -234,20 +209,15 @@ class AuthService {
           $unset: { refreshToken: 1 },
           lastActive: new Date(),
         }),
-
         // Add token to blacklist (expires with token)
         this.blacklistToken(token),
-
         // Clear user cache
         redisClient.del(`user:${user._id}`).catch(console.error),
       ]);
-
       // Log activity asynchronously
       this.logActivity(user, "logout", req).catch(console.error);
-
       const executionTime = Date.now() - startTime;
       console.log(`✅ Logout completed in ${executionTime}ms`);
-
       return true;
     } catch (error) {
       console.error("Logout error:", error);
@@ -262,7 +232,6 @@ class AuthService {
       const expiryTime = decoded.exp * 1000; // Convert to milliseconds
       const currentTime = Date.now();
       const ttl = Math.max(0, Math.floor((expiryTime - currentTime) / 1000));
-
       if (ttl > 0) {
         await redisClient.setex(`blacklist:${token}`, ttl, "1");
       }
@@ -277,12 +246,10 @@ class AuthService {
       expiresIn: process.env.ACCESS_TOKEN_EXPIRY || "15m",
       algorithm: "HS256",
     });
-
     const refreshToken = jwt.sign({ _id: userId, type: "refresh" }, process.env.REFRESH_TOKEN_SECRET, {
       expiresIn: process.env.REFRESH_TOKEN_EXPIRY || "7d",
       algorithm: "HS256",
     });
-
     return { accessToken, refreshToken };
   }
 
@@ -290,36 +257,28 @@ class AuthService {
   static async refreshTokens(oldRefreshToken) {
     try {
       const decoded = jwt.verify(oldRefreshToken, process.env.REFRESH_TOKEN_SECRET);
-
       // Validate refresh token type
       if (decoded.type !== "refresh") {
         throw new ApiError(401, "Invalid token type");
       }
-
       const user = await User.findById(decoded._id).select("refreshToken isActive");
-
       if (!user || !user.isActive) {
         throw new ApiError(401, "User not found or inactive");
       }
-
       if (user.refreshToken !== oldRefreshToken) {
         // Possible token reuse - security issue
         await User.findByIdAndUpdate(user._id, { $unset: { refreshToken: 1 } });
         throw new ApiError(401, "Invalid refresh token - please login again");
       }
-
       // Generate new tokens
       const { accessToken, refreshToken } = this.generateTokens(user._id);
-
       // Update user with new refresh token
       await User.findByIdAndUpdate(user._id, {
         refreshToken,
         lastActive: new Date(),
       });
-
       // Blacklist old refresh token
       await this.blacklistToken(oldRefreshToken);
-
       return { accessToken, refreshToken };
     } catch (error) {
       if (error instanceof jwt.JsonWebTokenError) {
@@ -332,24 +291,20 @@ class AuthService {
   // 🔥 ENTERPRISE FORGOT PASSWORD (Millions of Users)
   static async processForgotPassword(email, req) {
     const startTime = Date.now();
-
     // Optimized user lookup with minimal fields
     const user = await User.findOne(
       { email: email.toLowerCase(), isActive: true },
       { _id: 1, email: 1, firstName: 1, username: 1, forgotPasswordExpiry: 1 },
     ).lean();
-
     if (!user) {
       // Consistent timing to prevent user enumeration
       await new Promise(resolve => setTimeout(resolve, 100));
       return { message: "If the email exists, a password reset link has been sent" };
     }
-
     // Rate limiting: Check if recent reset request exists
     if (user.forgotPasswordExpiry && user.forgotPasswordExpiry > new Date()) {
       return { message: "Password reset link already sent. Please check your email or wait before requesting again." };
     }
-
     // Generate enterprise-grade secure token with multiple layers
     const payload = {
       userId: user._id,
@@ -358,13 +313,11 @@ class AuthService {
       nonce: crypto.randomBytes(16).toString("hex"),
       ip: req.ip || "127.0.0.1",
     };
-
     // Validate required environment variables
     const resetSecret = process.env.RESET_TOKEN_SECRET || process.env.JWT_SECRET;
     if (!resetSecret) {
       throw new ApiError(500, "Server configuration error");
     }
-
     // Create JWT token with encryption
     const resetToken = jwt.sign(payload, resetSecret, {
       expiresIn: "10m",
@@ -372,7 +325,6 @@ class AuthService {
       issuer: "endlessChatt-security",
       audience: "password-reset",
     });
-
     // Additional encryption layer with IV
     const algorithm = "aes-256-cbc";
     const encryptionKey = process.env.ENCRYPTION_KEY || process.env.JWT_SECRET;
@@ -399,16 +351,13 @@ class AuthService {
       },
       { new: true, select: "_id" },
     );
-
     if (!updateResult) {
       throw new ApiError(500, "Failed to process password reset request");
     }
-
     // Async email sending (non-blocking)
     setImmediate(async () => {
       try {
         const resetUrl = `${process.env.FRONTEND_URL || "http://92.168.218.1:8080"}/reset-password?token=${encodeURIComponent(encryptedToken)}`;
-
         await emailService.sendEmail({
           to: user.email,
           subject: "🔒 Password Reset - endlessChatt",
@@ -424,13 +373,10 @@ class AuthService {
         // Log to monitoring system in production
       }
     });
-
     // Async activity logging
     this.logActivity({ _id: user._id, email: user.email }, "forgot_password", req).catch(console.error);
-
     const executionTime = Date.now() - startTime;
     logger.info("Forgot password processed", { executionTime: `${executionTime}ms`, email: user.email });
-
     return { message: "If the email exists, a password reset link has been sent" };
   }
 
@@ -442,17 +388,14 @@ class AuthService {
     if (!token || token.length < 32) {
       throw new ApiError(400, "Invalid reset token format");
     }
-
     // Decode URL-encoded token
     const decodedToken = decodeURIComponent(token);
-
     // Check if token is blacklisted (already used)
     const isBlacklisted = await redisClient.get(`blacklist_reset:${decodedToken}`);
     if (isBlacklisted) {
       await bcrypt.hash("dummy", 10); // Consistent timing
       throw new ApiError(400, "Reset link has already been used. Please request a new password reset.");
     }
-
     let user;
     try {
       // Extract IV and encrypted data
@@ -460,7 +403,6 @@ class AuthService {
       if (!ivHex || !encryptedData) {
         throw new Error("Invalid token format");
       }
-
       // Decrypt the token
       const algorithm = "aes-256-cbc";
       const decryptionKey = process.env.ENCRYPTION_KEY || process.env.JWT_SECRET;
@@ -472,7 +414,6 @@ class AuthService {
       const decipher = crypto.createDecipheriv(algorithm, key, iv);
       let decryptedToken = decipher.update(encryptedData, "hex", "utf8");
       decryptedToken += decipher.final("utf8");
-
       // Verify JWT token
       const verifySecret = process.env.RESET_TOKEN_SECRET || process.env.JWT_SECRET;
       if (!verifySecret) {
@@ -483,7 +424,6 @@ class AuthService {
         issuer: "endlessChatt-security",
         audience: "password-reset",
       });
-
       // Additional security checks
       if (payload.ip !== (req.ip || "127.0.0.1")) {
         logger.warn("IP mismatch in reset token", {
@@ -493,7 +433,6 @@ class AuthService {
         });
         // Allow but log for monitoring
       }
-
       // Find user with decrypted payload
       user = await User.findOne(
         {
@@ -510,30 +449,24 @@ class AuthService {
       logger.error("Token decryption failed", { error: decryptError.message });
       throw new ApiError(400, "Invalid or corrupted reset token");
     }
-
     if (!user) {
       // Consistent timing for security
       await bcrypt.hash("dummy", 10);
       throw new ApiError(400, "Invalid or expired reset token");
     }
-
     // Password strength validation
     if (newPassword.length < 8) {
       throw new ApiError(400, "Password must be at least 8 characters long");
     }
-
     // Check if new password is same as current (optional security)
     const isSamePassword = await bcrypt.compare(newPassword, user.password);
     if (isSamePassword) {
       throw new ApiError(400, "New password must be different from current password");
     }
-
     // Hash password before saving
     const hashedPassword = await bcrypt.hash(newPassword, 12);
-
     // Blacklist the reset token immediately to prevent reuse
     await redisClient.setex(`blacklist_reset:${decodedToken}`, 3600, "1"); // 1 hour blacklist
-
     // Atomic update with security fields
     const updateResult = await User.findByIdAndUpdate(
       user._id,
@@ -551,11 +484,9 @@ class AuthService {
       },
       { new: true, select: "_id" },
     );
-
     if (!updateResult) {
       throw new ApiError(500, "Failed to reset password");
     }
-
     // Invalidate ALL user sessions and tokens for complete security
     try {
       await Promise.all([
@@ -572,7 +503,6 @@ class AuthService {
     } catch (cacheError) {
       logger.warn("Cache cleanup failed", { error: cacheError.message, userId: user._id });
     }
-
     // Async success email notification
     setImmediate(async () => {
       try {
@@ -608,7 +538,6 @@ class AuthService {
           minute: "2-digit",
           timeZoneName: "short",
         });
-
         await emailService.sendEmail({
           to: user.email,
           subject: "✅ Password Reset Successful - endlessChatt",
@@ -626,13 +555,10 @@ class AuthService {
         logger.error("Success email failed", { error: emailError.message, email: user.email });
       }
     });
-
     // Async activity logging
     this.logActivity(user, "password_reset", req).catch(console.error);
-
     const executionTime = Date.now() - startTime;
     logger.info("Password reset completed", { executionTime: `${executionTime}ms`, userId: user._id });
-
     return {
       message: "Password reset successfully. Please login with your new password.",
       redirectTo: "/login",
@@ -642,8 +568,7 @@ class AuthService {
   // 🔥 EMAIL VERIFICATION
   static async sendWelcomeEmail(user, verificationToken, req) {
     try {
-      const verificationUrl = `${process.env.FRONTEND_URL || "http://localhost:8080"}/verify-email?token=${encodeURIComponent(verificationToken)}`;
-
+      const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${encodeURIComponent(verificationToken)}`;
       await emailService.sendEmail({
         to: user.email,
         subject: "🎉 Welcome to EndlessChatt - Verify Your Email",
@@ -654,7 +579,6 @@ class AuthService {
           verificationUrl,
         },
       });
-
       logger.info("Verification email sent", { email: user.email });
     } catch (emailError) {
       logger.error("Verification email failed", { error: emailError.message, email: user.email });
@@ -666,21 +590,17 @@ class AuthService {
   static async verifyEmail(token, req = {}) {
     try {
       const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
-
       const user = await User.findOne({
         emailVerificationToken: hashedToken,
         emailVerificationExpiry: { $gt: new Date() },
         isActive: true,
       });
-
       if (!user) {
         throw new ApiError(400, "Invalid or expired verification token");
       }
-
       if (user.isEmailVerified) {
         return { message: "Email is already verified" };
       }
-
       // Update user as verified
       await User.findByIdAndUpdate(user._id, {
         isEmailVerified: true,
@@ -689,7 +609,6 @@ class AuthService {
           emailVerificationExpiry: 1,
         },
       });
-
       // Send success email with user details
       setImmediate(async () => {
         try {
@@ -698,7 +617,6 @@ class AuthService {
           logger.error("Success email failed", { error: emailError.message, email: user.email });
         }
       });
-
       logger.info("Email verified successfully", { userId: user._id, email: user.email });
       return { message: "Email verified successfully" };
     } catch (error) {
@@ -745,7 +663,6 @@ class AuthService {
         minute: "2-digit",
         timeZoneName: "short",
       });
-
       await emailService.sendEmail({
         to: user.email,
         subject: "✅ Email Verified Successfully - EndlessChatt",
@@ -761,7 +678,6 @@ class AuthService {
           loginUrl: `${process.env.FRONTEND_URL || "http://localhost:8080"}/login`,
         },
       });
-
       logger.info("Email verification success email sent", {
         email: user.email,
         username: user.username,
@@ -782,7 +698,6 @@ class AuthService {
         $unset: { refreshToken: 1 },
         "security.lastPasswordChange": new Date(),
       });
-
       // Clear all user-related cache entries
       await Promise.all([
         // Clear user cache
@@ -794,7 +709,6 @@ class AuthService {
         // Force logout by clearing refresh token patterns
         redisClient.del(`refresh:${userId}:*`).catch(() => {}),
       ]);
-
       logger.info("All user sessions invalidated", { userId });
       return true;
     } catch (error) {
@@ -818,10 +732,8 @@ class AuthService {
         success,
         errorMessage,
       };
-
       // Store in Redis queue for processing
       await redisClient.lpush("activity_log", JSON.stringify(activityData));
-
       // Keep queue size manageable
       await redisClient.ltrim("activity_log", 0, 9999);
     } catch (error) {

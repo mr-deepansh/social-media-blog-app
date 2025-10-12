@@ -6,13 +6,23 @@
 ![Express](https://img.shields.io/badge/Express-4.21+-purple.svg?logo=express&logoColor=white)
 ![JavaScript](https://img.shields.io/badge/JavaScript-ES6+-yellow.svg?logo=javascript&logoColor=black)
 ![MongoDB](https://img.shields.io/badge/MongoDB-8.0+-47A248.svg?logo=mongodb&logoColor=white)
+![Mongoose](https://img.shields.io/badge/Mongoose-ODM-594639.svg?logo=mongoose&logoColor=white)
 ![Redis](https://img.shields.io/badge/Redis-7.0+-DC382D.svg?logo=redis&logoColor=white)
+![JWT](https://img.shields.io/badge/JWT-Authentication-black.svg?logo=jsonwebtokens&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Ready-0db7ed.svg?logo=docker&logoColor=white)
+![PM2](https://img.shields.io/badge/PM2-Process_Manager-2B037A.svg?logo=pm2&logoColor=white)
+![Cloudinary](https://img.shields.io/badge/Cloudinary-Media-3448C5.svg?logo=cloudinary&logoColor=white)
+![Nodemailer](https://img.shields.io/badge/Nodemailer-Email-44A6D8.svg?logo=nodemailer&logoColor=white)
+![Jest](https://img.shields.io/badge/Jest-Testing-C21325.svg?logo=jest&logoColor=white)
+![Winston](https://img.shields.io/badge/Winston-Logging-6B5A8A.svg)
+![ESLint](https://img.shields.io/badge/Code%20Style-ESLint-4B32C3.svg?logo=eslint&logoColor=white)
+![Prettier](https://img.shields.io/badge/Formatter-Prettier-F7B93E.svg?logo=prettier&logoColor=black)
+![Husky](https://img.shields.io/badge/Husky-Git_Hooks-A60000.svg?logo=husky&logoColor=white)
+![Joi](https://img.shields.io/badge/Joi-Validation-000000.svg?logo=joi&logoColor=white)
+![Zod](https://img.shields.io/badge/Zod-Validation-3E67B1.svg?logo=zod&logoColor=white)
 ![Security](https://img.shields.io/badge/Security-Enterprise_Grade-crimson.svg)
 ![Version](https://img.shields.io/badge/Version-2.0.0-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-gold.svg)
-![ESLint](https://img.shields.io/badge/Code%20Style-ESLint-4B32C3.svg?logo=eslint&logoColor=white)
-![Prettier](https://img.shields.io/badge/Formatter-Prettier-F7B93E.svg?logo=prettier&logoColor=black)
 
 **Enterprise-grade social media blog platform with advanced user management, comprehensive admin controls, and scalable
 architecture**
@@ -188,6 +198,12 @@ social-media-blog-app/
 ├── 🔧 .env.example                   # Environment template
 └── 📝 README.md                      # This file
 ```
+
+### Entity-Relationship Diagram
+
+An overview of the database schema and relationships can be found here:
+
+[🔗 View ERD on Eraser.io](https://app.eraser.io/workspace/uefP13tvRBw0rnHOi2vq?origin=)
 
 ### Technology Stack
 

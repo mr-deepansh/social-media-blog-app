@@ -71,7 +71,6 @@ class SecurityService {
    */
   static async detectSuspiciousPatterns(userId, timeframe = 30) {
     const dateThreshold = new Date(Date.now() - timeframe * 24 * 60 * 60 * 1000);
-
     try {
       const patterns = await UserActivity.aggregate([
         {
@@ -251,7 +250,6 @@ class SecurityService {
   static async performThreatAssessment(userId, timeframe = 7) {
     try {
       const dateThreshold = new Date(Date.now() - timeframe * 24 * 60 * 60 * 1000);
-
       const threatMetrics = await UserActivity.aggregate([
         {
           $match: {
@@ -346,7 +344,6 @@ class SecurityService {
    */
   static generateThreatRecommendations(threatLevel, metrics) {
     const recommendations = [];
-
     switch (threatLevel) {
       case "critical":
         recommendations.push(
@@ -374,7 +371,6 @@ class SecurityService {
       default:
         recommendations.push("Continue regular security monitoring", "Maintain current security policies");
     }
-
     return recommendations;
   }
 }

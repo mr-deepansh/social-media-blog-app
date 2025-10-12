@@ -24,83 +24,17 @@ export class SecurityService {
    * @param {Object} options - Query options
    */
   async getSuspiciousAccounts(options = {}) {
-    const { page = 1, limit = 10, riskLevel = "all" } = options;
-    const skip = (page - 1) * limit;
+    try {
+      const { page = 1, limit = 10, riskLevel = "all" } = options;
+      const skip = (page - 1) * limit;
 
-    // Build risk assessment pipeline with actual user data
-    const pipeline = [
-      {
-        $addFields: {
-          riskScore: {
-            $add: [
-              // Account created recently but inactive
-              {
-                $cond: [
-                  {
-                    $and: [
-                      { $gt: ["$createdAt", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)] },
-                      { $eq: ["$isActive", false] },
-                    ],
-                  },
-                  2,
-                  0,
-                ],
-              },
-              // No profile information
-              {
-                $cond: [
-                  {
-                    $or: [
-                      { $eq: ["$firstName", ""] },
-                      { $eq: ["$firstName", null] },
-                      { $eq: ["$firstName", undefined] },
-                    ],
-                  },
-                  1,
-                  0,
-                ],
-              },
-              // Suspicious email patterns (lots of numbers)
-              {
-                $cond: [{ $regexMatch: { input: "$email", regex: /\d{4,}/ } }, 1, 0],
-              },
-              // Never logged in
-              {
-                $cond: [{ $eq: ["$lastLoginAt", null] }, 1, 0],
-              },
-            ],
-          },
-          riskLevel: {
-            $switch: {
-              branches: [
-                { case: { $gte: ["$riskScore", 4] }, then: "high" },
-                { case: { $gte: ["$riskScore", 2] }, then: "medium" },
-                { case: { $gt: ["$riskScore", 0] }, then: "low" },
-              ],
-              default: "none",
-            },
-          },
-        },
-      },
-      {
-        $match: {
-          riskScore: { $gt: 0 },
-          ...(riskLevel !== "all" && { riskLevel: riskLevel.toLowerCase() }),
-        },
-      },
-      {
-        $project: {
-          userId: "$_id",
-          user: {
-            username: "$username",
-            email: "$email",
-            firstName: "$firstName",
-            lastName: "$lastName",
-          },
-          riskLevel: 1,
-          reasons: {
-            $filter: {
-              input: [
+      // Build risk assessment pipeline with actual user data
+      const pipeline = [
+        {
+          $addFields: {
+            riskScore: {
+              $add: [
+                // Account created recently but inactive
                 {
                   $cond: [
                     {
@@ -109,101 +43,187 @@ export class SecurityService {
                         { $eq: ["$isActive", false] },
                       ],
                     },
-                    "recently_created_inactive",
-                    null,
+                    2,
+                    0,
+                  ],
+                },
+                // No profile information
+                {
+                  $cond: [
+                    {
+                      $or: [
+                        { $eq: ["$firstName", ""] },
+                        { $eq: ["$firstName", null] },
+                        { $eq: ["$firstName", undefined] },
+                      ],
+                    },
+                    1,
+                    0,
+                  ],
+                },
+                // Suspicious email patterns (lots of numbers)
+                {
+                  $cond: [{ $regexMatch: { input: "$email", regex: /\d{4,}/ } }, 1, 0],
+                },
+                // Never logged in
+                {
+                  $cond: [{ $eq: ["$lastLoginAt", null] }, 1, 0],
+                },
+              ],
+            },
+            riskLevel: {
+              $switch: {
+                branches: [
+                  { case: { $gte: ["$riskScore", 4] }, then: "high" },
+                  { case: { $gte: ["$riskScore", 2] }, then: "medium" },
+                  { case: { $gt: ["$riskScore", 0] }, then: "low" },
+                ],
+                default: "none",
+              },
+            },
+          },
+        },
+        {
+          $match: {
+            riskScore: { $gt: 0 },
+            ...(riskLevel !== "all" && { riskLevel: riskLevel.toLowerCase() }),
+          },
+        },
+        {
+          $project: {
+            userId: "$_id",
+            user: {
+              username: "$username",
+              email: "$email",
+              firstName: "$firstName",
+              lastName: "$lastName",
+            },
+            riskLevel: 1,
+            reasons: {
+              $filter: {
+                input: [
+                  {
+                    $cond: [
+                      {
+                        $and: [
+                          { $gt: ["$createdAt", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)] },
+                          { $eq: ["$isActive", false] },
+                        ],
+                      },
+                      "recently_created_inactive",
+                      null,
+                    ],
+                  },
+                  {
+                    $cond: [
+                      {
+                        $or: [{ $eq: ["$firstName", ""] }, { $eq: ["$firstName", null] }],
+                      },
+                      "incomplete_profile",
+                      null,
+                    ],
+                  },
+                  {
+                    $cond: [{ $regexMatch: { input: "$email", regex: /\d{4,}/ } }, "suspicious_email", null],
+                  },
+                  {
+                    $cond: [{ $eq: ["$lastLoginAt", null] }, "never_logged_in", null],
+                  },
+                ],
+                cond: { $ne: ["$$this", null] },
+              },
+            },
+            detectedAt: "$createdAt",
+          },
+        },
+        { $sort: { riskLevel: 1, detectedAt: -1 } },
+        { $skip: skip },
+        { $limit: limit },
+      ];
+
+      const accounts = await User.aggregate(pipeline);
+
+      // Get total count separately to avoid pipeline issues
+      const totalCount = await User.countDocuments({
+        $expr: {
+          $gt: [
+            {
+              $add: [
+                {
+                  $cond: [
+                    {
+                      $and: [
+                        { $gt: ["$createdAt", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)] },
+                        { $eq: ["$isActive", false] },
+                      ],
+                    },
+                    2,
+                    0,
                   ],
                 },
                 {
                   $cond: [
                     {
-                      $or: [{ $eq: ["$firstName", ""] }, { $eq: ["$firstName", null] }],
+                      $or: [
+                        { $eq: ["$firstName", ""] },
+                        { $eq: ["$firstName", null] },
+                        { $eq: ["$firstName", undefined] },
+                      ],
                     },
-                    "incomplete_profile",
-                    null,
+                    1,
+                    0,
                   ],
                 },
                 {
-                  $cond: [{ $regexMatch: { input: "$email", regex: /\d{4,}/ } }, "suspicious_email", null],
+                  $cond: [{ $regexMatch: { input: "$email", regex: /\d{4,}/ } }, 1, 0],
                 },
                 {
-                  $cond: [{ $eq: ["$lastLoginAt", null] }, "never_logged_in", null],
+                  $cond: [{ $eq: ["$lastLoginAt", null] }, 1, 0],
                 },
               ],
-              cond: { $ne: ["$$this", null] },
             },
-          },
-          detectedAt: "$createdAt",
+            0,
+          ],
         },
-      },
-      { $sort: { riskLevel: 1, detectedAt: -1 } },
-      { $skip: skip },
-      { $limit: limit },
-    ];
+      });
 
-    const accounts = await User.aggregate(pipeline);
+      const safeAccounts = Array.isArray(accounts) ? accounts : [];
+      const safeTotal = Math.max(totalCount || 0, safeAccounts.length);
 
-    // Get total count separately to avoid pipeline issues
-    const totalCount = await User.countDocuments({
-      $expr: {
-        $gt: [
-          {
-            $add: [
-              {
-                $cond: [
-                  {
-                    $and: [
-                      { $gt: ["$createdAt", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)] },
-                      { $eq: ["$isActive", false] },
-                    ],
-                  },
-                  2,
-                  0,
-                ],
-              },
-              {
-                $cond: [
-                  {
-                    $or: [
-                      { $eq: ["$firstName", ""] },
-                      { $eq: ["$firstName", null] },
-                      { $eq: ["$firstName", undefined] },
-                    ],
-                  },
-                  1,
-                  0,
-                ],
-              },
-              {
-                $cond: [{ $regexMatch: { input: "$email", regex: /\d{4,}/ } }, 1, 0],
-              },
-              {
-                $cond: [{ $eq: ["$lastLoginAt", null] }, 1, 0],
-              },
-            ],
-          },
-          0,
-        ],
-      },
-    });
-
-    const safeAccounts = Array.isArray(accounts) ? accounts : [];
-    const safeTotal = Math.max(totalCount || 0, safeAccounts.length);
-
-    return {
-      data: safeAccounts,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total: safeTotal,
-        totalPages: Math.ceil(safeTotal / limit),
-      },
-      summary: {
-        totalSuspicious: safeTotal,
-        highRisk: safeAccounts.filter(a => a?.riskLevel === "high").length,
-        mediumRisk: safeAccounts.filter(a => a?.riskLevel === "medium").length,
-        lowRisk: safeAccounts.filter(a => a?.riskLevel === "low").length,
-      },
-    };
+      return {
+        data: safeAccounts,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total: safeTotal,
+          totalPages: Math.ceil(safeTotal / limit),
+        },
+        summary: {
+          totalSuspicious: safeTotal,
+          highRisk: safeAccounts.filter(a => a?.riskLevel === "high").length,
+          mediumRisk: safeAccounts.filter(a => a?.riskLevel === "medium").length,
+          lowRisk: safeAccounts.filter(a => a?.riskLevel === "low").length,
+        },
+      };
+    } catch (error) {
+      console.error("Error in getSuspiciousAccounts:", error);
+      // Return empty result on error
+      return {
+        data: [],
+        pagination: {
+          page: parseInt(options.page || 1),
+          limit: parseInt(options.limit || 10),
+          total: 0,
+          totalPages: 0,
+        },
+        summary: {
+          totalSuspicious: 0,
+          highRisk: 0,
+          mediumRisk: 0,
+          lowRisk: 0,
+        },
+      };
+    }
   }
   /**
    * Get login attempts with filtering
