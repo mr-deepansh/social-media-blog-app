@@ -15,6 +15,9 @@
 ![Nodemailer](https://img.shields.io/badge/Nodemailer-Email-44A6D8.svg?logo=nodemailer&logoColor=white)
 ![Jest](https://img.shields.io/badge/Jest-Testing-C21325.svg?logo=jest&logoColor=white)
 ![Winston](https://img.shields.io/badge/Winston-Logging-6B5A8A.svg)
+![Docker](https://img.shields.io/badge/Docker-Ready-0db7ed.svg?logo=docker&logoColor=white)
+![Version](https://img.shields.io/badge/Version-2.0.0-blue.svg)
+![License](https://img.shields.io/badge/License-MIT-gold.svg)
 ![ESLint](https://img.shields.io/badge/Code%20Style-ESLint-4B32C3.svg?logo=eslint&logoColor=white)
 ![Prettier](https://img.shields.io/badge/Formatter-Prettier-F7B93E.svg?logo=prettier&logoColor=black)
 ![Husky](https://img.shields.io/badge/Husky-Git_Hooks-A60000.svg?logo=husky&logoColor=white)
@@ -117,86 +120,162 @@ and robust security measures.
 ```
 social-media-blog-app/
 ├── 📁 src/
-│   ├── 📁 modules/                    # Feature modules
-│   │   ├── 🔐 auth/                  # Authentication & verification
-│   │   │   ├── controllers/          # Auth controllers
-│   │   │   ├── models/               # Auth models
-│   │   │   ├── routes/               # Auth routes
-│   │   │   └── services/             # Auth business logic
-│   │   ├── 👤 users/                 # User management
-│   │   │   ├── controllers/          # User controllers
-│   │   │   ├── middleware/           # User-specific middleware
-│   │   │   ├── models/               # User models
-│   │   │   ├── routes/               # User routes
-│   │   │   ├── services/             # User business logic
-│   │   │   └── validators/           # User validation schemas
-│   │   ├── 📝 blogs/                 # Blog & content system
-│   │   │   ├── controllers/          # Blog controllers
-│   │   │   ├── models/               # Blog models
-│   │   │   ├── routes/               # Blog routes
-│   │   │   └── services/             # Blog business logic
-│   │   ├── 👑 admin/                 # Admin dashboard & controls
-│   │   │   ├── controllers/          # Admin controllers
-│   │   │   ├── routes/               # Admin routes
-│   │   │   ├── services/             # Admin business logic
-│   │   │   └── validators/           # Admin validation schemas
-│   │   ├── 🔔 notifications/         # Notification system
-│   │   │   ├── controllers/          # Notification controllers
-│   │   │   ├── models/               # Notification models
-│   │   │   ├── routes/               # Notification routes
-│   │   │   └── services/             # Notification business logic
-│   │   └── 📧 email/                 # Email services
-│   │       ├── controllers/          # Email controllers
-│   │       ├── services/             # Email sending logic
-│   │       ├── templates/            # Email template configs
-│   │       ├── views/emails/         # EJS email templates
-│   │       ├── utils/                # Email utilities
-│   │       └── workers/              # Background email workers
-│   ├── 📁 shared/                    # Shared utilities
-│   │   ├── middleware/               # Auth, RBAC, rate limiting, CORS
-│   │   ├── utils/                    # ApiError, ApiResponse, Logger
-│   │   ├── validators/               # Shared validation schemas
-│   │   ├── services/                 # Cache, Cloudinary, Session
-│   │   ├── controllers/              # Media controller
-│   │   ├── routes/                   # Shared routes
-│   │   └── constants/                # App constants
-│   ├── 📁 config/                    # Configuration
-│   │   ├── database/                 # MongoDB connection
-│   │   ├── redis/                    # Redis configuration
-│   │   ├── queue/                    # Queue configuration
-│   │   ├── index.js                  # Config aggregator
-│   │   └── performance.config.js     # Performance settings
-│   ├── 📁 core/                      # Core utilities
-│   ├── 📁 services/                  # Business services
-│   │   ├── auth/                     # Auth services
-│   │   ├── email/                    # Email services
-│   │   └── user/                     # User services
-│   ├── 📁 routes/                    # Route aggregator
-│   │   └── index.js                  # Health check routes
 │   ├── 📄 app.js                     # Express application setup
 │   └── 📄 server.js                  # Server initialization
-├── 📁 docs/                          # Documentation
-│   ├── postman/                      # Postman collections
-│   ├── ADMIN_SYSTEM.md               # Admin documentation
-│   ├── COMPLETE_API_ENDPOINTS.md     # API reference
-│   ├── DATABASE_SCHEMA.md            # Database schema
-│   └── HUSKY_SETUP.md                # Git hooks setup
-├── 📁 logs/                          # Application logs
-├── 📁 Public/Temp/                   # Temporary files
-├── 📁 redis-data/                    # Redis persistence
-├── 📁 scripts/                       # Utility scripts
-│   ├── production-start.js           # Production startup
-│   └── setup-husky.js                # Husky configuration
-├── 📁 uploads/                       # File uploads
-│   ├── images/                       # Image uploads
-│   ├── temp/                         # Temporary files
-│   └── videos/                       # Video uploads
-├── 📦 package.json                   # Dependencies
-├── 🐳 docker-compose.yml             # Docker configuration
-├── 🐳 Dockerfile                     # Docker image
-├── ⚙️ ecosystem.config.cjs           # PM2 configuration
-├── 🔧 .env.example                   # Environment template
-└── 📝 README.md                      # This file
+│   ├── 📁 config/
+│   │   ├── 📄 index.js                  # Config aggregator
+│   │   ├── 📄 performance.config.js     # Performance settings
+│   │   ├── 📁 database/
+│   │   │   └── 📄 connection.js         # MongoDB connection
+│   │   ├── 📁 queue/
+│   │   └── 📁 redis/
+│   │       ├── 📄 redis.config.js
+│   │       └── 📄 redis.optimized.js
+│   ├── 📁 core/
+│   ├── 📁 modules/
+│   │   ├── 📁 admin/
+│   │   │   ├── 📄 index.js
+│   │   │   ├── 📁 controllers/
+│   │   │   │   ├── 📄 admin.controller.js
+│   │   │   │   ├── 📄 advanced.controller.js
+│   │   │   │   ├── 📄 analytics.controller.js
+│   │   │   │   ├── 📄 dashboard.controller.js
+│   │   │   │   ├── 📄 monitoring.controller.js
+│   │   │   │   ├── 📄 security.controller.js
+│   │   │   │   ├── 📄 session.controller.js
+│   │   │   │   └── 📄 super-admin.controller.js
+│   │   │   ├── 📁 routes/
+│   │   │   │   ├── 📄 admin.routes.js
+│   │   │   │   └── 📄 super-admin.routes.js
+│   │   │   ├── 📁 services/
+│   │   │   │   ├── 📄 analytics.service.js
+│   │   │   │   ├── 📄 audit.service.js
+│   │   │   │   ├── 📄 automation.service.js
+│   │   │   │   ├── 📄 cache.service.js
+│   │   │   │   ├── 📄 exportImport.service.js
+│   │   │   │   ├── 📄 monitoring.service.js
+│   │   │   │   ├── 📄 notification.service.js
+│   │   │   │   ├── 📄 queryBuilder.service.js
+│   │   │   │   ├── 📄 redis.service.js
+│   │   │   │   ├── 📄 security.service.js
+│   │   │   │   ├── 📄 super-admin.service.js
+│   │   │   │   ├── 📄 system.service.js
+│   │   │   │   └── 📄 validation.service.js
+│   │   │   └── 📁 validators/
+│   │   │       └── 📄 super-admin.validator.js
+│   │   ├── 📁 auth/
+│   │   │   ├── 📄 index.js
+│   │   │   ├── 📁 controllers/
+│   │   │   │   ├── 📄 activity.controller.js
+│   │   │   │   ├── 📄 auth.controller.js
+│   │   │   │   ├── 📄 forgotPassword.controller.js
+│   │   │   │   └── 📄 resetPassword.controller.js
+│   │   │   ├── 📁 models/
+│   │   │   │   └── 📄 userActivity.model.js
+│   │   │   ├── 📁 routes/
+│   │   │   │   ├── 📄 auth.routes.js
+│   │   │   │   ├── 📄 forgotPassword.routes.js
+│   │   │   │   ├── 📄 resetPassword.routes.js
+│   │   │   │   └── 📄 security.routes.js
+│   │   │   └── 📁 services/
+│   │   │       ├── 📄 auth.service.js
+│   │   │       ├── 📄 location.service.js
+│   │   │       └── 📄 security.service.js
+│   │   ├── 📁 blogs/
+│   │   │   ├── 📄 index.js
+│   │   │   ├── 📁 controllers/
+│   │   │   │   ├── 📄 analytics.controller.js
+│   │   │   │   └── 📁 comment/
+│   │   │   ├── 📁 models/
+│   │   │   ├── 📁 routes/
+│   │   │   └── 📁 services/
+│   │   ├── 📁 email/
+│   │   │   ├── 📄 index.js
+│   │   │   ├── 📁 controllers/
+│   │   │   ├── 📁 services/
+│   │   │   ├── 📁 templates/
+│   │   │   ├── 📁 utils/
+│   │   │   ├── 📁 views/
+│   │   │   └── 📁 workers/
+│   │   ├── 📁 notifications/
+│   │   │   ├── 📄 index.js
+│   │   │   ├── 📁 controllers/
+│   │   │   ├── 📁 models/
+│   │   │   ├── 📁 routes/
+│   │   │   └── 📁 services/
+│   │   ├── 📁 shared/
+│   │   │   └── 📁 config/
+│   │   └── 📁 users/
+│   │       ├── 📄 index.js
+│   │       ├── 📁 controllers/
+│   │       ├── 📁 middleware/
+│   │       ├── 📁 models/
+│   │       ├── 📁 routes/
+│   │       ├── 📁 services/
+│   │       └── 📁 validators/
+│   ├── 📁 routes/
+│   │   └── 📄 index.js
+│   ├── 📁 services/
+│   │   ├── 📁 auth/
+│   │   ├── 📁 email/
+│   │   └── 📁 user/
+│   └── 📁 shared/
+│       ├── 📄 index.js
+│       ├── 📁 config/
+│       │   └── 📄 redis.config.js
+│       ├── 📁 constants/
+│       │   ├── 📄 app.constants.js
+│       │   ├── 📄 index.js
+│       │   └── 📄 post.constants.js
+│       ├── 📁 controllers/
+│       │   └── 📄 media.controller.js
+│       ├── 📁 middleware/
+│       │   ├── 📄 auth.middleware.js
+│       │   ├── 📄 cors.middleware.js
+│       │   ├── 📄 csrf.middleware.js
+│       │   ├── 📄 enterprise.middleware.js
+│       │   ├── 📄 isAdmin.middleware.js
+│       │   ├── 📄 locationTracker.middleware.js
+│       │   ├── 📄 multer.middleware.js
+│       │   ├── 📄 optionalAuth.middleware.js
+│       │   ├── 📄 performance.middleware.js
+│       │   ├── 📄 rateLimit.middleware.js
+│       │   ├── 📄 rbac.middleware.js
+│       │   ├── 📄 sessionTracker.middleware.js
+│       │   ├── 📄 superAdmin.middleware.js
+│       │   ├── 📄 upload.middleware.js
+│       │   ├── 📄 validate.middleware.js
+│       │   └── 📄 validation.middleware.js
+│       ├── 📁 routes/
+│       │   └── 📄 media.routes.js
+│       ├── 📁 services/
+│       │   ├── 📄 cache.service.js
+│       │   ├── 📄 cloudinary.service.js
+│       │   ├── 📄 logger.service.js
+│       │   ├── 📄 metrics.service.js
+│       │   └── 📄 session.service.js
+│       ├── 📁 utils/
+│       │   ├── 📄 ApiError.js
+│       │   ├── 📄 ApiHealth.js
+│       │   ├── 📄 ApiResponse.js
+│       │   ├── 📄 AsyncHandler.js
+│       │   ├── 📄 Cache.js
+│       │   ├── 📄 cookieOptions.js
+│       │   ├── 📄 EnterpriseResponse.js
+│       │   ├── 📄 ErrorHandler.js
+│       │   ├── 📄 Logger.js
+│       │   ├── 📄 ResponseFormatter.js
+│       │   ├── 📄 SecurityValidator.js
+│       │   ├── 📄 sendEmail.js
+│       │   ├── 📄 sessionManager.js
+│       │   └── 📄 Validator.js
+│       └── 📁 validators/
+│           ├── 📄 search.validator.js
+│           └── 📄 zod.validator.js
+└── 📁 uploads/
+    ├── 📁 images/
+    ├── 📁 temp/
+    └── 📁 videos/
 ```
 
 ### Entity-Relationship Diagram
@@ -380,6 +459,10 @@ GET    ${SERVER}/auth/activity               # Get user activity log
 GET    ${SERVER}/auth/activity/stats         # Activity statistics
 GET    ${SERVER}/auth/activity/locations     # Login locations
 GET    ${SERVER}/auth/security-overview      # Security overview
+GET    ${SERVER}/auth/security/dashboard     # Get comprehensive security dashboard
+GET    ${SERVER}/auth/security/threat-assessment # Get real-time threat assessment
+GET    ${SERVER}/auth/security/compliance-report # Get compliance report
+POST   ${SERVER}/auth/security/validate-ip   # Validate IP threat status
 ```
 
 #### User Management
@@ -433,6 +516,7 @@ POST   ${SERVER}/blogs/engagement/:postId/like     # Toggle like
 POST   ${SERVER}/blogs/engagement/:postId/view     # Track view
 POST   ${SERVER}/blogs/engagement/:postId/repost   # Repost
 POST   ${SERVER}/blogs/engagement/:postId/bookmark # Toggle bookmark
+POST   ${SERVER}/blogs/engagement/:postId/share    # Track share
 
 // Media
 POST   ${SERVER}/blogs/media/upload          # Upload media files
@@ -444,6 +528,10 @@ GET    ${SERVER}/blogs/analytics/user        # User analytics
 GET    ${SERVER}/blogs/analytics/platform    # Platform analytics
 GET    ${SERVER}/blogs/analytics/post/:id    # Post analytics
 GET    ${SERVER}/blogs/analytics/post/:id/realtime # Real-time engagement
+GET    ${SERVER}/blogs/analytics/scheduled   # Get scheduled posts
+GET    ${SERVER}/blogs/analytics/scheduling  # Get scheduling analytics
+DELETE ${SERVER}/blogs/analytics/scheduled/:id # Cancel scheduled post
+PATCH  ${SERVER}/blogs/analytics/scheduled/:id # Reschedule post
 ```
 
 #### Admin Dashboard
@@ -453,9 +541,13 @@ GET    ${SERVER}/blogs/analytics/post/:id/realtime # Real-time engagement
 GET    ${SERVER}/admin/dashboard             # Admin dashboard
 GET    ${SERVER}/admin/stats                 # System statistics
 GET    ${SERVER}/admin/stats/live            # Live statistics
+GET    ${SERVER}/admin/sessions/analytics    # Admin session analytics
+GET    ${SERVER}/admin/sessions/:adminId     # Admin session details
 
 // User Management
 GET    ${SERVER}/admin/users                 # Get all users
+GET    ${SERVER}/admin/users/search          # Search users
+GET    ${SERVER}/admin/users/export          # Export users in CSV format
 GET    ${SERVER}/admin/users/:id             # Get user by ID
 PUT    ${SERVER}/admin/users/:id             # Update user
 DELETE ${SERVER}/admin/users/:id             # Delete user
@@ -480,20 +572,35 @@ GET    ${SERVER}/admin/security/login-attempts # Login attempts
 GET    ${SERVER}/admin/security/blocked-ips  # Blocked IPs
 POST   ${SERVER}/admin/security/blocked-ips  # Block IP
 DELETE ${SERVER}/admin/security/blocked-ips/:ipId # Unblock IP
+GET    ${SERVER}/admin/security/threat-detection # Threat detection
 
 // Content Moderation
 GET    ${SERVER}/admin/content/posts         # Get all posts
 PATCH  ${SERVER}/admin/content/posts/:postId/toggle-visibility # Toggle visibility
 
-// System Monitoring
+// System Monitoring & Configuration
 GET    ${SERVER}/admin/monitoring/server-health # Server health
 GET    ${SERVER}/admin/monitoring/database-stats # Database stats
+GET    ${SERVER}/admin/config/app-settings    # Get application settings
+PUT    ${SERVER}/admin/config/app-settings    # Update application settings
+
+// Communication
+GET    ${SERVER}/admin/notifications/templates # Get notification templates
+POST   ${SERVER}/admin/notifications/send-bulk # Send bulk notification
+
+// Automation & Enterprise
+GET    ${SERVER}/admin/automation/rules      # Get automation rules
+POST   ${SERVER}/admin/automation/rules      # Create automation rule
+GET    ${SERVER}/admin/experiments           # Get A/B testing experiments
+POST   ${SERVER}/admin/experiments           # Create A/B testing experiment
+GET    ${SERVER}/admin/bi/revenue-analytics  # Get revenue analytics
+GET    ${SERVER}/admin/bi/user-lifetime-value # Get user lifetime value
 ```
 
 #### Super Admin
 
 ```typescript
-POST   ${SERVER}/admin/super-admin/create    # Create super admin
+POST   ${SERVER}/admin/create-super-admin    # Create super admin (one-time setup)
 POST   ${SERVER}/admin/super-admin/create-admin # Create admin
 GET    ${SERVER}/admin/super-admin/admins    # Get all admins
 PUT    ${SERVER}/admin/super-admin/update-admin/:adminId # Update admin
@@ -521,6 +628,14 @@ PUT    ${SERVER}/notifications/preferences    # Update preferences
 POST   ${SERVER}/notifications/system         # Create system notification
 ```
 
+#### Shared Media
+
+```typescript
+POST   ${SERVER}/media/upload                # Upload a single media file
+POST   ${SERVER}/media/upload-multiple       # Upload multiple media files
+DELETE ${SERVER}/media/:publicId             # Delete media by public ID
+```
+
 **📖 Complete API Documentation**: [API Reference](docs/COMPLETE_API_ENDPOINTS.md)
 
 ---
@@ -537,6 +652,7 @@ npm run dev:clean            # Clean start (kill port 5000)
 # Production
 npm start                    # Start production server
 npm run start:prod           # Production with logging
+npm run start:cluster        # Start production server in cluster mode with PM2
 npm run prod:start           # Production startup script
 npm run prod:start:force     # Force production start
 
@@ -547,6 +663,7 @@ npm run test:integration     # Integration tests
 npm run test:e2e             # End-to-end tests
 npm run test:coverage        # Coverage report
 npm run test:watch           # Watch mode
+npm run test:performance     # Performance tests
 
 # Code Quality
 npm run lint                 # Lint and fix
@@ -561,6 +678,11 @@ npm run docker:down          # Stop containers
 npm run docker:logs          # View logs
 npm run docker:dev           # Development mode
 npm run docker:prod          # Production mode
+
+# Kubernetes
+npm run k8s:deploy           # Deploy to Kubernetes
+npm run k8s:delete           # Delete from Kubernetes
+npm run k8s:status           # Get Kubernetes status
 
 # PM2 Process Manager
 npm run pm2:start            # Start with PM2
