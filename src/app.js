@@ -82,7 +82,7 @@ if (serverConfig.nodeEnv === "development") {
     console.log("🔑 Headers:", {
       "content-type": req.headers["content-type"] || "None",
       authorization: req.headers.authorization ? "Present" : "Missing",
-      "user-agent": `${req.headers["user-agent"]?.substring(0, 50)}...` || "None",
+      "user-agent": req.headers["user-agent"] ? `${req.headers["user-agent"].substring(0, 50)}...` : "None",
     });
     const originalEnd = res.end;
     res.end = function (...args) {

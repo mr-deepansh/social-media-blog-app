@@ -1,4 +1,4 @@
-# 💬 Social Media Blog Platform
+# 💬 EndlessChat - API_Social Media Blog Platform
 
 <div align="center">
 
@@ -15,16 +15,13 @@
 ![Nodemailer](https://img.shields.io/badge/Nodemailer-Email-44A6D8.svg?logo=nodemailer&logoColor=white)
 ![Jest](https://img.shields.io/badge/Jest-Testing-C21325.svg?logo=jest&logoColor=white)
 ![Winston](https://img.shields.io/badge/Winston-Logging-6B5A8A.svg)
-![Docker](https://img.shields.io/badge/Docker-Ready-0db7ed.svg?logo=docker&logoColor=white)
 ![Version](https://img.shields.io/badge/Version-2.0.0-blue.svg)
-![License](https://img.shields.io/badge/License-MIT-gold.svg)
 ![ESLint](https://img.shields.io/badge/Code%20Style-ESLint-4B32C3.svg?logo=eslint&logoColor=white)
 ![Prettier](https://img.shields.io/badge/Formatter-Prettier-F7B93E.svg?logo=prettier&logoColor=black)
 ![Husky](https://img.shields.io/badge/Husky-Git_Hooks-A60000.svg?logo=husky&logoColor=white)
 ![Joi](https://img.shields.io/badge/Joi-Validation-000000.svg?logo=joi&logoColor=white)
 ![Zod](https://img.shields.io/badge/Zod-Validation-3E67B1.svg?logo=zod&logoColor=white)
 ![Security](https://img.shields.io/badge/Security-Enterprise_Grade-crimson.svg)
-![Version](https://img.shields.io/badge/Version-2.0.0-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-gold.svg)
 
 **Enterprise-grade social media blog platform with advanced user management, comprehensive admin controls, and scalable
@@ -437,203 +434,274 @@ Headers: {
 
 ### Core Endpoints
 
-#### Authentication & Authorization
+#### 🏥 Health & Status
 
 ```typescript
-// User Authentication
+// Health Check
+GET    ${SERVER}/../../health                # API health check
+GET    ${SERVER}                             # API version info
+GET    /                                     # Root welcome message
+```
+
+#### 🔐 Authentication & Authorization
+
+```typescript
+// User Registration & Login
 POST   ${SERVER}/users/register              # User registration
 POST   ${SERVER}/users/login                 # User login
-POST   ${SERVER}/users/logout                # User logout
+POST   ${SERVER}/users/logout                # User logout (Protected)
 POST   ${SERVER}/users/refresh-token         # Refresh access token
 
 // Email Verification
-POST   ${SERVER}/auth/verify-email/:token    # Verify email address
-POST   ${SERVER}/auth/resend-verification    # Resend verification email
+POST   ${SERVER}/users/verify-email/:token   # Verify email address
+POST   ${SERVER}/users/resend-verification   # Resend verification email (Protected)
+POST   ${SERVER}/auth/verify-email/:token    # Verify email address (Alternative)
+POST   ${SERVER}/auth/resend-verification    # Resend verification email (Protected)
 
 // Password Management
-POST   ${SERVER}/auth/forgot-password        # Request password reset
-POST   ${SERVER}/auth/reset-password/:token  # Reset password with token
+POST   ${SERVER}/users/forgot-password       # Request password reset
+POST   ${SERVER}/users/reset-password/:token # Reset password with token
+POST   ${SERVER}/auth/forgot-password        # Request password reset (Alternative)
+POST   ${SERVER}/auth/reset-password/:token  # Reset password with token (Alternative)
+POST   ${SERVER}/users/change-password       # Change password (Protected)
 
 // Activity & Security
-GET    ${SERVER}/auth/activity               # Get user activity log
-GET    ${SERVER}/auth/activity/stats         # Activity statistics
-GET    ${SERVER}/auth/activity/locations     # Login locations
-GET    ${SERVER}/auth/security-overview      # Security overview
-GET    ${SERVER}/auth/security/dashboard     # Get comprehensive security dashboard
-GET    ${SERVER}/auth/security/threat-assessment # Get real-time threat assessment
-GET    ${SERVER}/auth/security/compliance-report # Get compliance report
-POST   ${SERVER}/auth/security/validate-ip   # Validate IP threat status
+GET    ${SERVER}/auth/activity               # Get user activity log (Protected)
+GET    ${SERVER}/auth/activity/stats         # Activity statistics (Protected)
+GET    ${SERVER}/auth/activity/locations     # Login locations (Protected)
+GET    ${SERVER}/auth/activity/location-analytics # Location analytics (Protected)
+GET    ${SERVER}/auth/security-overview      # Security overview (Protected)
+GET    ${SERVER}/auth/security/dashboard     # Comprehensive security dashboard (Protected)
+GET    ${SERVER}/auth/security/threat-assessment # Real-time threat assessment (Protected)
+GET    ${SERVER}/auth/security/compliance-report # Compliance report (Protected)
+POST   ${SERVER}/auth/security/validate-ip   # Validate IP threat status (Protected)
 ```
 
-#### User Management
+#### 👥 User Management
 
 ```typescript
-// Profile Management
-GET    ${SERVER}/users/profile                # Get current user profile
-PUT    ${SERVER}/users/profile                # Update current user profile
-GET    ${SERVER}/users/profile/:username      # Get user by username
-GET    ${SERVER}/users/profile/:username/posts # Get users posts
+// Current User Profile
+GET    ${SERVER}/users/profile               # Get current user profile (Protected)
+GET    ${SERVER}/users/profile/me            # Get current user profile (Protected)
+PUT    ${SERVER}/users/profile               # Update current user profile (Protected)
+PUT    ${SERVER}/users/profile/me            # Update current user profile (Protected)
+
+// Public User Profiles
+GET    ${SERVER}/users/profile/:username     # Get user profile by username (Protected)
+GET    ${SERVER}/users/profile/:username/posts # Get user posts by username (Protected)
 
 // User Actions
-POST   ${SERVER}/users/change-password       # Change password
-POST   ${SERVER}/users/upload-avatar         # Upload avatar image
-POST   ${SERVER}/users/upload-cover          # Upload cover image
+POST   ${SERVER}/users/upload-avatar         # Upload avatar image (Protected)
+POST   ${SERVER}/users/upload-cover          # Upload cover image (Protected)
 
-// Social Features
-GET    ${SERVER}/users/feed                  # Get personalized feed
-GET    ${SERVER}/users/search                # Search users
-POST   ${SERVER}/users/follow/:userId        # Follow user
-POST   ${SERVER}/users/unfollow/:userId      # Unfollow user
-GET    ${SERVER}/users/followers/:userId     # Get user followers
-GET    ${SERVER}/users/following/:userId     # Get user following
-GET    ${SERVER}/users/:userId/follow-status # Check follow status
+// Social Features - Feed & Search
+GET    ${SERVER}/users/feed                  # Get personalized feed (Protected)
+GET    ${SERVER}/users/search                # Search users (Protected)
 
-// User CRUD (Admin)
-GET    ${SERVER}/users                       # Get all users
-GET    ${SERVER}/users/:id                   # Get user by ID
-PUT    ${SERVER}/users/:id                   # Update user
-DELETE ${SERVER}/users/:id                   # Delete user
+// Social Features - Follow/Unfollow
+POST   ${SERVER}/users/follow/:userId        # Follow user (Protected)
+POST   ${SERVER}/users/unfollow/:userId      # Unfollow user (Protected)
+POST   ${SERVER}/users/:userId/follow        # Follow user - Alternative (Protected)
+DELETE ${SERVER}/users/:userId/follow        # Unfollow user - Alternative (Protected)
+
+// Social Features - Followers & Following
+GET    ${SERVER}/users/followers/:userId     # Get user followers (Protected)
+GET    ${SERVER}/users/following/:userId     # Get user following (Protected)
+GET    ${SERVER}/users/:userId/followers     # Get user followers - Alternative (Protected)
+GET    ${SERVER}/users/:userId/following     # Get user following - Alternative (Protected)
+GET    ${SERVER}/users/:userId/follow-status # Check follow status (Protected)
+
+// User CRUD Operations
+GET    ${SERVER}/users                       # Get all users (Protected)
+GET    ${SERVER}/users/:id                   # Get user by ID (Protected)
+PUT    ${SERVER}/users/:id                   # Update user (Protected)
+DELETE ${SERVER}/users/:id                   # Delete user (Protected)
 ```
 
-#### Blog Management
+#### 📝 Blog Management
 
 ```typescript
-// Posts
-POST   ${SERVER}/blogs/posts                 # Create new post
-GET    ${SERVER}/blogs/posts                 # Get all posts
-GET    ${SERVER}/blogs/posts/my-posts        # Get current user posts
-GET    ${SERVER}/blogs/posts/user/:username  # Get posts by username
-GET    ${SERVER}/blogs/posts/:id             # Get post by ID
-PATCH  ${SERVER}/blogs/posts/:id             # Update post
-DELETE ${SERVER}/blogs/posts/:id             # Delete post
+// Posts - Create & List
+POST   ${SERVER}/blogs/posts                 # Create new post (Protected)
+GET    ${SERVER}/blogs/posts                 # Get all posts (Public/Optional Auth)
+GET    ${SERVER}/blogs/posts/my-posts        # Get current user posts (Protected)
+GET    ${SERVER}/blogs/posts/user/:username  # Get posts by username (Public/Optional Auth)
+
+// Posts - Read, Update, Delete
+GET    ${SERVER}/blogs/posts/:id             # Get post by ID (Public/Optional Auth)
+GET    ${SERVER}/blogs/posts/public/:id      # Get public post by ID (Public)
+GET    ${SERVER}/blogs/posts/:username/post/:id # Get post by username and ID (Public/Optional Auth)
+PATCH  ${SERVER}/blogs/posts/:id             # Update post (Protected)
+DELETE ${SERVER}/blogs/posts/:id             # Delete post (Protected)
 
 // Comments
-GET    ${SERVER}/blogs/comments/:postId      # Get post comments
-POST   ${SERVER}/blogs/comments/:postId      # Add comment
+GET    ${SERVER}/blogs/comments/:postId      # Get post comments (Public/Optional Auth)
+POST   ${SERVER}/blogs/comments/:postId      # Add comment (Protected)
 
-// Engagement
-POST   ${SERVER}/blogs/engagement/:postId/like     # Toggle like
-POST   ${SERVER}/blogs/engagement/:postId/view     # Track view
-POST   ${SERVER}/blogs/engagement/:postId/repost   # Repost
-POST   ${SERVER}/blogs/engagement/:postId/bookmark # Toggle bookmark
-POST   ${SERVER}/blogs/engagement/:postId/share    # Track share
+// Engagement - Interactions
+POST   ${SERVER}/blogs/engagement/:postId/like     # Toggle like (Protected)
+POST   ${SERVER}/blogs/engagement/:postId/view     # Track view (Public/Optional Auth)
+POST   ${SERVER}/blogs/engagement/:postId/repost   # Repost (Protected)
+POST   ${SERVER}/blogs/engagement/:postId/bookmark # Toggle bookmark (Protected)
+POST   ${SERVER}/blogs/engagement/:postId/share    # Track share (Protected)
 
-// Media
-POST   ${SERVER}/blogs/media/upload          # Upload media files
-GET    ${SERVER}/blogs/media                 # Get media files
-DELETE ${SERVER}/blogs/media/:mediaId        # Delete media
+// Bookmarks
+GET    ${SERVER}/blogs/bookmarks             # Get bookmarked posts (Protected)
 
-// Analytics
-GET    ${SERVER}/blogs/analytics/user        # User analytics
-GET    ${SERVER}/blogs/analytics/platform    # Platform analytics
-GET    ${SERVER}/blogs/analytics/post/:id    # Post analytics
-GET    ${SERVER}/blogs/analytics/post/:id/realtime # Real-time engagement
-GET    ${SERVER}/blogs/analytics/scheduled   # Get scheduled posts
-GET    ${SERVER}/blogs/analytics/scheduling  # Get scheduling analytics
-DELETE ${SERVER}/blogs/analytics/scheduled/:id # Cancel scheduled post
-PATCH  ${SERVER}/blogs/analytics/scheduled/:id # Reschedule post
+// Media Management
+POST   ${SERVER}/blogs/media/upload          # Upload media files (Protected)
+GET    ${SERVER}/blogs/media                 # Get media files (Protected)
+DELETE ${SERVER}/blogs/media/:mediaId        # Delete media (Protected)
+
+// Analytics - User & Platform
+GET    ${SERVER}/blogs/analytics/user        # User analytics (Protected)
+GET    ${SERVER}/blogs/analytics/platform    # Platform analytics (Protected)
+GET    ${SERVER}/blogs/analytics/post/:id    # Post analytics (Protected)
+GET    ${SERVER}/blogs/analytics/post/:id/realtime # Real-time engagement (Protected)
+
+// Analytics - Scheduling
+GET    ${SERVER}/blogs/analytics/scheduled   # Get scheduled posts (Protected)
+GET    ${SERVER}/blogs/analytics/scheduling  # Get scheduling analytics (Protected)
+DELETE ${SERVER}/blogs/analytics/scheduled/:id # Cancel scheduled post (Protected)
+PATCH  ${SERVER}/blogs/analytics/scheduled/:id # Reschedule post (Protected)
 ```
 
-#### Admin Dashboard
+#### 👑 Admin Dashboard
 
 ```typescript
-// Dashboard & Stats
-GET    ${SERVER}/admin/dashboard             # Admin dashboard
-GET    ${SERVER}/admin/stats                 # System statistics
-GET    ${SERVER}/admin/stats/live            # Live statistics
-GET    ${SERVER}/admin/sessions/analytics    # Admin session analytics
-GET    ${SERVER}/admin/sessions/:adminId     # Admin session details
+// Dashboard & Statistics
+GET    ${SERVER}/admin/dashboard             # Admin dashboard (Admin)
+GET    ${SERVER}/admin/stats                 # System statistics (Admin)
+GET    ${SERVER}/admin/stats/live            # Live statistics (Admin)
 
-// User Management
-GET    ${SERVER}/admin/users                 # Get all users
-GET    ${SERVER}/admin/users/search          # Search users
-GET    ${SERVER}/admin/users/export          # Export users in CSV format
-GET    ${SERVER}/admin/users/:id             # Get user by ID
-PUT    ${SERVER}/admin/users/:id             # Update user
-DELETE ${SERVER}/admin/users/:id             # Delete user
-PATCH  ${SERVER}/admin/users/:id/suspend     # Suspend user
-PATCH  ${SERVER}/admin/users/:id/activate    # Activate user
-PATCH  ${SERVER}/admin/users/:id/verify      # Verify user account
-GET    ${SERVER}/admin/users/:id/activity-log # User activity log
-GET    ${SERVER}/admin/users/:id/security-analysis # Security analysis
-POST   ${SERVER}/admin/users/:id/notify      # Send notification
-POST   ${SERVER}/admin/users/:id/force-password-reset # Force password reset
+// Admin Management
+GET    ${SERVER}/admin/admins                # Get all admins (Admin)
+GET    ${SERVER}/admin/admins/:adminId       # Get admin by ID (Admin)
 
-// Analytics
-GET    ${SERVER}/admin/analytics/overview    # Analytics overview
-GET    ${SERVER}/admin/analytics/users/growth # User growth
-GET    ${SERVER}/admin/analytics/users/retention # User retention
-GET    ${SERVER}/admin/analytics/users/demographics # Demographics
-GET    ${SERVER}/admin/analytics/engagement/metrics # Engagement metrics
+// Session Management
+GET    ${SERVER}/admin/sessions/analytics    # Admin session analytics (Admin)
+GET    ${SERVER}/admin/sessions/:adminId     # Admin session details (Admin)
 
-// Security
-GET    ${SERVER}/admin/security/suspicious-accounts # Suspicious accounts
-GET    ${SERVER}/admin/security/login-attempts # Login attempts
-GET    ${SERVER}/admin/security/blocked-ips  # Blocked IPs
-POST   ${SERVER}/admin/security/blocked-ips  # Block IP
-DELETE ${SERVER}/admin/security/blocked-ips/:ipId # Unblock IP
-GET    ${SERVER}/admin/security/threat-detection # Threat detection
+// User Management - List & Search
+GET    ${SERVER}/admin/users                 # Get all users (Admin)
+GET    ${SERVER}/admin/users/search          # Search users (Admin)
+GET    ${SERVER}/admin/users/export          # Export users in CSV format (Admin)
+
+// User Management - CRUD
+GET    ${SERVER}/admin/users/:id             # Get user by ID (Admin)
+PUT    ${SERVER}/admin/users/:id             # Update user (Admin)
+DELETE ${SERVER}/admin/users/:id             # Delete user (Admin)
+
+// User Management - Status Control
+PATCH  ${SERVER}/admin/users/:id/suspend     # Suspend user (Admin)
+PATCH  ${SERVER}/admin/users/:id/activate    # Activate user (Admin)
+PATCH  ${SERVER}/admin/users/:id/verify      # Verify user account (Admin)
+
+// User Management - Monitoring
+GET    ${SERVER}/admin/users/:id/activity-log # User activity log (Admin)
+GET    ${SERVER}/admin/users/:id/security-analysis # Security analysis (Admin)
+
+// User Management - Actions
+POST   ${SERVER}/admin/users/:id/notify      # Send notification to user (Admin)
+POST   ${SERVER}/admin/users/:id/force-password-reset # Force password reset (Admin)
+POST   ${SERVER}/admin/users/bulk-actions    # Bulk user actions (Admin)
+
+// Analytics - Overview
+GET    ${SERVER}/admin/analytics/overview    # Analytics overview (Admin)
+GET    ${SERVER}/admin/analytics/users/growth # User growth analytics (Admin)
+GET    ${SERVER}/admin/analytics/users/retention # User retention analytics (Admin)
+GET    ${SERVER}/admin/analytics/users/demographics # User demographics (Admin)
+GET    ${SERVER}/admin/analytics/engagement/metrics # Engagement metrics (Admin)
+
+// Security - Monitoring
+GET    ${SERVER}/admin/security/suspicious-accounts # Suspicious accounts (Admin)
+GET    ${SERVER}/admin/security/login-attempts # Login attempts (Admin)
+GET    ${SERVER}/admin/security/threat-detection # Threat detection (Admin)
+
+// Security - IP Management
+GET    ${SERVER}/admin/security/blocked-ips  # Get blocked IPs (Admin)
+POST   ${SERVER}/admin/security/blocked-ips  # Block IP address (Admin)
+DELETE ${SERVER}/admin/security/blocked-ips/:ipId # Unblock IP address (Admin)
 
 // Content Moderation
-GET    ${SERVER}/admin/content/posts         # Get all posts
-PATCH  ${SERVER}/admin/content/posts/:postId/toggle-visibility # Toggle visibility
+GET    ${SERVER}/admin/content/posts         # Get all posts (Admin)
+PATCH  ${SERVER}/admin/content/posts/:postId/toggle-visibility # Toggle post visibility (Admin)
 
-// System Monitoring & Configuration
-GET    ${SERVER}/admin/monitoring/server-health # Server health
-GET    ${SERVER}/admin/monitoring/database-stats # Database stats
-GET    ${SERVER}/admin/config/app-settings    # Get application settings
-PUT    ${SERVER}/admin/config/app-settings    # Update application settings
+// System Configuration
+GET    ${SERVER}/admin/config/app-settings   # Get application settings (Admin)
+PUT    ${SERVER}/admin/config/app-settings   # Update application settings (Admin)
 
-// Communication
-GET    ${SERVER}/admin/notifications/templates # Get notification templates
-POST   ${SERVER}/admin/notifications/send-bulk # Send bulk notification
+// System Monitoring
+GET    ${SERVER}/admin/monitoring/server-health # Server health (Admin)
+GET    ${SERVER}/admin/monitoring/database-stats # Database statistics (Admin)
 
-// Automation & Enterprise
-GET    ${SERVER}/admin/automation/rules      # Get automation rules
-POST   ${SERVER}/admin/automation/rules      # Create automation rule
-GET    ${SERVER}/admin/experiments           # Get A/B testing experiments
-POST   ${SERVER}/admin/experiments           # Create A/B testing experiment
-GET    ${SERVER}/admin/bi/revenue-analytics  # Get revenue analytics
-GET    ${SERVER}/admin/bi/user-lifetime-value # Get user lifetime value
+// Notifications Management
+GET    ${SERVER}/admin/notifications/templates # Get notification templates (Admin)
+POST   ${SERVER}/admin/notifications/send-bulk # Send bulk notification (Admin)
+
+// Automation & Workflows
+GET    ${SERVER}/admin/automation/rules      # Get automation rules (Admin)
+POST   ${SERVER}/admin/automation/rules      # Create automation rule (Admin)
+
+// A/B Testing & Experiments
+GET    ${SERVER}/admin/experiments           # Get A/B testing experiments (Admin)
+POST   ${SERVER}/admin/experiments           # Create A/B testing experiment (Admin)
+
+// Business Intelligence
+GET    ${SERVER}/admin/bi/revenue-analytics  # Get revenue analytics (Admin)
+GET    ${SERVER}/admin/bi/user-lifetime-value # Get user lifetime value (Admin)
 ```
 
-#### Super Admin
+#### 👑 Super Admin
 
 ```typescript
-POST   ${SERVER}/admin/create-super-admin    # Create super admin (one-time setup)
-POST   ${SERVER}/admin/super-admin/create-admin # Create admin
-GET    ${SERVER}/admin/super-admin/admins    # Get all admins
-PUT    ${SERVER}/admin/super-admin/update-admin/:adminId # Update admin
-DELETE ${SERVER}/admin/super-admin/delete-admin/:adminId # Delete admin
-PUT    ${SERVER}/admin/super-admin/change-role/:userId # Change user role
-GET    ${SERVER}/admin/super-admin/system-config # Get system config
-PUT    ${SERVER}/admin/super-admin/system-config # Update system config
-GET    ${SERVER}/admin/super-admin/audit-logs # Get audit logs
-GET    ${SERVER}/admin/super-admin/system-health # System health
-POST   ${SERVER}/admin/super-admin/emergency-lockdown # Emergency lockdown
+// Super Admin Creation
+POST   ${SERVER}/admin/create-super-admin    # Create super admin (Public - One-time setup)
+POST   ${SERVER}/admin/super-admin/create    # Create super admin (Public - Alternative)
+
+// Admin Management
+POST   ${SERVER}/admin/super-admin/create-admin # Create admin user (Super Admin)
+GET    ${SERVER}/admin/super-admin/admins    # Get all admins (Super Admin)
+PUT    ${SERVER}/admin/super-admin/update-admin/:adminId # Update admin (Super Admin)
+DELETE ${SERVER}/admin/super-admin/delete-admin/:adminId # Delete admin (Super Admin)
+
+// Role Management
+PUT    ${SERVER}/admin/super-admin/change-role/:userId # Change user role (Super Admin)
+
+// System Configuration
+GET    ${SERVER}/admin/super-admin/system-config # Get system configuration (Super Admin)
+PUT    ${SERVER}/admin/super-admin/system-config # Update system configuration (Super Admin)
+
+// Audit & Compliance
+GET    ${SERVER}/admin/super-admin/audit-logs # Get audit logs (Super Admin)
+
+// System Health
+GET    ${SERVER}/admin/super-admin/system-health # Get system health (Super Admin)
+
+// Emergency Operations
+POST   ${SERVER}/admin/super-admin/emergency-lockdown # Emergency system lockdown (Super Admin)
 ```
 
-#### Notifications
+#### 🔔 Notifications
 
 ```typescript
-GET    ${SERVER}/notifications                # Get notifications
-GET    ${SERVER}/notifications/unread-count   # Get unread count
-PATCH  ${SERVER}/notifications/:id/read       # Mark as read
-PATCH  ${SERVER}/notifications/mark-all-read  # Mark all as read
-DELETE ${SERVER}/notifications/:id            # Delete notification
-DELETE ${SERVER}/notifications/clear-all      # Clear all notifications
-GET    ${SERVER}/notifications/stats          # Notification stats
-GET    ${SERVER}/notifications/preferences    # Get preferences
-PUT    ${SERVER}/notifications/preferences    # Update preferences
-POST   ${SERVER}/notifications/system         # Create system notification
-```
+// Notification Management
+GET    ${SERVER}/notifications               # Get notifications (Protected)
+GET    ${SERVER}/notifications/unread-count  # Get unread count (Protected)
+PATCH  ${SERVER}/notifications/:notificationId/read # Mark notification as read (Protected)
+PATCH  ${SERVER}/notifications/mark-all-read # Mark all as read (Protected)
+DELETE ${SERVER}/notifications/:notificationId # Delete notification (Protected)
+DELETE ${SERVER}/notifications/clear-all     # Clear all notifications (Protected)
 
-#### Shared Media
+// Notification Statistics
+GET    ${SERVER}/notifications/stats         # Get notification statistics (Protected)
 
-```typescript
-POST   ${SERVER}/media/upload                # Upload a single media file
-POST   ${SERVER}/media/upload-multiple       # Upload multiple media files
-DELETE ${SERVER}/media/:publicId             # Delete media by public ID
+// Notification Preferences
+GET    ${SERVER}/notifications/preferences   # Get notification preferences (Protected)
+PUT    ${SERVER}/notifications/preferences   # Update notification preferences (Protected)
+
+// System Notifications (Admin)
+POST   ${SERVER}/notifications/system        # Create system notification (Protected/Admin)
 ```
 
 **📖 Complete API Documentation**: [API Reference](docs/COMPLETE_API_ENDPOINTS.md)
