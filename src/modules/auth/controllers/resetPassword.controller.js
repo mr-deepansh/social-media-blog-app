@@ -22,9 +22,16 @@ const resetPassword = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Invalid reset token");
   }
 
-  // Sanitize token to prevent injection
-  const sanitizedToken = token.replace(/[^a-zA-Z0-9\-_.:]/g, "");
-  if (sanitizedToken !== token) {
+  // Decode URL-encoded token properly
+  let decodedToken;
+  try {
+    decodedToken = decodeURIComponent(token);
+  } catch (error) {
+    throw new ApiError(400, "Invalid token encoding");
+  }
+
+  // Validate token format (should contain IV:encrypted_data)
+  if (!decodedToken.includes(":") || decodedToken.split(":").length !== 2) {
     throw new ApiError(400, "Invalid token format");
   }
 
@@ -44,8 +51,8 @@ const resetPassword = asyncHandler(async (req, res) => {
     );
   }
 
-  // Use AuthService for enhanced password reset with sanitized token
-  const result = await AuthService.resetPassword(sanitizedToken, password, req);
+  // Use AuthService for enhanced password reset with decoded token
+  const result = await AuthService.resetPassword(decodedToken, password, req);
 
   res.status(200).json(new ApiResponse(200, {}, result.message));
 });

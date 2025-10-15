@@ -301,9 +301,15 @@ class AuthService {
       await new Promise(resolve => setTimeout(resolve, 100));
       return { message: "If the email exists, a password reset link has been sent" };
     }
-    // Rate limiting: Check if recent reset request exists
+    // Allow multiple reset requests but with reasonable cooldown (2 minutes)
     if (user.forgotPasswordExpiry && user.forgotPasswordExpiry > new Date()) {
-      return { message: "Password reset link already sent. Please check your email or wait before requesting again." };
+      const timeLeft = Math.ceil((user.forgotPasswordExpiry - new Date()) / 1000 / 60);
+      if (timeLeft > 8) {
+        // Only block if more than 8 minutes left (allow resend after 2 minutes)
+        return {
+          message: `Password reset link already sent. Please wait ${timeLeft} minutes before requesting again.`,
+        };
+      }
     }
     // Generate enterprise-grade secure token with multiple layers
     const payload = {
@@ -338,9 +344,7 @@ class AuthService {
     encryptedToken += cipher.final("hex");
     // Prepend IV to encrypted token
     encryptedToken = `${iv.toString("hex")}:${encryptedToken}`;
-
     const resetTokenExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-
     // Atomic update with optimistic concurrency
     const updateResult = await User.findByIdAndUpdate(
       user._id,
@@ -388,18 +392,16 @@ class AuthService {
     if (!token || token.length < 32) {
       throw new ApiError(400, "Invalid reset token format");
     }
-    // Decode URL-encoded token
-    const decodedToken = decodeURIComponent(token);
-    // Check if token is blacklisted (already used)
-    const isBlacklisted = await redisClient.get(`blacklist_reset:${decodedToken}`);
+    // Check if token is blacklisted (already used) - FIRST CHECK
+    const isBlacklisted = await redisClient.get(`blacklist_reset:${token}`);
     if (isBlacklisted) {
       await bcrypt.hash("dummy", 10); // Consistent timing
-      throw new ApiError(400, "Reset link has already been used. Please request a new password reset.");
+      throw new ApiError(400, "This reset link has already been used. Please request a new password reset.");
     }
     let user;
     try {
       // Extract IV and encrypted data
-      const [ivHex, encryptedData] = decodedToken.split(":");
+      const [ivHex, encryptedData] = token.split(":");
       if (!ivHex || !encryptedData) {
         throw new Error("Invalid token format");
       }
@@ -438,7 +440,7 @@ class AuthService {
         {
           _id: payload.userId,
           email: payload.email,
-          forgotPasswordToken: decodedToken,
+          forgotPasswordToken: token,
           forgotPasswordExpiry: { $gt: new Date() },
           isActive: true,
         },
@@ -466,7 +468,7 @@ class AuthService {
     // Hash password before saving
     const hashedPassword = await bcrypt.hash(newPassword, 12);
     // Blacklist the reset token immediately to prevent reuse
-    await redisClient.setex(`blacklist_reset:${decodedToken}`, 3600, "1"); // 1 hour blacklist
+    await redisClient.setex(`blacklist_reset:${token}`, 86400, "1"); // 24 hour blacklist
     // Atomic update with security fields
     const updateResult = await User.findByIdAndUpdate(
       user._id,
@@ -675,7 +677,7 @@ class AuthService {
           platform: deviceInfo.platform,
           os: deviceInfo.os,
           verificationTime,
-          loginUrl: `${process.env.FRONTEND_URL || "http://localhost:8080"}/login`,
+          loginUrl: `${process.env.FRONTEND_URL}/login`,
         },
       });
       logger.info("Email verification success email sent", {
@@ -716,6 +718,140 @@ class AuthService {
       // Don't throw - this shouldn't break the password change flow
       return false;
     }
+  }
+
+  // 🔥 RESEND VERIFICATION EMAIL
+  static async resendVerificationEmail(user, req) {
+    try {
+      // Generate new verification token
+      const verificationToken = user.generateEmailVerificationToken();
+      await user.save({ validateBeforeSave: false });
+
+      // Send verification email
+      await this.sendWelcomeEmail(user, verificationToken, req);
+
+      logger.info("Verification email resent", { userId: user._id, email: user.email });
+
+      return { message: "Verification email sent successfully" };
+    } catch (error) {
+      logger.error("Failed to resend verification email", { error: error.message, userId: user._id });
+      throw new ApiError(500, "Failed to send verification email");
+    }
+  }
+
+  // 🔥 BUILD SECURITY OVERVIEW
+  static async buildSecurityOverview(user) {
+    try {
+      // Process activity log efficiently
+      const recentLogins =
+        user.activityLog
+          ?.filter(log => log.action === "login")
+          ?.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+          ?.slice(0, 5) || [];
+
+      const lastSuccessfulLogin =
+        user.activityLog
+          ?.filter(log => log.action === "login" && log.success)
+          ?.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0] || null;
+
+      return {
+        accountSecurity: {
+          isEmailVerified: user.isEmailVerified || false,
+          twoFactorEnabled: user.security?.twoFactorEnabled || false,
+          lastPasswordChange: user.security?.lastPasswordChange || null,
+          failedLoginAttempts: user.security?.failedLoginAttempts || 0,
+          isAccountLocked: user.security?.lockUntil ? user.security.lockUntil > new Date() : false,
+          passwordResetCount: user.security?.passwordResetCount || 0,
+        },
+        recentActivity: {
+          lastLogin: lastSuccessfulLogin,
+          lastActive: user.lastActive || null,
+          recentLogins,
+          totalLoginAttempts: user.activityLog?.filter(log => log.action === "login")?.length || 0,
+        },
+        deviceInfo: {
+          lastLoginIP: user.security?.lastLoginIP || null,
+          lastLoginLocation: user.security?.lastLoginLocation || null,
+        },
+        securityScore: this.calculateSecurityScore(user),
+      };
+    } catch (error) {
+      logger.error("Failed to build security overview", { error: error.message, userId: user._id });
+      throw new ApiError(500, "Failed to generate security overview");
+    }
+  }
+
+  // 🔥 CALCULATE SECURITY SCORE
+  static calculateSecurityScore(user) {
+    let score = 0;
+    const maxScore = 100;
+
+    // Email verification (20 points)
+    if (user.isEmailVerified) {
+      score += 20;
+    }
+
+    // Two-factor authentication (30 points)
+    if (user.security?.twoFactorEnabled) {
+      score += 30;
+    }
+
+    // Recent password change (20 points)
+    const lastPasswordChange = user.security?.lastPasswordChange;
+    if (lastPasswordChange) {
+      const daysSinceChange = (Date.now() - new Date(lastPasswordChange)) / (1000 * 60 * 60 * 24);
+      if (daysSinceChange < 90) {
+        score += 20;
+      } else if (daysSinceChange < 180) {
+        score += 10;
+      } // Changed within 180 days
+    }
+
+    // No recent failed attempts (15 points)
+    if ((user.security?.failedLoginAttempts || 0) === 0) {
+      score += 15;
+    }
+
+    // Account not locked (15 points)
+    const isLocked = user.security?.lockUntil ? user.security.lockUntil > new Date() : false;
+    if (!isLocked) {
+      score += 15;
+    }
+
+    return {
+      score: Math.min(score, maxScore),
+      maxScore,
+      level: score >= 80 ? "High" : score >= 60 ? "Medium" : "Low",
+      recommendations: this.getSecurityRecommendations(user, score),
+    };
+  }
+
+  // 🔥 GET SECURITY RECOMMENDATIONS
+  static getSecurityRecommendations(user, currentScore) {
+    const recommendations = [];
+
+    if (!user.isEmailVerified) {
+      recommendations.push("Verify your email address to improve account security");
+    }
+
+    if (!user.security?.twoFactorEnabled) {
+      recommendations.push("Enable two-factor authentication for enhanced security");
+    }
+
+    const lastPasswordChange = user.security?.lastPasswordChange;
+    if (!lastPasswordChange || Date.now() - new Date(lastPasswordChange) > 180 * 24 * 60 * 60 * 1000) {
+      recommendations.push("Consider changing your password regularly (every 6 months)");
+    }
+
+    if ((user.security?.failedLoginAttempts || 0) > 0) {
+      recommendations.push("Review recent login attempts and secure your account if needed");
+    }
+
+    if (currentScore < 60) {
+      recommendations.push("Your account security is below recommended levels. Please follow the suggestions above.");
+    }
+
+    return recommendations;
   }
 
   // 🔥 ASYNC ACTIVITY LOGGING (Non-blocking)

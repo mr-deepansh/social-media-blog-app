@@ -4,90 +4,110 @@ import { ApiError } from "../../../shared/utils/ApiError.js";
 import { ApiResponse } from "../../../shared/utils/ApiResponse.js";
 import { AuthService } from "../services/auth.service.js";
 import { User } from "../../users/models/user.model.js";
-import { getCookieOptions } from "../../../shared/utils/cookieOptions.js";
+import { logger } from "../../../shared/services/logger.service.js";
+import { MESSAGES, HTTP_STATUS } from "../../../shared/constants/index.js";
 
 /**
  * Verify email address
+ * @route POST /auth/verify-email/:token
+ * @access Public
  */
 const verifyEmail = asyncHandler(async (req, res) => {
   const { token } = req.params;
+  const clientIP = req.ip || req.connection.remoteAddress;
 
-  if (!token) {
-    throw new ApiError(400, "Verification token is required");
+  // Input validation
+  if (!token?.trim()) {
+    logger.warn("Email verification attempted without token", { ip: clientIP });
+    throw new ApiError(HTTP_STATUS.BAD_REQUEST, MESSAGES.AUTH.TOKEN_REQUIRED);
   }
+
+  // Verify email with enhanced logging
+  logger.info("Email verification attempt", { token: `${token.substring(0, 10)}...`, ip: clientIP });
+
   const result = await AuthService.verifyEmail(token);
-  res.status(200).json(new ApiResponse(200, {}, result.message));
+
+  logger.info("Email verification successful", { userId: result.userId, ip: clientIP });
+
+  return res.status(HTTP_STATUS.OK).json(new ApiResponse(HTTP_STATUS.OK, { verified: true }, result.message));
 });
 
 /**
  * Resend email verification
+ * @route POST /auth/resend-verification
+ * @access Private
  */
 const resendEmailVerification = asyncHandler(async (req, res) => {
-  // First fix the schema issue by updating the document directly
-  await User.updateOne(
-    { _id: req.user._id, coverImage: { $type: "string" } },
-    { $set: { coverImage: { url: "", publicId: "" } } },
-  );
-  await User.updateOne(
-    { _id: req.user._id, avatar: { $type: "string" } },
-    { $set: { avatar: { url: "", publicId: "" } } },
+  const userId = req.user._id;
+  const clientIP = req.ip || req.connection.remoteAddress;
+
+  logger.info("Resend verification attempt", { userId, ip: clientIP });
+
+  // Fetch user with optimized query
+  const user = await User.findById(userId).select(
+    "email isEmailVerified emailVerificationToken emailVerificationExpires avatar coverImage",
   );
 
-  // Now fetch the user document
-  const user = await User.findById(req.user._id);
   if (!user) {
-    throw new ApiError(404, "User not found");
+    logger.error("User not found for verification resend", { userId, ip: clientIP });
+    throw new ApiError(HTTP_STATUS.NOT_FOUND, MESSAGES.USER.NOT_FOUND);
   }
 
+  // Check if already verified
   if (user.isEmailVerified) {
-    throw new ApiError(400, "Email is already verified");
+    logger.warn("Verification resend for already verified email", { userId, email: user.email });
+    throw new ApiError(HTTP_STATUS.BAD_REQUEST, MESSAGES.AUTH.EMAIL_ALREADY_VERIFIED);
   }
-  // Generate new verification token
-  const verificationToken = user.generateEmailVerificationToken();
-  await user.save({ validateBeforeSave: false });
-  // Send verification email
-  await AuthService.sendWelcomeEmail(user, verificationToken, req);
-  res.status(200).json(new ApiResponse(200, {}, "Verification email sent successfully"));
+
+  // Rate limiting check (prevent spam)
+  const lastTokenGenerated = user.emailVerificationExpires;
+  if (lastTokenGenerated && Date.now() - lastTokenGenerated < 60000) {
+    // 1 minute cooldown
+    throw new ApiError(HTTP_STATUS.TOO_MANY_REQUESTS, MESSAGES.AUTH.VERIFICATION_COOLDOWN);
+  }
+
+  try {
+    // Generate and send verification email
+    const result = await AuthService.resendVerificationEmail(user, req);
+
+    logger.info("Verification email resent successfully", { userId, email: user.email });
+
+    return res.status(HTTP_STATUS.OK).json(new ApiResponse(HTTP_STATUS.OK, { emailSent: true }, result.message));
+  } catch (error) {
+    logger.error("Failed to resend verification email", { userId, error: error.message });
+    throw new ApiError(HTTP_STATUS.INTERNAL_SERVER_ERROR, MESSAGES.AUTH.VERIFICATION_SEND_FAILED);
+  }
 });
 
 // Removed - moved to activity.controller.js
 
 /**
  * Get security overview
+ * @route GET /auth/security-overview
+ * @access Private
  */
 const getSecurityOverview = asyncHandler(async (req, res) => {
   const userId = req.user._id;
+  const clientIP = req.ip || req.connection.remoteAddress;
 
-  // Fetch user with Mongoose methods (not lean)
-  const user = await User.findById(userId);
+  logger.info("Security overview requested", { userId, ip: clientIP });
+
+  // Optimized query with specific field selection
+  const user = await User.findById(userId).select("isEmailVerified security lastActive activityLog").lean();
+
   if (!user) {
-    throw new ApiError(404, "User not found");
+    logger.error("User not found for security overview", { userId, ip: clientIP });
+    throw new ApiError(HTTP_STATUS.NOT_FOUND, MESSAGES.USER.NOT_FOUND);
   }
 
-  const securityOverview = {
-    accountSecurity: {
-      isEmailVerified: user.isEmailVerified,
-      twoFactorEnabled: user.security?.twoFactorEnabled || false,
-      lastPasswordChange: user.security?.lastPasswordChange,
-      failedLoginAttempts: user.security?.failedLoginAttempts || 0,
-      isAccountLocked: user.isAccountLocked(),
-    },
-    recentActivity: {
-      lastLogin: user.activityLog
-        .filter(log => log.action === "login" && log.success)
-        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0],
-      lastActive: user.lastActive,
-      recentLogins: user.activityLog
-        .filter(log => log.action === "login")
-        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-        .slice(0, 5),
-    },
-    deviceInfo: {
-      lastLoginIP: user.security?.lastLoginIP,
-      lastLoginLocation: user.security?.lastLoginLocation,
-    },
-  };
-  res.status(200).json(new ApiResponse(200, securityOverview, "Security overview fetched successfully"));
+  // Build security overview with null safety
+  const securityOverview = await AuthService.buildSecurityOverview(user);
+
+  logger.info("Security overview generated successfully", { userId });
+
+  return res
+    .status(HTTP_STATUS.OK)
+    .json(new ApiResponse(HTTP_STATUS.OK, securityOverview, MESSAGES.AUTH.SECURITY_OVERVIEW_SUCCESS));
 });
 
 export { verifyEmail, resendEmailVerification, getSecurityOverview };

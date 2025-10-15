@@ -1,4 +1,8 @@
 // src/shared/constants/index.js
+/**
+ * Application constants for EndlessChat Backend
+ * Centralized configuration for HTTP status codes, messages, validation rules, etc.
+ */
 
 // HTTP Status Codes
 export const HTTP_STATUS = {
@@ -98,5 +102,44 @@ export const VALIDATION = {
   },
   EMAIL: {
     MAX_LENGTH: 254,
+  },
+};
+
+// Application Messages
+export const MESSAGES = {
+  AUTH: {
+    TOKEN_REQUIRED: "Verification token is required",
+    EMAIL_ALREADY_VERIFIED: "Email is already verified",
+    VERIFICATION_COOLDOWN: "Please wait before requesting another verification email",
+    VERIFICATION_SEND_FAILED: "Failed to send verification email",
+    SECURITY_OVERVIEW_SUCCESS: "Security overview fetched successfully",
+    LOGIN_SUCCESS: "Login successful",
+    LOGOUT_SUCCESS: "Logout successful",
+    INVALID_CREDENTIALS: "Invalid credentials",
+    ACCOUNT_LOCKED: "Account is temporarily locked due to multiple failed attempts",
+    EMAIL_VERIFIED: "Email verified successfully",
+    PASSWORD_RESET_SUCCESS: "Password reset successful",
+  },
+  USER: {
+    NOT_FOUND: "User not found",
+    CREATED: "User created successfully",
+    UPDATED: "User updated successfully",
+    DELETED: "User deleted successfully",
+    PROFILE_UPDATED: "Profile updated successfully",
+    ALREADY_EXISTS: "User already exists",
+  },
+  VALIDATION: {
+    INVALID_INPUT: "Invalid input provided",
+    REQUIRED_FIELD: "This field is required",
+    INVALID_EMAIL: "Invalid email format",
+    WEAK_PASSWORD: "Password does not meet security requirements",
+  },
+  GENERAL: {
+    SUCCESS: "Operation completed successfully",
+    ERROR: "An error occurred",
+    UNAUTHORIZED: "Unauthorized access",
+    FORBIDDEN: "Access forbidden",
+    NOT_FOUND: "Resource not found",
+    INTERNAL_ERROR: "Internal server error",
   },
 };
