@@ -726,12 +726,9 @@ class AuthService {
       // Generate new verification token
       const verificationToken = user.generateEmailVerificationToken();
       await user.save({ validateBeforeSave: false });
-
       // Send verification email
       await this.sendWelcomeEmail(user, verificationToken, req);
-
       logger.info("Verification email resent", { userId: user._id, email: user.email });
-
       return { message: "Verification email sent successfully" };
     } catch (error) {
       logger.error("Failed to resend verification email", { error: error.message, userId: user._id });
@@ -748,12 +745,10 @@ class AuthService {
           ?.filter(log => log.action === "login")
           ?.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
           ?.slice(0, 5) || [];
-
       const lastSuccessfulLogin =
         user.activityLog
           ?.filter(log => log.action === "login" && log.success)
           ?.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0] || null;
-
       return {
         accountSecurity: {
           isEmailVerified: user.isEmailVerified || false,
@@ -785,17 +780,14 @@ class AuthService {
   static calculateSecurityScore(user) {
     let score = 0;
     const maxScore = 100;
-
     // Email verification (20 points)
     if (user.isEmailVerified) {
       score += 20;
     }
-
     // Two-factor authentication (30 points)
     if (user.security?.twoFactorEnabled) {
       score += 30;
     }
-
     // Recent password change (20 points)
     const lastPasswordChange = user.security?.lastPasswordChange;
     if (lastPasswordChange) {
@@ -806,18 +798,15 @@ class AuthService {
         score += 10;
       } // Changed within 180 days
     }
-
     // No recent failed attempts (15 points)
     if ((user.security?.failedLoginAttempts || 0) === 0) {
       score += 15;
     }
-
     // Account not locked (15 points)
     const isLocked = user.security?.lockUntil ? user.security.lockUntil > new Date() : false;
     if (!isLocked) {
       score += 15;
     }
-
     return {
       score: Math.min(score, maxScore),
       maxScore,

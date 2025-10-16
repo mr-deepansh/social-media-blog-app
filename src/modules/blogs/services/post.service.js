@@ -60,6 +60,7 @@ export class PostService {
       Post.find(query)
         .populate("author", "username firstName lastName avatar")
         .populate("media")
+        .select("title content type status visibility createdAt updatedAt engagement media tags slug images videos")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -216,6 +217,9 @@ export class PostService {
       Post.find(query)
         .populate("author", "username firstName lastName avatar")
         .populate("media")
+        .select(
+          "title content type status visibility createdAt updatedAt engagement media tags slug images videos author",
+        )
         .sort({ [sortBy]: sortOrder })
         .skip(skip)
         .limit(limit)
@@ -252,7 +256,7 @@ export class PostService {
     const skip = (page - 1) * limit;
     const [posts, total] = await Promise.all([
       Post.find(query)
-        .select("title content type createdAt engagement slug")
+        .select("title content type createdAt engagement slug images videos")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -281,6 +285,8 @@ export class PostService {
           views: post.engagement?.viewCount || 0,
         },
         slug: post.slug,
+        images: post.images || [],
+        videos: post.videos || [],
       })),
       pagination: {
         currentPage: page,

@@ -31,38 +31,43 @@ const createPost = asyncHandler(async (req, res) => {
       platform: req.body.metadata?.platform || "web",
     },
   };
-  // Handle media uploads (single/multiple/none)
-  if (Array.isArray(req.files) && req.files.length > 0) {
-    for (const file of req.files) {
+  // Handle media uploads (parallel processing)
+  const files = req.files || (req.file ? [req.file] : []);
+
+  if (files.length > 0) {
+    const uploadPromises = files.map(async file => {
       try {
         const result = await uploadToCloudinary(file.path, "posts");
-        if (file.mimetype.startsWith("image/")) {
-          postData.images.push(result);
-        } else if (file.mimetype.startsWith("video/")) {
-          postData.videos.push(result);
-        }
         await fs.unlink(file.path).catch(() => {});
+        return { result, mimetype: file.mimetype };
       } catch (error) {
         logger.error("File upload failed:", error);
+        await fs.unlink(file.path).catch(() => {});
+        return null;
       }
-    }
-  } else if (req.file) {
-    // Handle single file upload (multer single)
-    try {
-      const result = await uploadToCloudinary(req.file.path, "posts");
-      if (req.file.mimetype.startsWith("image/")) {
-        postData.images.push(result);
-      } else if (req.file.mimetype.startsWith("video/")) {
-        postData.videos.push(result);
+    });
+
+    const uploadResults = await Promise.all(uploadPromises);
+
+    uploadResults.forEach(upload => {
+      if (upload) {
+        if (upload.mimetype.startsWith("image/")) {
+          postData.images.push(upload.result);
+        } else if (upload.mimetype.startsWith("video/")) {
+          postData.videos.push(upload.result);
+        }
       }
-      await fs.unlink(req.file.path).catch(() => {});
-    } catch (error) {
-      logger.error("File upload failed:", error);
-    }
+    });
   }
   const post = await PostService.createPost(postData, userId);
   const executionTime = Date.now() - startTime;
-  logger.info("Post created", { postId: post._id, userId, executionTime });
+
+  logger.info("Post created", {
+    postId: post._id,
+    userId,
+    executionTime,
+    mediaCount: (postData.images?.length || 0) + (postData.videos?.length || 0),
+  });
   res.status(201).json(
     new ApiResponse(201, post, "Post created successfully", true, {
       executionTime: `${executionTime}ms`,
@@ -218,6 +223,8 @@ const getMyPosts = asyncHandler(async (req, res) => {
     media: (post.media && post.media.length) || 0,
     tags: post.tags || [],
     slug: post.slug,
+    images: post.images || [],
+    videos: post.videos || [],
   }));
   const executionTime = Date.now() - startTime;
   logger.info("My posts retrieved", {

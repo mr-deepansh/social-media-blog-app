@@ -715,28 +715,28 @@ const getUserFollowers = asyncHandler(async (req, res) => {
       { $match: { _id: { $in: user.followers } } },
       ...(search && search.trim()
         ? [
-          {
-            $match: {
-              $or: [
-                {
-                  username: {
-                    $regex: new RegExp(search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"),
+            {
+              $match: {
+                $or: [
+                  {
+                    username: {
+                      $regex: new RegExp(search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"),
+                    },
                   },
-                },
-                {
-                  firstName: {
-                    $regex: new RegExp(search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"),
+                  {
+                    firstName: {
+                      $regex: new RegExp(search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"),
+                    },
                   },
-                },
-                {
-                  lastName: {
-                    $regex: new RegExp(search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"),
+                  {
+                    lastName: {
+                      $regex: new RegExp(search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"),
+                    },
                   },
-                },
-              ],
+                ],
+              },
             },
-          },
-        ]
+          ]
         : []),
       { $count: "total" },
     ]),
@@ -867,28 +867,28 @@ const getUserFollowing = asyncHandler(async (req, res) => {
       { $match: { _id: { $in: user.following } } },
       ...(search && search.trim()
         ? [
-          {
-            $match: {
-              $or: [
-                {
-                  username: {
-                    $regex: new RegExp(search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"),
+            {
+              $match: {
+                $or: [
+                  {
+                    username: {
+                      $regex: new RegExp(search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"),
+                    },
                   },
-                },
-                {
-                  firstName: {
-                    $regex: new RegExp(search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"),
+                  {
+                    firstName: {
+                      $regex: new RegExp(search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"),
+                    },
                   },
-                },
-                {
-                  lastName: {
-                    $regex: new RegExp(search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"),
+                  {
+                    lastName: {
+                      $regex: new RegExp(search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"),
+                    },
                   },
-                },
-              ],
+                ],
+              },
             },
-          },
-        ]
+          ]
         : []),
       { $count: "total" },
     ]),
@@ -1324,6 +1324,7 @@ const getUserFeed = asyncHandler(async (req, res) => {
           type: 1,
           media: 1,
           images: 1,
+          videos: 1,
           author: 1,
           likesCount: 1,
           commentsCount: 1,
@@ -1368,6 +1369,8 @@ const getUserFeed = asyncHandler(async (req, res) => {
               ? `${author.firstName} ${author.lastName}`.trim()
               : author.username || "Unknown User",
         },
+        images: post.images?.map(img => img.url || img) || [],
+        videos: post.videos?.map(vid => vid.url || vid) || [],
         likesCount: post.likesCount || 0,
         commentsCount: post.commentsCount || 0,
         sharesCount: post.sharesCount || 0,
@@ -1637,18 +1640,18 @@ const getUserProfileByUsername = asyncHandler(async (req, res) => {
       mutualInfo:
         profile.mutualFollowersCount > 0
           ? {
-            count: profile.mutualFollowersCount,
-            sample:
+              count: profile.mutualFollowersCount,
+              sample:
                 profile.mutualFollowersSample?.map(user => ({
                   ...user,
                   avatar: user.avatar || "/assets/default-avatar.png",
                   displayName: `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.username,
                 })) || [],
-            message:
+              message:
                 profile.mutualFollowersCount === 1
                   ? "1 mutual follower"
                   : `${profile.mutualFollowersCount} mutual followers`,
-          }
+            }
           : null,
       // Profile stats for display
       stats: {
