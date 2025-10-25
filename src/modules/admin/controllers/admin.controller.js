@@ -2182,9 +2182,9 @@ const bulkActions = asyncHandler(async (req, res) => {
           details:
             result.errors.length > 0
               ? {
-                  errors: result.errors.slice(0, 10),
-                  hasMoreErrors: result.errors.length > 10,
-                }
+                errors: result.errors.slice(0, 10),
+                hasMoreErrors: result.errors.length > 10,
+              }
               : undefined,
         },
         `Bulk ${action} completed`,
