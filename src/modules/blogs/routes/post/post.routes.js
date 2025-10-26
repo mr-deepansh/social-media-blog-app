@@ -7,6 +7,7 @@ import {
   getPostByUsernameAndId,
   updatePost,
   deletePost,
+  deletePostByUsernameAndId,
   getMyPosts,
   getUserPosts,
 } from "../../controllers/post/post.controller.js";
@@ -26,6 +27,7 @@ router.get("/", optionalAuth, getPosts);
 // Username-based routes
 router.get("/user/:username", optionalAuth, getUserPosts);
 router.get("/:username/post/:id", optionalAuth, getPostByUsernameAndId);
+router.delete("/:username/post/:id", verifyJWT, deletePostByUsernameAndId);
 
 // Public post route (no auth required)
 router.get("/public/:id", getPostById);

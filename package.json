@@ -14,7 +14,7 @@
     "prod:start:force": "node scripts/production-start.js --force",
     "prod:check-port": "netstat -ano | findstr :5000",
     "prod:kill-port": "FOR /f \"tokens=5\" %a in ('netstat -aon ^| find \":5000\" ^| find \"LISTENING\"') do taskkill /f /pid %a",
-    "test": "jest --passWithNoTests",
+    "test": "set NODE_OPTIONS=--experimental-vm-modules && npx jest --passWithNoTests",
     "test:unit": "jest --testPathPattern=unit",
     "test:integration": "jest --testPathPattern=integration",
     "test:e2e": "jest --testPathPattern=e2e",
@@ -124,6 +124,7 @@
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
     "@eslint/js": "^9.33.0",
+    "cross-env": "^10.1.0",
     "eslint": "^9.35.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-import": "^2.32.0",
@@ -140,6 +141,18 @@
   "lint-staged": {
     "*.js": [
       "prettier --write"
+    ]
+  },
+  "jest": {
+    "transform": {},
+    "moduleFileExtensions": [
+      "js",
+      "json",
+      "node"
+    ],
+    "testEnvironment": "node",
+    "transformIgnorePatterns": [
+      "/node_modules/"
     ]
   }
 }

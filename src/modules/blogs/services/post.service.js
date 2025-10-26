@@ -6,6 +6,7 @@ import { ApiError } from "../../../shared/utils/ApiError.js";
 import { User } from "../../users/models/user.model.js";
 import { Logger } from "../../../shared/utils/Logger.js";
 import { POST_STATUS, POST_VISIBILITY, CACHE_TTL, CACHE_PREFIXES } from "../../../shared/constants/post.constants.js";
+import { deleteFromCloudinary } from "../../../shared/services/cloudinary.service.js";
 
 const logger = new Logger("PostService");
 
@@ -174,22 +175,123 @@ export class PostService {
       if (post.author.toString() !== userId.toString()) {
         throw new ApiError(403, "Access denied");
       }
+
+      // Clean up Cloudinary images before deleting post
+      if (post.images && post.images.length > 0) {
+        const deletePromises = post.images
+          .map(image => {
+            if (image.publicId) {
+              return deleteFromCloudinary(image.publicId).catch(err =>
+                logger.warn("Failed to delete image from Cloudinary", { publicId: image.publicId, error: err.message }),
+              );
+            }
+          })
+          .filter(Boolean);
+        await Promise.all(deletePromises);
+      }
+
       await Post.findByIdAndDelete(postId, { session });
+
       // Invalidate caches
       await Promise.all([
         CacheService.del(`${CACHE_PREFIXES.POST}:${postId}`),
         CacheService.del(`${CACHE_PREFIXES.POSTS_BY_USER}:${userId}:*`),
         CacheService.del(`${CACHE_PREFIXES.POST_BY_USERNAME_AND_ID}:${post.author.username}:${postId}`),
       ]);
+
       await session.commitTransaction();
       logger.info("Post deleted successfully", { postId, userId });
       return true;
     } catch (error) {
       await session.abortTransaction();
       logger.error("Error deleting post", { error, postId, userId });
+      if (error instanceof ApiError) {
+        throw error;
+      }
       throw new ApiError(500, "Failed to delete post");
     } finally {
       session.endSession();
+    }
+  }
+
+  // Deletes a post by username and post ID.
+  static async deletePostByUsernameAndId(username, postId, userId) {
+    try {
+      logger.info("Starting delete post by username and ID", { username, postId, userId });
+
+      // Find the user by username
+      const user = await User.findOne({ username: username.toLowerCase() }).select("_id username");
+      if (!user) {
+        logger.warn("User not found for deletion", { username });
+        throw new ApiError(404, "User not found");
+      }
+
+      // Find the post
+      const post = await Post.findOne({ _id: postId, author: user._id });
+      if (!post) {
+        logger.warn("Post not found for deletion", { postId, userId: user._id });
+        throw new ApiError(404, "Post not found");
+      }
+
+      // Verify ownership
+      if (post.author.toString() !== userId.toString()) {
+        logger.warn("Access denied for post deletion", {
+          postAuthor: post.author.toString(),
+          requestingUser: userId.toString(),
+        });
+        throw new ApiError(403, "Access denied - You can only delete your own posts");
+      }
+
+      // Clean up Cloudinary images
+      if (post.images && post.images.length > 0) {
+        try {
+          const deletePromises = post.images
+            .map(image => {
+              if (image.publicId) {
+                return deleteFromCloudinary(image.publicId).catch(err =>
+                  logger.warn("Failed to delete image from Cloudinary", {
+                    publicId: image.publicId,
+                    error: err.message,
+                  }),
+                );
+              }
+            })
+            .filter(Boolean);
+          await Promise.all(deletePromises);
+        } catch (cloudinaryError) {
+          logger.warn("Cloudinary cleanup failed, continuing with post deletion", { error: cloudinaryError.message });
+        }
+      }
+
+      // Delete the post
+      await Post.findByIdAndDelete(postId);
+      logger.info("Post deleted from database", { postId });
+
+      // Invalidate caches
+      try {
+        await Promise.all([
+          CacheService.del(`${CACHE_PREFIXES.POST}:${postId}`),
+          CacheService.del(`${CACHE_PREFIXES.POSTS_BY_USER}:${userId}:*`),
+          CacheService.del(`${CACHE_PREFIXES.POST_BY_USERNAME_AND_ID}:${username}:${postId}`),
+        ]);
+      } catch (cacheError) {
+        logger.warn("Cache invalidation failed", { error: cacheError.message });
+      }
+
+      logger.info("Post deleted successfully by username and ID", { postId, username, userId });
+      return true;
+    } catch (error) {
+      logger.error("Error deleting post by username and ID", {
+        error: error.message,
+        stack: error.stack,
+        postId,
+        username,
+        userId,
+      });
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError(500, `Failed to delete post: ${error.message}`);
     }
   }
   // Retrieves posts with optional filters and pagination.

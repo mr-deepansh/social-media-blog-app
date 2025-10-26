@@ -185,14 +185,74 @@ const deletePost = asyncHandler(async (req, res) => {
   const startTime = Date.now();
   const { id } = req.params;
   const userId = req.user._id;
-  await PostService.deletePost(id, userId);
-  const executionTime = Date.now() - startTime;
-  logger.info("Post deleted", { postId: id, userId, executionTime });
-  res.status(200).json(
-    new ApiResponse(200, {}, "Post deleted successfully", true, {
-      executionTime: `${executionTime}ms`,
-    }),
-  );
+
+  // Validate post ID format
+  if (!id || !id.match(/^[0-9a-fA-F]{24}$/)) {
+    throw new ApiError(400, "Invalid post ID format");
+  }
+
+  try {
+    await PostService.deletePost(id, userId);
+    const executionTime = Date.now() - startTime;
+    logger.info("Post deleted", { postId: id, userId, executionTime });
+
+    res.status(200).json(
+      new ApiResponse(200, { postId: id }, "Post deleted successfully", true, {
+        executionTime: `${executionTime}ms`,
+      }),
+    );
+  } catch (error) {
+    logger.error("Delete post failed", {
+      postId: id,
+      userId,
+      error: error.message,
+      stack: error.stack,
+    });
+    throw error;
+  }
+});
+
+// Delete post by username and ID
+const deletePostByUsernameAndId = asyncHandler(async (req, res) => {
+  const startTime = Date.now();
+  const { username, id } = req.params;
+  const userId = req.user._id;
+
+  // Validate inputs
+  if (!username || !id) {
+    throw new ApiError(400, "Username and post ID are required");
+  }
+
+  if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+    throw new ApiError(400, "Invalid post ID format");
+  }
+
+  try {
+    await PostService.deletePostByUsernameAndId(username, id, userId);
+
+    const executionTime = Date.now() - startTime;
+    logger.info("Post deleted by username and ID", {
+      postId: id,
+      username,
+      userId,
+      executionTime,
+    });
+
+    res.status(200).json(
+      new ApiResponse(200, { postId: id, username }, "Post deleted successfully", true, {
+        executionTime: `${executionTime}ms`,
+      }),
+    );
+  } catch (error) {
+    logger.error("Delete post by username and ID failed", {
+      postId: id,
+      username,
+      userId,
+      error: error.message,
+      stack: error.stack,
+    });
+    throw error;
+  }
 });
 
 // Get current user's posts
@@ -272,4 +332,14 @@ const getUserPosts = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, result, "User posts retrieved successfully"));
 });
 
-export { createPost, getPosts, getPostById, getPostByUsernameAndId, updatePost, deletePost, getMyPosts, getUserPosts };
+export {
+  createPost,
+  getPosts,
+  getPostById,
+  getPostByUsernameAndId,
+  updatePost,
+  deletePost,
+  deletePostByUsernameAndId,
+  getMyPosts,
+  getUserPosts,
+};
