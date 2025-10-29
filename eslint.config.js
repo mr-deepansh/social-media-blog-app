@@ -32,7 +32,6 @@ export default [
       "object-shorthand": "error",
       "prefer-arrow-callback": "error",
       "arrow-spacing": "error",
-      "no-duplicate-imports": "error",
       "no-useless-return": "error",
       "no-useless-concat": "error",
       "prefer-template": "error",

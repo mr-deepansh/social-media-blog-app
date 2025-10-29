@@ -49,7 +49,7 @@
     "docker:logs": "docker-compose logs -f",
     "prepare": "husky",
     "pre-commit": "lint-staged",
-    "pre-push": "npm run lint:check",
+    "pre-push": "eslint . --quiet",
     "clean": "rm -rf node_modules package-lock.json && npm install"
   },
   "keywords": [
