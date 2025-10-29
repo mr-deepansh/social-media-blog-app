@@ -1,22 +1,34 @@
 // src/shared/config/redis.config.js
+import dotenv from "dotenv";
 import Redis from "ioredis";
 import { logger } from "../services/logger.service.js";
+import { createSecureRedisClient } from "../middleware/redis-security.middleware.js";
 
-// Security: Remove default password in production
+// Load environment variables
+dotenv.config();
+
+// Security: Strict Redis password validation
 const getRedisPassword = () => {
-  const nodeEnv = process.env.NODE_ENV;
-  const redisPassword = process.env.REDIS_PASSWORD;
+  const nodeEnv = (process.env.NODE_ENV || "").trim();
+  const redisPassword = (process.env.REDIS_PASSWORD || "").trim();
 
-  if (nodeEnv === "production" && !redisPassword) {
-    logger.error("REDIS_PASSWORD must be set in production environment", {
-      NODE_ENV: nodeEnv,
-      REDIS_PASSWORD_SET: !!redisPassword,
-      availableEnvVars: Object.keys(process.env).filter(key => key.includes("REDIS")),
-    });
-    throw new Error("Redis password required in production");
+  // Production: Password is mandatory
+  if (nodeEnv === "production") {
+    if (!redisPassword) {
+      logger.error("REDIS_PASSWORD is required in production", { NODE_ENV: nodeEnv });
+      throw new Error("Redis password required in production");
+    }
+
+    // Validate password strength
+    if (redisPassword.length < 16) {
+      logger.error("Redis password too weak (minimum 16 characters)", {
+        length: redisPassword.length,
+      });
+      throw new Error("Redis password must be at least 16 characters");
+    }
   }
 
-  return redisPassword || (nodeEnv !== "production" ? "administer" : null);
+  return redisPassword || undefined;
 };
 
 // Enhanced Redis configuration with production optimizations
@@ -31,6 +43,12 @@ const createRedisConfig = (options = {}) => {
     password: getRedisPassword(),
     db: parseInt(process.env.REDIS_DB) || 0,
     keyPrefix: process.env.REDIS_KEY_PREFIX || options.keyPrefix || "",
+
+    // Security: Disable dangerous commands in production
+    ...(isProduction && {
+      disableOfflineQueue: true,
+      enableOfflineQueue: false,
+    }),
 
     // Connection pool settings for high performance
     family: 4, // IPv4
@@ -68,9 +86,9 @@ const createRedisConfig = (options = {}) => {
     tls:
       process.env.REDIS_TLS === "true"
         ? {
-          servername: process.env.REDIS_HOST,
-          rejectUnauthorized: process.env.REDIS_TLS_REJECT_UNAUTHORIZED !== "false",
-        }
+            servername: process.env.REDIS_HOST,
+            rejectUnauthorized: process.env.REDIS_TLS_REJECT_UNAUTHORIZED !== "false",
+          }
         : undefined,
 
     // Reconnection strategy
@@ -207,7 +225,10 @@ export const createRedisClient = (options = {}) => {
     }
   };
 
-  return client;
+  // Apply security middleware in production
+  const secureClient = createSecureRedisClient(client, clientId);
+
+  return secureClient;
 };
 
 // Client instance management with lazy initialization
@@ -297,30 +318,24 @@ const logUnifiedConnectionStatus = () => {
 // Exported client getters with lazy initialization
 export const redisClient = () => clientManager.getClient("default");
 
-export const rateLimitRedis = (() => {
-  return clientManager.getClient("rate-limit", {
-    // Optimized for rate limiting - faster timeouts
-    commandTimeout: 1000,
-    connectTimeout: 3000,
-    maxRetriesPerRequest: 1,
-  });
-})();
+export const rateLimitRedis = clientManager.getClient("rate-limit", {
+  // Optimized for rate limiting - faster timeouts
+  commandTimeout: 1000,
+  connectTimeout: 3000,
+  maxRetriesPerRequest: 1,
+});
 
-export const cacheRedis = (() => {
-  return clientManager.getClient("cache", {
-    // Optimized for caching - allow longer timeouts for large data
-    commandTimeout: 5000,
-    maxMemoryPolicy: "allkeys-lru",
-  });
-})();
+export const cacheRedis = clientManager.getClient("cache", {
+  // Optimized for caching - allow longer timeouts for large data
+  commandTimeout: 5000,
+  maxMemoryPolicy: "allkeys-lru",
+});
 
-export const sessionRedis = (() => {
-  return clientManager.getClient("session", {
-    // Optimized for sessions - reliable storage
-    commandTimeout: 3000,
-    maxRetriesPerRequest: 3,
-  });
-})();
+export const sessionRedis = clientManager.getClient("session", {
+  // Optimized for sessions - reliable storage
+  commandTimeout: 3000,
+  maxRetriesPerRequest: 3,
+});
 
 // Health check endpoint helper
 export const getRedisHealth = async () => {

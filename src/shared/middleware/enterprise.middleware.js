@@ -65,7 +65,7 @@ export const responseCompression = compression({
 
 // CORS Configuration
 export const corsConfig = {
-  origin: process.env.CORS_ORIGIN?.split(",") || ["http://localhost:3000"],
+  origin: process.env.CORS_ORIGIN?.split(",") || [],
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],

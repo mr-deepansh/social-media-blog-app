@@ -292,6 +292,8 @@ azure-credentials.json
 
 # Redis dumps
 dump.rdb
+redis-data/
+redis-data/*
 
 # MongoDB dumps
 *.bson

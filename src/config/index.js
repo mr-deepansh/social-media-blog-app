@@ -2,8 +2,16 @@
 import dotenv from "dotenv";
 import winston from "winston";
 
-// Load environment variables
+// Store PM2/CLI environment before loading .env
+const cliNodeEnv = process.env.NODE_ENV;
+
+// Load environment variables from .env file
 dotenv.config();
+
+// CLI/PM2 environment takes priority over .env file
+if (cliNodeEnv) {
+  process.env.NODE_ENV = cliNodeEnv;
+}
 
 // ==========================
 // LOGGER CONFIGURATION
@@ -14,13 +22,13 @@ export const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || (isDev ? "debug" : "info"),
   format: isDev
     ? winston.format.combine(
-      winston.format.colorize(),
-      winston.format.timestamp({ format: "HH:mm:ss" }),
-      winston.format.printf(({ timestamp, level, message, ...meta }) => {
-        const metaStr = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : "";
-        return `${timestamp} [${level}]: ${message}${metaStr}`;
-      }),
-    )
+        winston.format.colorize(),
+        winston.format.timestamp({ format: "HH:mm:ss" }),
+        winston.format.printf(({ timestamp, level, message, ...meta }) => {
+          const metaStr = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : "";
+          return `${timestamp} [${level}]: ${message}${metaStr}`;
+        }),
+      )
     : winston.format.combine(winston.format.timestamp(), winston.format.json()),
   transports: [new winston.transports.Console()],
   silent: false,
@@ -62,7 +70,9 @@ export const parseFloatEnv = (str, defaultValue = 0.0) => {
 export const serverConfig = {
   port: parseIntEnv(process.env.PORT, 5000),
   host: process.env.HOST || "localhost",
-  nodeEnv: process.env.NODE_ENV || "development",
+  get nodeEnv() {
+    return (process.env.NODE_ENV || "development").trim();
+  },
   apiVersion: process.env.API_VERSION || "v2",
   baseUrl: process.env.BASE_URL || `http://localhost:${process.env.PORT || 5000}`,
   bodyLimit: process.env.BODY_LIMIT || "16kb",
@@ -71,6 +81,7 @@ export const serverConfig = {
   shutdownTimeout: parseIntEnv(process.env.SHUTDOWN_TIMEOUT, 15000),
   clustering: parseBoolean(process.env.CLUSTERING),
   backlog: parseIntEnv(process.env.BACKLOG, 511),
+  httpsEnabled: parseBoolean(process.env.HTTPS_ENABLED),
 };
 
 // ==========================

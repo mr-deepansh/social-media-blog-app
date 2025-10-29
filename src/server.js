@@ -1,10 +1,13 @@
 // server.js
 import http from "http";
+import https from "https"; // ✅ Added for HTTPS
+import fs from "fs"; // ✅ For reading cert and key
 import os from "os";
 import app from "./app.js";
 import { serverConfig } from "./config/index.js";
 import { logger } from "./shared/services/logger.service.js";
 import connectDB, { disconnectDB } from "./config/database/connection.js";
+import { validateSecurityConfig } from "./shared/config/security.config.js";
 import { execSync } from "child_process";
 
 // ==============================================
@@ -30,12 +33,8 @@ const getSystemInfo = () => {
   return { ip: localIp, hostname: os.hostname() };
 };
 
-// =================================
-// Port management: Kill in dev, fail in prod
-// =================================
-
 // ==============================================
-// Preemptively kill process on port in development
+// Kill Port in Development to avoid conflicts
 // ==============================================
 const killPort = async port => {
   try {
@@ -71,30 +70,21 @@ const killPort = async port => {
 };
 
 // ===============================
-// Start Server Function
+// Start Server
 // ===============================
 const startServer = async () => {
   try {
-    // Kill port if in development (always kill to prevent nodemon conflicts)
+    // 🔒 Validate security configuration
+    validateSecurityConfig();
+
+    // 🔹 Kill port in development only
     if (serverConfig.nodeEnv === "development" || process.env.NODE_ENV === "development") {
       await killPort(serverConfig.port);
     } else if (serverConfig.nodeEnv === "production") {
-      // In production, check if port is in use and fail fast
-      try {
-        const output = execSync(`netstat -ano | findstr :${serverConfig.port}`, { encoding: "utf8" });
-        if (output.includes("LISTENING")) {
-          logger.error("Port conflict in production", {
-            port: serverConfig.port,
-            pid: process.pid,
-            recommendation: "Use PM2 or check for existing processes",
-          });
-          process.exit(1);
-        }
-      } catch (err) {
-        // Port is free, continue
-      }
+      // Skip port conflict check in production for PM2 managed processes
+      logger.info("Production mode - PM2 managed process", { pid: process.pid });
     }
-    // Connect to MongoDB
+    // ✅ Connect MongoDB
     await connectDB();
     if (serverConfig.nodeEnv === "development") {
       // Development logging handled in server startup
@@ -103,42 +93,113 @@ const startServer = async () => {
     }
     // Always use the same port - development kills existing, production fails
     const port = serverConfig.port;
-    const server = http.createServer(app);
     const { ip, hostname } = getSystemInfo();
+    // ======================================
+    // ✅ HTTPS Setup (only for development)
     // Start server with retry logic for development
+    // ======================================
+    let server;
+    if (serverConfig.httpsEnabled) {
+      // Check if SSL certificates exist
+      const keyPath = "D:/Backend/ssl/key.pem";
+      const certPath = "D:/Backend/ssl/cert.pem";
+      if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
+        const sslOptions = {
+          key: fs.readFileSync(keyPath),
+          cert: fs.readFileSync(certPath),
+        };
+        server = https.createServer(sslOptions, app);
+        console.log("🔒 HTTPS server enabled");
+      } else {
+        console.log("⚠️ SSL certificates not found, using HTTP");
+        server = http.createServer(app);
+      }
+    } else {
+      server = http.createServer(app);
+    }
+    // ======================================
+    // Retry Logic for Server Start
+    // ======================================
     const startServerWithRetry = async (retries = 3) => {
       try {
         await new Promise((resolve, reject) => {
-          server.listen(port, process.env.HOST, resolve);
-          server.on("error", reject);
+          const onError = err => {
+            server.removeListener("error", onError);
+            reject(err);
+          };
+          server.once("error", onError);
+          server.listen(port, process.env.HOST || "0.0.0.0", () => {
+            server.removeListener("error", onError);
+            resolve();
+          });
         });
         // Success - show startup info
+        const protocol = serverConfig.httpsEnabled ? "https" : "http";
+        const startupInfo = {
+          port,
+          ip,
+          hostname,
+          protocol,
+          environment: serverConfig.nodeEnv,
+          pid: process.pid,
+          version: serverConfig.apiVersion,
+          timestamp: new Date().toISOString(),
+          urls: {
+            local: `${protocol}://localhost:${port}`,
+            network: `${protocol}://${ip}:${port}`,
+            api: `${protocol}://${ip}:${port}/api/${serverConfig.apiVersion}`,
+            health: `${protocol}://${ip}:${port}/health`,
+          },
+        };
+
         if (serverConfig.nodeEnv === "development") {
           console.log("✅ MongoDB Connected Successfully");
           console.log("⚙️ Server is running at:");
-          console.log(`🔹 Local:   http://localhost:${port}`);
-          console.log(`🔹 Network: http://${ip}:${port}`);
-          console.log(`🔹 API:     http://${ip}:${port}/api/${serverConfig.apiVersion}`);
+          console.log(`🔹 Local:   ${startupInfo.urls.local}`);
+          console.log(`🔹 Network: ${startupInfo.urls.network}`);
+          console.log(`🔹 API:     ${startupInfo.urls.api}`);
+          console.log(`🔹 Health:  ${startupInfo.urls.health}`);
           console.log(`🔹 Environment: ${serverConfig.nodeEnv}`);
           console.log(`🔹 Process ID: ${process.pid}`);
+          console.log(`🔹 Hostname: ${hostname}`);
         } else {
-          logger.info("Server started successfully", {
-            port,
-            environment: serverConfig.nodeEnv,
+          // Production logging with all details
+          logger.info("🚀 SERVER STARTED SUCCESSFULLY", startupInfo);
+          logger.info("📍 SERVICE ENDPOINTS", {
+            local: startupInfo.urls.local,
+            network: startupInfo.urls.network,
+            api: startupInfo.urls.api,
+            health: startupInfo.urls.health,
+          });
+          logger.info("💻 SYSTEM INFO", {
             hostname,
+            ip,
+            port,
+            protocol,
             pid: process.pid,
-            version: serverConfig.apiVersion,
+            nodeVersion: process.version,
+            platform: process.platform,
+            arch: process.arch,
           });
         }
       } catch (err) {
-        if (err.code === "EADDRINUSE" && serverConfig.nodeEnv === "development" && retries > 0) {
-          console.log(`🔄 Port ${port} still in use, retrying... (${retries} attempts left)`);
-          await killPort(port);
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          return startServerWithRetry(retries - 1);
-        } else {
-          throw err;
+        if (err.code === "EADDRINUSE") {
+          if (serverConfig.nodeEnv === "development" && retries > 0) {
+            console.log(`🔄 Port ${port} in use, retrying... (${retries} left)`);
+            await killPort(port);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return startServerWithRetry(retries - 1);
+          } else if (serverConfig.nodeEnv === "production") {
+            logger.error("Port already in use in production", {
+              port,
+              pid: process.pid,
+              error: err.message,
+              suggestion: "Check for existing processes or use PM2 reload instead of restart",
+            });
+            process.exit(1);
+          }
         }
+        throw err;
       }
     };
     await startServerWithRetry();
@@ -154,8 +215,7 @@ const startServer = async () => {
       try {
         // Stop accepting new connections
         server.close(async () => {
-          logger.info("HTTP server closed");
-
+          logger.info("HTTP/HTTPS server closed");
           // Cleanup connections to prevent duplicates
           try {
             // Close Redis connections
@@ -184,7 +244,7 @@ const startServer = async () => {
     // Handle termination signals
     process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
     process.on("SIGINT", () => gracefulShutdown("SIGINT"));
-    // Handle uncaught exceptions and unhandled rejections
+    // ✅ Unified error handling for both modes
     process.on("uncaughtException", async err => {
       if (serverConfig.nodeEnv === "development") {
         console.log(`❌ Uncaught Exception: ${err.message}`);

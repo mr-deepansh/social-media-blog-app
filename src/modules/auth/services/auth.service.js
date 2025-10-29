@@ -361,7 +361,7 @@ class AuthService {
     // Async email sending (non-blocking)
     setImmediate(async () => {
       try {
-        const resetUrl = `${process.env.FRONTEND_URL || "http://92.168.218.1:8080"}/reset-password?token=${encodeURIComponent(encryptedToken)}`;
+        const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${encodeURIComponent(encryptedToken)}`;
         await emailService.sendEmail({
           to: user.email,
           subject: "🔒 Password Reset - endlessChatt",

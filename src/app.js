@@ -3,6 +3,8 @@ import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
+import timeout from "connect-timeout";
+import compression from "compression";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -33,6 +35,8 @@ const app = express();
 
 // Trust proxy (important for rate limiting and IP detection)
 app.set("trust proxy", 1);
+app.use(timeout("60s"));
+app.use(compression());
 
 // ========================================
 // SECURITY MIDDLEWARE

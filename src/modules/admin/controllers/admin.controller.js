@@ -1623,7 +1623,7 @@ const activateUser = asyncHandler(async (req, res) => {
             timeZoneName: "short",
           }),
           reactivatedBy: req.user.username,
-          loginUrl: process.env.FRONTEND_URL || "http://localhost:8080/login",
+          loginUrl: `${process.env.FRONTEND_URL}/login`,
         },
       });
     } catch (emailError) {
@@ -2182,9 +2182,9 @@ const bulkActions = asyncHandler(async (req, res) => {
           details:
             result.errors.length > 0
               ? {
-                errors: result.errors.slice(0, 10),
-                hasMoreErrors: result.errors.length > 10,
-              }
+                  errors: result.errors.slice(0, 10),
+                  hasMoreErrors: result.errors.length > 10,
+                }
               : undefined,
         },
         `Bulk ${action} completed`,
