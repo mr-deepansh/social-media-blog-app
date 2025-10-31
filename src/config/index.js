@@ -22,13 +22,13 @@ export const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || (isDev ? "debug" : "info"),
   format: isDev
     ? winston.format.combine(
-      winston.format.colorize(),
-      winston.format.timestamp({ format: "HH:mm:ss" }),
-      winston.format.printf(({ timestamp, level, message, ...meta }) => {
-        const metaStr = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : "";
-        return `${timestamp} [${level}]: ${message}${metaStr}`;
-      }),
-    )
+        winston.format.colorize(),
+        winston.format.timestamp({ format: "HH:mm:ss" }),
+        winston.format.printf(({ timestamp, level, message, ...meta }) => {
+          const metaStr = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : "";
+          return `${timestamp} [${level}]: ${message}${metaStr}`;
+        }),
+      )
     : winston.format.combine(winston.format.timestamp(), winston.format.json()),
   transports: [new winston.transports.Console()],
   silent: false,
@@ -73,15 +73,17 @@ export const serverConfig = {
   get nodeEnv() {
     return (process.env.NODE_ENV || "development").trim();
   },
-  apiVersion: process.env.API_VERSION || "v2",
-  baseUrl: process.env.BASE_URL || `http://localhost:${process.env.PORT || 5000}`,
-  bodyLimit: process.env.BODY_LIMIT || "16kb",
+  apiVersion: process.env.API_VERSION,
+  baseUrl: process.env.BASE_URL || `http://localhost:${process.env.PORT}`,
+  frontendUrl: process.env.FRONTEND_URL,
+  bodyLimit: process.env.BODY_LIMIT,
   timeout: parseIntEnv(process.env.SERVER_TIMEOUT, 30000),
   keepAliveTimeout: parseIntEnv(process.env.KEEP_ALIVE_TIMEOUT, 5000),
   shutdownTimeout: parseIntEnv(process.env.SHUTDOWN_TIMEOUT, 15000),
   clustering: parseBoolean(process.env.CLUSTERING),
   backlog: parseIntEnv(process.env.BACKLOG, 511),
   httpsEnabled: parseBoolean(process.env.HTTPS_ENABLED),
+  isLocalNetwork: parseBoolean(process.env.IS_LOCAL_NETWORK),
 };
 
 // ==========================
@@ -89,7 +91,7 @@ export const serverConfig = {
 // ==========================
 export const databaseConfig = {
   uri: process.env.MONGODB_URI,
-  dbName: process.env.DB_NAME || "social-media",
+  dbName: process.env.DB_NAME,
   options: {
     useNewUrlParser: true,
     useUnifiedTopology: true,
@@ -101,11 +103,12 @@ export const databaseConfig = {
     maxIdleTimeMS: parseIntEnv(process.env.DB_MAX_IDLE_MS, 30000),
     retryWrites: true,
     w: process.env.NODE_ENV === "production" ? "majority" : 1,
-    readPreference: process.env.DB_READ_PREFERENCE || "primaryPreferred",
-    readConcern: { level: process.env.DB_READ_CONCERN || "local" },
+    readPreference: process.env.DB_READ_PREFERENCE,
+    readConcern: { level: process.env.DB_READ_CONCERN },
+    writeConcern: { w: process.env.NODE_ENV === "production" ? "majority" : 1, j: true },
     compressors: ["zstd", "zlib"],
     zlibCompressionLevel: 6,
-    appName: process.env.DB_APP_NAME || "social-media-app",
+    appName: process.env.DB_APP_NAME,
     monitorCommands: process.env.NODE_ENV !== "production",
     serverApi: { version: "1", strict: false, deprecationErrors: false },
   },

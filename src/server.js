@@ -153,8 +153,8 @@ const startServer = async () => {
         };
 
         if (serverConfig.nodeEnv === "development") {
-          console.log("✅ MongoDB Connected Successfully");
-          console.log("⚙️ Server is running at:");
+          console.log("✅  MongoDB Connected Successfully");
+          console.log("⚙️  Server is running at:");
           console.log(`🔹 Local:   ${startupInfo.urls.local}`);
           console.log(`🔹 Network: ${startupInfo.urls.network}`);
           console.log(`🔹 API:     ${startupInfo.urls.api}`);
